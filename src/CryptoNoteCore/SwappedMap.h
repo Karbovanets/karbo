@@ -28,6 +28,7 @@
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 
+
 template<class Key, class T> class SwappedMap {
 private:
   struct Descriptor {

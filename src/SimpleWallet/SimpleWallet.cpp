@@ -466,10 +466,12 @@ simple_wallet::simple_wallet(System::Dispatcher& dispatcher, const CryptoNote::C
   m_refresh_progress_reporter(*this), 
   m_initResultPromise(nullptr),
   m_walletSynchronized(false) {
-  //m_consoleHandler.setHandler("start_mining", boost::bind(&simple_wallet::start_mining, this, _1), "start_mining [<number_of_threads>] - Start mining in daemon");
-  //m_consoleHandler.setHandler("stop_mining", boost::bind(&simple_wallet::stop_mining, this, _1), "Stop mining in daemon");
+
+  m_consoleHandler.setHandler("start_mining", boost::bind(&simple_wallet::start_mining, this, _1), "start_mining [<number_of_threads>] - Start mining in daemon");
+  m_consoleHandler.setHandler("stop_mining", boost::bind(&simple_wallet::stop_mining, this, _1), "Stop mining in daemon");
   //m_consoleHandler.setHandler("refresh", boost::bind(&simple_wallet::refresh, this, _1), "Resynchronize transactions and balance");
   m_consoleHandler.setHandler("export_keys", boost::bind(&simple_wallet::export_keys, this, _1), "Show the secret keys of the openned wallet");
+
   m_consoleHandler.setHandler("balance", boost::bind(&simple_wallet::show_balance, this, _1), "Show current wallet balance");
   m_consoleHandler.setHandler("incoming_transfers", boost::bind(&simple_wallet::show_incoming_transfers, this, _1), "Show incoming transfers");
   m_consoleHandler.setHandler("list_transfers", boost::bind(&simple_wallet::listTransfers, this, _1), "Show all known transfers");
@@ -517,13 +519,17 @@ bool simple_wallet::init(const boost::program_options::variables_map& vm) {
   }
 
   if (m_generate_new.empty() && m_wallet_file_arg.empty()) {
+
     std::cout << "Nor 'generate-new-wallet' neither 'wallet-file' argument was specified.\nWhat do you want to do?\n[O]pen existing wallet, [G]enerate new wallet file, [I]mport wallet or [E]xit.\n";
+
     char c;
     do {
       std::string answer;
       std::getline(std::cin, answer);
       c = answer[0];
+
       if (!(c == 'O' || c == 'G' || c == 'E' || c == 'I' || c == 'o' || c == 'g' || c == 'e' || c == 'i')) {
+
         std::cout << "Unknown command: " << c <<std::endl;
       } else {
         break;
@@ -542,6 +548,7 @@ bool simple_wallet::init(const boost::program_options::variables_map& vm) {
       boost::algorithm::trim(userInput);
     } while (userInput.empty());
 
+
     if (c == 'i' || c == 'I') {
       m_import_new = userInput;
     } else if (c == 'g' || c == 'G') {
@@ -551,12 +558,14 @@ bool simple_wallet::init(const boost::program_options::variables_map& vm) {
     }
   }
 
+
   if (!m_generate_new.empty() && !m_wallet_file_arg.empty() && !m_import_new.empty()) {
     fail_msg_writer() << "you can't specify 'generate-new-wallet' and 'wallet-file' arguments simultaneously";
     return false;
   }
 
   std::string walletFileName;
+
     if (!m_generate_new.empty() || !m_import_new.empty()) {
     std::string ignoredString;
     if (!m_generate_new.empty()) {
@@ -564,6 +573,7 @@ bool simple_wallet::init(const boost::program_options::variables_map& vm) {
     } else if (!m_import_new.empty()) {
       WalletHelper::prepareFileNames(m_import_new, ignoredString, walletFileName);
     }
+
     boost::system::error_code ignore;
     if (boost::filesystem::exists(walletFileName, ignore)) {
       fail_msg_writer() << walletFileName << " already exists";
@@ -624,6 +634,7 @@ bool simple_wallet::init(const boost::program_options::variables_map& vm) {
     if (!writeAddressFile(walletAddressFile, m_wallet->getAddress())) {
       logger(WARNING, BRIGHT_RED) << "Couldn't write wallet address file: " + walletAddressFile;
     }
+
   } else if (!m_import_new.empty()) {
     std::string walletAddressFile = prepareWalletAddressFilename(m_import_new);
     boost::system::error_code ignore;
@@ -667,8 +678,6 @@ bool simple_wallet::init(const boost::program_options::variables_map& vm) {
     }
   } else {
     m_wallet.reset(new WalletLegacy(m_currency, *m_node));
-
-
 
     try {
       m_wallet_file = tryToOpenWalletOrLoadKeysOrThrow(logger, m_wallet, m_wallet_file_arg, pwd_container.password());
@@ -757,6 +766,7 @@ bool simple_wallet::new_wallet(const std::string &wallet_file, const std::string
   return true;
 }
 //----------------------------------------------------------------------------------------------------
+
 bool simple_wallet::new_wallet(Crypto::SecretKey &secret_key, Crypto::SecretKey &view_key, const std::string &wallet_file, const std::string& password) {
   m_wallet_file = wallet_file;
 
@@ -810,6 +820,7 @@ bool simple_wallet::new_wallet(Crypto::SecretKey &secret_key, Crypto::SecretKey 
   return true;
 }
 //----------------------------------------------------------------------------------------------------
+
 bool simple_wallet::close_wallet()
 {
   try {
@@ -981,6 +992,7 @@ void simple_wallet::synchronizationProgressUpdated(uint32_t current, uint32_t to
   }
 }
 
+
 bool simple_wallet::export_keys(const std::vector<std::string>& args/* = std::vector<std::string>()*/) {
   AccountKeys keys;
   m_wallet->getAccountKeys(keys);
@@ -989,6 +1001,7 @@ bool simple_wallet::export_keys(const std::vector<std::string>& args/* = std::ve
 
   return true;
 }
+
 
 bool simple_wallet::show_balance(const std::vector<std::string>& args/* = std::vector<std::string>()*/) {
   success_msg_writer() << "available balance: " << m_currency.formatAmount(m_wallet->actualBalance()) <<
@@ -1361,5 +1374,3 @@ int main(int argc, char* argv[]) {
   return 1;
   //CATCH_ENTRY_L0("main", 1);
 }
-
-

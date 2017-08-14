@@ -77,10 +77,13 @@ bool TransactionPool::pushTransaction(CachedTransaction&& transaction, Transacti
     return false;
   }
 
-  if (!mergeStates(poolState, transactionState)) {
+
+  if (hasIntersections(poolState, transactionState)) {
+
     logger(Logging::DEBUGGING) << "pushTransaction: failed to merge states, some keys already used";
     return false;
   }
+
 
   logger(Logging::DEBUGGING) << "pushed transaction " << pendingTx.getTransactionHash() << " to pool";
   return transactionHashIndex.emplace(std::move(pendingTx)).second;

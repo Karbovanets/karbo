@@ -94,7 +94,9 @@ bool Currency::generateGenesisBlock() {
   //std::string hex_tx_represent = Common::toHex(txb);
 
   // Hard code coinbase tx in genesis block, because through generating tx use random, but genesis should be always the same
+
   std::string genesisCoinbaseTxHex = "010a01ff0001fac484c69cd608029b2e4c0281c0b02e7c53291a94d1d0cbff8883f8024f5142ee494ffbbd0880712101f904925cc23f86f9f3565188862275dc556a9bdfb6aec22c5aca7f0177c45ba8";
+
   BinaryArray minerTxBlob;
 
   bool r =
@@ -117,6 +119,7 @@ bool Currency::generateGenesisBlock() {
   cachedGenesisBlock.reset(new CachedBlock(genesisBlockTemplate));
   return true;
 }
+
 
 size_t Currency::difficultyWindowByBlockVersion(uint8_t blockMajorVersion) const {
   if (blockMajorVersion >= BLOCK_MAJOR_VERSION_3) {
@@ -152,6 +155,7 @@ size_t Currency::difficultyBlocksCountByBlockVersion(uint8_t blockMajorVersion) 
   return difficultyWindowByBlockVersion(blockMajorVersion) + difficultyLagByBlockVersion(blockMajorVersion);
 }
 
+
 size_t Currency::blockGrantedFullRewardZoneByBlockVersion(uint8_t blockMajorVersion) const {
   if (blockMajorVersion >= BLOCK_MAJOR_VERSION_3) {
     return m_blockGrantedFullRewardZone;
@@ -178,6 +182,7 @@ bool Currency::getBlockReward(uint8_t blockMajorVersion, size_t medianSize, size
   assert(m_emissionSpeedFactor > 0 && m_emissionSpeedFactor <= 8 * sizeof(uint64_t));
 
   uint64_t baseReward = (m_moneySupply - alreadyGeneratedCoins) >> m_emissionSpeedFactor;
+
   if (baseReward < m_tailEmissionReward) {
     baseReward = m_tailEmissionReward;
   }
@@ -185,6 +190,7 @@ bool Currency::getBlockReward(uint8_t blockMajorVersion, size_t medianSize, size
   if (alreadyGeneratedCoins + baseReward >= m_moneySupply) {
     baseReward = 0;
   }
+
 
 
   size_t blockGrantedFullRewardZone = blockGrantedFullRewardZoneByBlockVersion(blockMajorVersion);
@@ -196,9 +202,11 @@ bool Currency::getBlockReward(uint8_t blockMajorVersion, size_t medianSize, size
 
   uint64_t penalizedBaseReward = getPenalizedAmount(baseReward, medianSize, currentBlockSize);
   uint64_t penalizedFee = blockMajorVersion >= BLOCK_MAJOR_VERSION_2 ? getPenalizedAmount(fee, medianSize, currentBlockSize) : fee;
+
 if (cryptonoteCoinVersion() == 1) {
   penalizedFee = getPenalizedAmount(fee, medianSize, currentBlockSize);
 }
+
 
   emissionChange = penalizedBaseReward - (fee - penalizedFee);
   reward = penalizedBaseReward + penalizedFee;
@@ -485,6 +493,7 @@ Difficulty Currency::nextDifficulty(std::vector<uint64_t> timestamps,
   return (low + timeSpan - 1) / timeSpan;
 }
 
+
 Difficulty Currency::nextDifficulty(uint8_t version, uint32_t blockIndex, std::vector<uint64_t> timestamps,
   std::vector<Difficulty> cumulativeDifficulties) const {
 
@@ -628,6 +637,7 @@ DIFFICULTY_WINDOW=17
   return (low + timeSpan - 1) / timeSpan;  // with version
 }
 
+
 bool Currency::checkProofOfWorkV1(Crypto::cn_context& context, const CachedBlock& block, Difficulty currentDifficulty) const {
   if (BLOCK_MAJOR_VERSION_1 != block.getBlock().majorVersion) {
     return false;
@@ -744,12 +754,14 @@ m_upgradeWindow(currency.m_upgradeWindow),
 m_blocksFileName(currency.m_blocksFileName),
 m_blockIndexesFileName(currency.m_blockIndexesFileName),
 m_txPoolFileName(currency.m_txPoolFileName),
+
 m_tailEmissionReward(currency.m_tailEmissionReward),
 m_cryptonoteCoinVersion(currency.m_cryptonoteCoinVersion),
 m_zawyDifficultyBlockIndex(currency.m_zawyDifficultyBlockIndex),
 m_zawyDifficultyV2(currency.m_zawyDifficultyV2),
 m_zawyDifficultyV3(currency.m_zawyDifficultyV3),
 m_zawyDifficultyV4(currency.m_zawyDifficultyV4),
+
 m_testnet(currency.m_testnet),
 genesisBlockTemplate(std::move(currency.genesisBlockTemplate)),
 cachedGenesisBlock(new CachedBlock(genesisBlockTemplate)),
@@ -768,14 +780,16 @@ CurrencyBuilder::CurrencyBuilder(Logging::ILogger& log) : m_currency(log) {
 
   moneySupply(parameters::MONEY_SUPPLY);
   emissionSpeedFactor(parameters::EMISSION_SPEED_FACTOR);
+
 cryptonoteCoinVersion(parameters::CRYPTONOTE_COIN_VERSION);
 
   rewardBlocksWindow(parameters::CRYPTONOTE_REWARD_BLOCKS_WINDOW);
-tailEmissionReward(parameters::TAIL_EMISSION_REWARD);
-zawyDifficultyBlockIndex(parameters::ZAWY_DIFFICULTY_BLOCK_INDEX);
-zawyDifficultyV2(parameters::ZAWY_DIFFICULTY_V2);
-zawyDifficultyV3(parameters::ZAWY_DIFFICULTY_V3);
-zawyDifficultyV4(parameters::ZAWY_DIFFICULTY_V4);
+  tailEmissionReward(parameters::TAIL_EMISSION_REWARD);
+  zawyDifficultyBlockIndex(parameters::ZAWY_DIFFICULTY_BLOCK_INDEX);
+  zawyDifficultyV2(parameters::ZAWY_DIFFICULTY_V2);
+  zawyDifficultyV3(parameters::ZAWY_DIFFICULTY_V3);
+  zawyDifficultyV4(parameters::ZAWY_DIFFICULTY_V4);
+
   blockGrantedFullRewardZone(parameters::CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE);
   minerTxBlobReservedSize(parameters::CRYPTONOTE_COINBASE_BLOB_RESERVED_SIZE);
 
@@ -817,12 +831,14 @@ zawyDifficultyV4(parameters::ZAWY_DIFFICULTY_V4);
   testnet(false);
 }
 
+
 Transaction CurrencyBuilder::generateGenesisTransaction() {
   CryptoNote::Transaction tx;
   CryptoNote::AccountPublicAddress ac = boost::value_initialized<CryptoNote::AccountPublicAddress>();
   m_currency.constructMinerTx(1, 0, 0, 0, 0, 0, ac, tx); // zero fee in genesis
   return tx;
 }
+
 CurrencyBuilder& CurrencyBuilder::emissionSpeedFactor(unsigned int val) {
   if (val <= 0 || val > 8 * sizeof(uint64_t)) {
     throw std::invalid_argument("val at emissionSpeedFactor()");

@@ -513,6 +513,7 @@ Difficulty Core::getDifficultyForNextBlock() const {
 
   uint32_t topBlockIndex = mainChain->getTopBlockIndex();
 
+
   uint8_t nextBlockMajorVersion = getBlockMajorVersionForHeight(topBlockIndex);
 
   size_t blocksCount = std::min(static_cast<size_t>(topBlockIndex), currency.difficultyBlocksCountByBlockVersion(nextBlockMajorVersion));
@@ -520,7 +521,9 @@ Difficulty Core::getDifficultyForNextBlock() const {
   auto timestamps = mainChain->getLastTimestamps(blocksCount);
   auto difficulties = mainChain->getLastCumulativeDifficulties(blocksCount);
 
+
   return currency.nextDifficulty(nextBlockMajorVersion, topBlockIndex, timestamps, difficulties);
+
 }
 
 std::vector<Crypto::Hash> Core::findBlockchainSupplement(const std::vector<Crypto::Hash>& remoteBlockIds,
@@ -645,6 +648,9 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
 
         actualizePoolTransactions();
 
+        updateBlockMedianSize();
+        actualizePoolTransactionsLite(validatorState);
+
         ret = error::AddBlockErrorCode::ADDED_TO_MAIN;
         logger(Logging::DEBUGGING) << "Block " << cachedBlock.getBlockHash() << " added to main chain. Index: " << (previousBlockIndex + 1);
         if ((previousBlockIndex + 1) % 100 == 0) {
@@ -664,6 +670,7 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
           assert(endpointIndex != 0);
           std::swap(chainsLeaves[0], chainsLeaves[endpointIndex]);
           updateMainChainSet();
+          updateBlockMedianSize();
           actualizePoolTransactions();
           copyTransactionsToPool(chainsLeaves[endpointIndex]);
 
@@ -690,9 +697,8 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
                                      currentDifficulty, std::move(rawBlock));
 
       updateMainChainSet();
+      updateBlockMedianSize();
     }
-
-    updateBlockMedianSize();
   } else {
     logger(Logging::DEBUGGING) << "Adding alternative block: " << cachedBlock.getBlockHash();
 
@@ -742,6 +748,23 @@ void Core::actualizePoolTransactions() {
 
     if (!addTransactionToPool(std::move(tx))) {
       notifyObservers(makeDelTransactionMessage({hash}, Messages::DeleteTransaction::Reason::NotActual));
+    }
+  }
+}
+
+
+void Core::actualizePoolTransactionsLite(const TransactionValidatorState& validatorState) {
+  auto& pool = *transactionPool;
+  auto hashes = pool.getTransactionHashes();
+
+  for (auto& hash : hashes) {
+    auto tx = pool.getTransaction(hash);
+
+    auto txState = extractSpentOutputs(tx);
+
+    if (hasIntersections(validatorState, txState) || tx.getTransactionBinaryArray().size() > getMaximumTransactionAllowedSize(blockMedianSize, currency)) {
+      pool.removeTransaction(hash);
+      notifyObservers(makeDelTransactionMessage({ hash }, Messages::DeleteTransaction::Reason::NotActual));
     }
   }
 }
@@ -1208,7 +1231,9 @@ std::error_code Core::validateTransaction(const CachedTransaction& cachedTransac
                                           IBlockchainCache* cache, uint64_t& fee, uint32_t blockIndex) {
   // TransactionValidatorState currentState;
   const auto& transaction = cachedTransaction.getTransaction();
+
 auto error = validateSemantic(transaction, fee, blockIndex);
+
   if (error != error::TransactionValidationError::VALIDATION_SUCCESS) {
     return error;
   }
@@ -1304,6 +1329,7 @@ auto error = validateSemantic(transaction, fee, blockIndex);
   return error::TransactionValidationError::VALIDATION_SUCCESS;
 }
 
+
 std::error_code Core::validateSemantic(const Transaction& transaction, uint64_t& fee, uint32_t blockIndex) {
   if (transaction.inputs.empty()) {
     return error::TransactionValidationError::EMPTY_INPUTS;
@@ -1341,10 +1367,6 @@ std::error_code Core::validateSemantic(const Transaction& transaction, uint64_t&
     summaryOutputAmount += output.amount;
   }
 
-    // parameters used for the additional key_image check
-    static const Crypto::KeyImage Z = { {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } };
-    static const Crypto::KeyImage I = { {0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } };
-    static const Crypto::KeyImage L = { {0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58, 0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10 } };
 
   uint64_t summaryInputAmount = 0;
   std::unordered_set<Crypto::KeyImage> ki;
@@ -1364,10 +1386,6 @@ std::error_code Core::validateSemantic(const Transaction& transaction, uint64_t&
 
       // outputIndexes are packed here, first is absolute, others are offsets to previous,
       // so first can be zero, others can't
-  // Fix discovered by Monero Lab and suggested by "fluffypony" (bitcointalk.org)
-  if (!(scalarmultKey(in.keyImage, L) == I) && blockIndex > parameters::KEY_IMAGE_CHECKING_BLOCK_INDEX) {
-    return error::TransactionValidationError::INPUT_INVALID_DOMAIN_KEYIMAGES;
-  }
 
       if (std::find(++std::begin(in.outputIndexes), std::end(in.outputIndexes), 0) != std::end(in.outputIndexes)) {
         return error::TransactionValidationError::INPUT_IDENTICAL_OUTPUT_INDEXES;

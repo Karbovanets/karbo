@@ -304,7 +304,6 @@ struct COMMAND_RPC_STOP_DAEMON {
   typedef STATUS_STRUCT response;
 };
 
-//
 struct COMMAND_RPC_GET_FEE_ADDRESS {
   typedef EMPTY_STRUCT request;
 
@@ -318,6 +317,7 @@ struct COMMAND_RPC_GET_FEE_ADDRESS {
     }
   };
 };
+
 
 struct COMMAND_RPC_GETBLOCKCOUNT {
   typedef std::vector<std::string> request;
@@ -422,6 +422,7 @@ struct BLOCK_HEADER_RESPONSE {
 };
 
 
+
 struct f_transaction_short_response {
   std::string hash;
   uint64_t fee;
@@ -517,6 +518,8 @@ struct f_block_details_response {
     KV_MEMBER(totalFeeAmount)
   }
 };
+
+
 struct COMMAND_RPC_GET_LAST_BLOCK_HEADER {
   typedef EMPTY_STRUCT request;
   typedef BLOCK_HEADER_RESPONSE response;
@@ -545,6 +548,7 @@ struct COMMAND_RPC_GET_BLOCK_HEADER_BY_HEIGHT {
 
   typedef BLOCK_HEADER_RESPONSE response;
 };
+
 
 struct F_COMMAND_RPC_GET_BLOCKS_LIST {
   struct request {
@@ -623,6 +627,7 @@ struct F_COMMAND_RPC_GET_POOL {
     }
   };
 };
+
 struct COMMAND_RPC_QUERY_BLOCKS {
   struct request {
     std::vector<Crypto::Hash> block_ids; //*first 10 blocks id goes sequential, next goes in pow(2,n) offset, like 2, 4, 8, 16, 32, 64 and so on, and the last one is always genesis block */
