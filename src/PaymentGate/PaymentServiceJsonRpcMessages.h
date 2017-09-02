@@ -228,6 +228,7 @@ struct TransactionRpcInfo {
   uint8_t state;
   std::string transactionHash;
   uint32_t blockIndex;
+  uint32_t confirmations;
   uint64_t timestamp;
   bool isBase;
   uint64_t unlockTime;
