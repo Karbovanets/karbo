@@ -154,6 +154,10 @@ void CryptoNoteProtocolHandler::set_p2p_endpoint(IP2pEndpoint* p2p) {
 }
 
 void CryptoNoteProtocolHandler::onConnectionOpened(CryptoNoteConnectionContext& context) {
+//  if (context.m_state != CryptoNoteConnectionContext::state_befor_handshake) {
+    m_peersCount++;
+    m_observerManager.notify(&ICryptoNoteProtocolObserver::peerCountUpdated, m_peersCount.load());
+//  }
 }
 
 void CryptoNoteProtocolHandler::onConnectionClosed(CryptoNoteConnectionContext& context) {
@@ -172,10 +176,10 @@ void CryptoNoteProtocolHandler::onConnectionClosed(CryptoNoteConnectionContext& 
     m_observerManager.notify(&ICryptoNoteProtocolObserver::lastKnownBlockHeightUpdated, m_observedHeight);
   }
 
-  if (context.m_state != CryptoNoteConnectionContext::state_befor_handshake) {
+//  if (context.m_state != CryptoNoteConnectionContext::state_befor_handshake) {
     m_peersCount--;
     m_observerManager.notify(&ICryptoNoteProtocolObserver::peerCountUpdated, m_peersCount.load());
-  }
+//  }
 }
 
 void CryptoNoteProtocolHandler::stop() {
@@ -255,10 +259,10 @@ bool CryptoNoteProtocolHandler::process_payload_sync_data(const CORE_SYNC_DATA& 
   updateObservedHeight(hshd.current_height, context);
   context.m_remote_blockchain_height = hshd.current_height;
 
-  if (is_inital) {
-    m_peersCount++;
-    m_observerManager.notify(&ICryptoNoteProtocolObserver::peerCountUpdated, m_peersCount.load());
-  }
+//  if (is_inital) {
+//    m_peersCount++;
+//    m_observerManager.notify(&ICryptoNoteProtocolObserver::peerCountUpdated, m_peersCount.load());
+//  }
 
   return true;
 }
