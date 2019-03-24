@@ -166,20 +166,22 @@ uint32_t Currency::upgradeHeight(uint8_t majorVersion) const {
 
 bool Currency::getBlockReward(uint8_t blockMajorVersion, size_t medianSize, size_t currentBlockSize, uint64_t alreadyGeneratedCoins,
   uint64_t fee, uint64_t& reward, int64_t& emissionChange) const {
-  assert(alreadyGeneratedCoins <= m_moneySupply);
+  // assert(alreadyGeneratedCoins <= m_moneySupply);
   assert(m_emissionSpeedFactor > 0 && m_emissionSpeedFactor <= 8 * sizeof(uint64_t));
 
+  // Tail emission
+
   uint64_t baseReward = (m_moneySupply - alreadyGeneratedCoins) >> m_emissionSpeedFactor;
+  if (alreadyGeneratedCoins + CryptoNote::parameters::TAIL_EMISSION_REWARD >= m_moneySupply || baseReward < CryptoNote::parameters::TAIL_EMISSION_REWARD)
+  {
+    // flat rate tail emission reward
+    //baseReward = CryptoNote::parameters::TAIL_EMISSION_REWARD;
 
-  if (baseReward < m_tailEmissionReward) {
-    baseReward = m_tailEmissionReward;
+    // inflation 2% of total coins in circulation
+    const uint64_t blocksInOneYear = CryptoNote::parameters::EXPECTED_NUMBER_OF_BLOCKS_PER_DAY * 365;
+    uint64_t twoPercentOfEmission = static_cast<double>(alreadyGeneratedCoins) / 100 * 2;
+    baseReward = twoPercentOfEmission / blocksInOneYear;
   }
-
-  if (alreadyGeneratedCoins + baseReward >= m_moneySupply) {
-    baseReward = 0;
-  }
-
-
 
   size_t blockGrantedFullRewardZone = blockGrantedFullRewardZoneByBlockVersion(blockMajorVersion);
   medianSize = std::max(medianSize, blockGrantedFullRewardZone);
