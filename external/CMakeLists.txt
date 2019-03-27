@@ -4,8 +4,7 @@ set(UPNPC_BUILD_TESTS OFF CACHE BOOL "Build test executables")
 set(WITH_MD_LIBRARY OFF CACHE BOOL "Code Generation for static library")
 
 add_subdirectory(miniupnpc)
-
-if (DO_TESTS)
+if (BUILD_TESTS)
   add_subdirectory(gtest)
 endif()
 
@@ -25,7 +24,7 @@ elseif(NOT MSVC)
     add_dependencies(rocksdblib rocksdb)
 endif()
 
-if(DO_TESTS)
+if(BUILD_TESTS)
   set_property(TARGET gtest gtest_main PROPERTY FOLDER "external")
 endif()
 

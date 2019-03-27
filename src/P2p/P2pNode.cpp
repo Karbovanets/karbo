@@ -209,7 +209,7 @@ void P2pNode::acceptLoop() {
     } catch (InterruptedException&) {
       break;
     } catch (const std::exception& e) {
-      logger(WARNING) << "Exception in acceptLoop: " << e.what();
+      logger(DEBUGGING) << "Exception in acceptLoop: " << e.what();
     }
   }
 
@@ -224,7 +224,7 @@ void P2pNode::connectorLoop() {
     } catch (InterruptedException&) {
       break;
     } catch (const std::exception& e) {
-      logger(WARNING) << "Exception in connectorLoop: " << e.what();
+      logger(DEBUGGING) << "Exception in connectorLoop: " << e.what();
     }
   }
 }
@@ -287,7 +287,7 @@ bool P2pNode::makeNewConnectionFromPeerlist(const PeerlistManager::Peerlist& pee
   for (size_t tryCount = 0; idxGen.generate(peerIndex) && tryCount < m_cfg.getPeerListGetTryCount(); ++tryCount) {
     PeerlistEntry peer;
     if (!peerlist.get(peer, peerIndex)) {
-      logger(WARNING) << "Failed to get peer from list, idx = " << peerIndex;
+      logger(DEBUGGING) << "Failed to get peer from list, idx = " << peerIndex;
       continue;
     }
 
@@ -320,7 +320,7 @@ void P2pNode::preprocessIncomingConnection(ContextPtr ctx) {
       enqueueConnection(std::move(proxy));
     }
   } catch (std::exception& e) {
-    logger(WARNING) << " Failed to process connection: " << e.what();
+    logger(DEBUGGING) << " Failed to process connection: " << e.what();
   }
 }
 

@@ -198,4 +198,7 @@ cn_slow_hash_noaesni
   memcpy(ctx->state.init, ctx->text, INIT_SIZE_BYTE);
   hash_permutation(&ctx->state.hs);
   extra_hashes[ctx->state.hs.b[0] & 3](&ctx->state, 200, hash);
+#ifdef FORCE_USE_HEAP
+    free(long_state);
+#endif
 }

@@ -1,19 +1,7 @@
-// Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
-//
-// This file is part of Bytecoin.
-//
-// Bytecoin is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// Bytecoin is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with Bytecoin.  If not, see <http://www.gnu.org/licenses/>.
+// Copyright (c) 2011-2016 The Cryptonote developers
+// Copyright (c) 2014-2016 XDN developers
+// Distributed under the MIT/X11 software license, see the accompanying
+// file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #pragma once 
 
@@ -32,30 +20,32 @@
 
 namespace CryptoNote {
 
-class HttpServer {
+	class HttpServer {
 
-public:
+	public:
 
-  HttpServer(System::Dispatcher& dispatcher, Logging::ILogger& log);
+		HttpServer(System::Dispatcher& dispatcher, Logging::ILogger& log);
 
-  void start(const std::string& address, uint16_t port);
-  void stop();
+		void start(const std::string& address, uint16_t port, const std::string& user = "", const std::string& password = "");
+		void stop();
 
-  virtual void processRequest(const HttpRequest& request, HttpResponse& response) = 0;
+		virtual void processRequest(const HttpRequest& request, HttpResponse& response) = 0;
 
-protected:
+	protected:
 
-  System::Dispatcher& m_dispatcher;
+		System::Dispatcher& m_dispatcher;
 
-private:
+	private:
 
-  void acceptLoop();
-  void connectionHandler(System::TcpConnection&& conn);
+		void acceptLoop();
+		void connectionHandler(System::TcpConnection&& conn);
+		bool authenticate(const HttpRequest& request) const;
 
-  System::ContextGroup workingContextGroup;
-  Logging::LoggerRef logger;
-  System::TcpListener m_listener;
-  std::unordered_set<System::TcpConnection*> m_connections;
-};
+		System::ContextGroup workingContextGroup;
+		Logging::LoggerRef logger;
+		System::TcpListener m_listener;
+		std::unordered_set<System::TcpConnection*> m_connections;
+		std::string m_credentials;
+	};
 
 }

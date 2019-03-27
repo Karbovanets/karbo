@@ -825,18 +825,8 @@ std::string print_peerlist_to_string(const std::list<PeerlistEntry>& pl) {
     return false;
   }
   //-----------------------------------------------------------------------------------
-  
-  bool NodeServer::connections_maker()
+  bool NodeServer::connect_to_seed()
   {
-    if (!connect_to_peerlist(m_exclusive_peers)) {
-      return false;
-    }
-
-    if (!m_exclusive_peers.empty()) {
-      return true;
-    }
-
-    if(!m_peerlist.get_white_peers_count() && m_seed_nodes.size()) {
       size_t try_count = 0;
       size_t current_index = Crypto::rand<size_t>() % m_seed_nodes.size();
       
@@ -851,6 +841,23 @@ std::string print_peerlist_to_string(const std::list<PeerlistEntry>& pl) {
         if(++current_index >= m_seed_nodes.size())
           current_index = 0;
       }
+      
+      return true;
+  }
+  bool NodeServer::connections_maker()
+  {
+    if (!connect_to_peerlist(m_exclusive_peers)) {
+      return false;
+    }
+
+    if (!m_exclusive_peers.empty()) {
+      return true;
+    }
+
+    size_t start_conn_count = get_outgoing_connections_count();
+    if(!m_peerlist.get_white_peers_count() && m_seed_nodes.size()) {
+      if (!connect_to_seed())
+        return false;
     }
 
     if (!connect_to_peerlist(m_priority_peers)) return false;
@@ -877,6 +884,13 @@ std::string print_peerlist_to_string(const std::list<PeerlistEntry>& pl) {
         if(!make_expected_connections_count(true, m_config.m_net_config.connections_count))
           return false;
       }
+    }
+
+    if (start_conn_count == get_outgoing_connections_count() && start_conn_count < m_config.m_net_config.connections_count && m_seed_nodes.size())
+    {
+      logger(Logging::INFO) << "Failed to connect to any, trying seeds";
+      if (!connect_to_seed())
+        return false;
     }
 
     return true;
@@ -1284,7 +1298,7 @@ std::string print_peerlist_to_string(const std::list<PeerlistEntry>& pl) {
   }
 
   void NodeServer::acceptLoop() {
-    for (;;) {
+    while (!m_stop) {
       try {
         P2pConnectionContext ctx(m_dispatcher, logger.getLogger(), m_listener.accept());
         ctx.m_connection_id = boost::uuids::random_generator()();
@@ -1338,7 +1352,7 @@ std::string print_peerlist_to_string(const std::list<PeerlistEntry>& pl) {
         for (auto& kv : m_connections) {
           auto& ctx = kv.second;
           if (ctx.writeDuration(now) > P2P_DEFAULT_INVOKE_TIMEOUT) {
-            logger(WARNING) << ctx << "write operation timed out, stopping connection";
+            logger(DEBUGGING) << ctx << "write operation timed out, stopping connection";
             safeInterrupt(ctx);
           }
         }

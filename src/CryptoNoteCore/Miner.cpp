@@ -72,7 +72,7 @@ namespace CryptoNote
 
     m_template = bl;
 
-    if (m_template.majorVersion >= BLOCK_MAJOR_VERSION_2) {
+    if (m_template.majorVersion == BLOCK_MAJOR_VERSION_2 || m_template.majorVersion == BLOCK_MAJOR_VERSION_3) {
       CachedBlock cachedBlk(m_template);
       CryptoNote::TransactionExtraMergeMiningTag mmTag;
       mmTag.depth = 0;
