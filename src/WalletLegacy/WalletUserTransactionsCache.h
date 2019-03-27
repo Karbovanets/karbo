@@ -55,6 +55,7 @@ public:
   WalletLegacyTransaction& getTransaction(TransactionId transactionId);
   bool getTransfer(TransferId transferId, WalletLegacyTransfer& transfer) const;
   WalletLegacyTransfer& getTransfer(TransferId transferId);
+  std::vector<Payments> getTransactionsByPaymentIds(const std::vector<PaymentId>& paymentIds) const;
 
   bool isUsed(const TransactionOutputInformation& out) const;
   void reset();
@@ -70,15 +71,23 @@ private:
 
   typedef std::vector<WalletLegacyTransfer> UserTransfers;
   typedef std::vector<WalletLegacyTransaction> UserTransactions;
+  using Offset = UserTransactions::size_type;
+  using UserPaymentIndex = std::unordered_map<PaymentId, std::vector<Offset>, boost::hash<PaymentId>>;
 
   void getGoodItems(UserTransactions& transactions, UserTransfers& transfers);
   void getGoodTransaction(TransactionId txId, size_t offset, UserTransactions& transactions, UserTransfers& transfers);
 
   void getTransfersByTx(TransactionId id, UserTransfers& transfers);
 
+  void rebuildPaymentsIndex();
+  void pushToPaymentsIndex(const PaymentId& paymentId, Offset distance);
+  void pushToPaymentsIndexInternal(Offset distance, const WalletLegacyTransaction& info, std::vector<uint8_t>& extra);
+  void popFromPaymentsIndex(const PaymentId& paymentId, Offset distance);
+
   UserTransactions m_transactions;
   UserTransfers m_transfers;
   WalletUnconfirmedTransactions m_unconfirmedTransactions;
+  UserPaymentIndex m_paymentsIndex;
 };
 
 } //namespace CryptoNote
