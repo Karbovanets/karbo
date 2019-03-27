@@ -97,6 +97,8 @@ target_link_libraries(Miner CryptoNoteCore Rpc Serialization System Http Logging
 
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux" OR APPLE)
   target_link_libraries(SimpleWallet -lresolv)
+  target_link_libraries(Daemon -lresolv)
+  target_link_libraries(PaymentGateService -lresolv)
 endif ()
 
 add_dependencies(Rpc version)
