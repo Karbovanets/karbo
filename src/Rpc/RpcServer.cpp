@@ -818,7 +818,6 @@ bool RpcServer::onTransactionsByPaymentId(const K_COMMAND_RPC_GET_TRANSACTIONS_B
 	if (!req.payment_id.size()) {
 		throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Wrong parameters, expected payment_id" };
 	}
-	logger(Logging::INFO, Logging::WHITE) << "RPC request came: Search by Payment ID: " << req.payment_id;
 
 	Crypto::Hash paymentId;
 	std::vector<Transaction> transactions;
