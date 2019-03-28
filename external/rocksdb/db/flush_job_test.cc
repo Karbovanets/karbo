@@ -27,7 +27,7 @@ class FlushJobTest : public testing::Test {
  public:
   FlushJobTest()
       : env_(Env::Default()),
-        dbname_(test::TmpDir() + "/flush_job_test"),
+        dbname_(test::PerThreadDBPath("flush_job_test")),
         options_(),
         db_options_(options_),
         table_cache_(NewLRUCache(50000, 16)),
@@ -150,7 +150,7 @@ TEST_F(FlushJobTest, NonEmpty) {
   FileMetaData fd;
   mutex_.Lock();
   flush_job.PickMemTable();
-  ASSERT_OK(flush_job.Run(&fd));
+  ASSERT_OK(flush_job.Run(nullptr, &fd));
   mutex_.Unlock();
   db_options_.statistics->histogramData(FLUSH_TIME, &hist);
   ASSERT_GT(hist.average, 0.0);

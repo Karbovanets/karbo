@@ -862,8 +862,9 @@ class TestEnv : public EnvWrapper {
             CloseHelper();
           }
         }
-        virtual void Logv(const char *format, va_list ap) override { };
-      protected:
+        virtual void Logv(const char* /*format*/, va_list /*ap*/) override{};
+
+       protected:
         virtual Status CloseImpl() override {
           return CloseHelper();
         }
@@ -879,23 +880,23 @@ class TestEnv : public EnvWrapper {
 
     int GetCloseCount() { return close_count; }
 
-    virtual Status NewLogger(const std::string& fname,
+    virtual Status NewLogger(const std::string& /*fname*/,
                              shared_ptr<Logger>* result) {
       result->reset(new TestLogger(this));
       return Status::OK();
     }
 
-  private:
+   private:
     int close_count;
 };
 
 TEST_F(DBBasicTest, DBClose) {
   Options options = GetDefaultOptions();
-  std::string dbname = test::TmpDir(env_) + "/db_close_test";
+  std::string dbname = test::PerThreadDBPath("db_close_test");
   ASSERT_OK(DestroyDB(dbname, options));
 
   DB* db = nullptr;
-  TestEnv *env = new TestEnv();
+  TestEnv* env = new TestEnv();
   options.create_if_missing = true;
   options.env = env;
   Status s = DB::Open(options, dbname, &db);
