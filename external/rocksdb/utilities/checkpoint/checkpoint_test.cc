@@ -47,7 +47,7 @@ class CheckpointTest : public testing::Test {
   CheckpointTest() : env_(Env::Default()) {
     env_->SetBackgroundThreads(1, Env::LOW);
     env_->SetBackgroundThreads(1, Env::HIGH);
-    dbname_ = test::TmpDir(env_) + "/checkpoint_test";
+    dbname_ = test::PerThreadDBPath(env_, "checkpoint_test");
     alternative_wal_dir_ = dbname_ + "/wal";
     auto options = CurrentOptions();
     auto delete_options = options;
@@ -56,7 +56,7 @@ class CheckpointTest : public testing::Test {
     // Destroy it for not alternative WAL dir is used.
     EXPECT_OK(DestroyDB(dbname_, options));
     db_ = nullptr;
-    snapshot_name_ = test::TmpDir(env_) + "/snapshot";
+    snapshot_name_ = test::PerThreadDBPath(env_, "snapshot");
     std::string snapshot_tmp_name = snapshot_name_ + ".tmp";
     EXPECT_OK(DestroyDB(snapshot_name_, options));
     env_->DeleteDir(snapshot_name_);
@@ -274,7 +274,7 @@ TEST_F(CheckpointTest, GetSnapshotLink) {
     delete checkpoint;
 
     // Restore DB name
-    dbname_ = test::TmpDir(env_) + "/db_test";
+    dbname_ = test::PerThreadDBPath(env_, "db_test");
   }
 }
 
@@ -366,7 +366,7 @@ TEST_F(CheckpointTest, CheckpointCFNoFlush) {
   Status s;
   // Take a snapshot
   rocksdb::SyncPoint::GetInstance()->SetCallBack(
-      "DBImpl::BackgroundCallFlush:start", [&](void* arg) {
+      "DBImpl::BackgroundCallFlush:start", [&](void* /*arg*/) {
         // Flush should never trigger.
         FAIL();
       });
@@ -450,7 +450,7 @@ TEST_F(CheckpointTest, CurrentFileModifiedWhileCheckpointing) {
 
 TEST_F(CheckpointTest, CurrentFileModifiedWhileCheckpointing2PC) {
   Close();
-  const std::string dbname = test::TmpDir() + "/transaction_testdb";
+  const std::string dbname = test::PerThreadDBPath("transaction_testdb");
   ASSERT_OK(DestroyDB(dbname, CurrentOptions()));
   env_->DeleteDir(dbname);
 
@@ -573,6 +573,18 @@ TEST_F(CheckpointTest, CheckpointInvalidDirectoryName) {
   }
 }
 
+TEST_F(CheckpointTest, CheckpointWithParallelWrites) {
+  // When run with TSAN, this exposes the data race fixed in
+  // https://github.com/facebook/rocksdb/pull/3603
+  ASSERT_OK(Put("key1", "val1"));
+  port::Thread thread([this]() { ASSERT_OK(Put("key2", "val2")); });
+  Checkpoint* checkpoint;
+  ASSERT_OK(Checkpoint::Create(db_, &checkpoint));
+  ASSERT_OK(checkpoint->CreateCheckpoint(snapshot_name_));
+  delete checkpoint;
+  thread.join();
+}
+
 }  // namespace rocksdb
 
 int main(int argc, char** argv) {
@@ -584,7 +596,7 @@ int main(int argc, char** argv) {
 #else
 #include <stdio.h>
 
-int main(int argc, char** argv) {
+int main(int /*argc*/, char** /*argv*/) {
   fprintf(stderr, "SKIPPED as Checkpoint is not supported in ROCKSDB_LITE\n");
   return 0;
 }

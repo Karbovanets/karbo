@@ -17,6 +17,7 @@
 #include "rocksdb/convenience.h"
 #include "rocksdb/db.h"
 #include "util/cast_util.h"
+#include "util/file_reader_writer.h"
 #include "util/string_util.h"
 #include "util/sync_point.h"
 
@@ -41,12 +42,16 @@ Status PersistRocksDBOptions(const DBOptions& db_opt,
     return Status::InvalidArgument(
         "cf_names.size() and cf_opts.size() must be the same");
   }
-  std::unique_ptr<WritableFile> writable;
+  std::unique_ptr<WritableFile> wf;
 
-  Status s = env->NewWritableFile(file_name, &writable, EnvOptions());
+  Status s = env->NewWritableFile(file_name, &wf, EnvOptions());
   if (!s.ok()) {
     return s;
   }
+  unique_ptr<WritableFileWriter> writable;
+  writable.reset(new WritableFileWriter(std::move(wf), EnvOptions(),
+                                        nullptr /* statistics */));
+
   std::string options_file_content;
 
   writable->Append(option_file_header + "[" +
@@ -93,8 +98,7 @@ Status PersistRocksDBOptions(const DBOptions& db_opt,
       writable->Append(options_file_content + "\n");
     }
   }
-  writable->Flush();
-  writable->Fsync();
+  writable->Sync(true /* use_fsync */);
   writable->Close();
 
   return RocksDBOptionsParser::VerifyRocksDBOptionsFromFile(
@@ -735,7 +739,7 @@ Status RocksDBOptionsParser::VerifyRocksDBOptionsFromFile(
 
 Status RocksDBOptionsParser::VerifyDBOptions(
     const DBOptions& base_opt, const DBOptions& persisted_opt,
-    const std::unordered_map<std::string, std::string>* opt_map,
+    const std::unordered_map<std::string, std::string>* /*opt_map*/,
     OptionsSanityCheckLevel sanity_check_level) {
   for (auto pair : db_options_type_info) {
     if (pair.second.verification == OptionVerificationType::kDeprecated) {

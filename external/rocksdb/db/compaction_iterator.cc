@@ -12,62 +12,35 @@
 
 namespace rocksdb {
 
-#ifndef ROCKSDB_LITE
-CompactionEventListener::CompactionListenerValueType fromInternalValueType(
-    ValueType vt) {
-  switch (vt) {
-    case kTypeDeletion:
-      return CompactionEventListener::CompactionListenerValueType::kDelete;
-    case kTypeValue:
-      return CompactionEventListener::CompactionListenerValueType::kValue;
-    case kTypeMerge:
-      return CompactionEventListener::CompactionListenerValueType::
-          kMergeOperand;
-    case kTypeSingleDeletion:
-      return CompactionEventListener::CompactionListenerValueType::
-          kSingleDelete;
-    case kTypeRangeDeletion:
-      return CompactionEventListener::CompactionListenerValueType::kRangeDelete;
-    case kTypeBlobIndex:
-      return CompactionEventListener::CompactionListenerValueType::kBlobIndex;
-    default:
-      assert(false);
-      return CompactionEventListener::CompactionListenerValueType::kInvalid;
-  }
-}
-#endif  // ROCKSDB_LITE
-
 CompactionIterator::CompactionIterator(
     InternalIterator* input, const Comparator* cmp, MergeHelper* merge_helper,
     SequenceNumber last_sequence, std::vector<SequenceNumber>* snapshots,
     SequenceNumber earliest_write_conflict_snapshot,
     const SnapshotChecker* snapshot_checker, Env* env,
-    bool expect_valid_internal_key, RangeDelAggregator* range_del_agg,
+    bool report_detailed_time, bool expect_valid_internal_key,
+    RangeDelAggregator* range_del_agg,
     const Compaction* compaction, const CompactionFilter* compaction_filter,
-    CompactionEventListener* compaction_listener,
     const std::atomic<bool>* shutting_down,
     const SequenceNumber preserve_deletes_seqnum)
     : CompactionIterator(
           input, cmp, merge_helper, last_sequence, snapshots,
           earliest_write_conflict_snapshot, snapshot_checker, env,
-          expect_valid_internal_key, range_del_agg,
+          report_detailed_time, expect_valid_internal_key, range_del_agg,
           std::unique_ptr<CompactionProxy>(
               compaction ? new CompactionProxy(compaction) : nullptr),
-          compaction_filter, compaction_listener, shutting_down,
-          preserve_deletes_seqnum) {}
+          compaction_filter, shutting_down, preserve_deletes_seqnum) {}
 
 CompactionIterator::CompactionIterator(
     InternalIterator* input, const Comparator* cmp, MergeHelper* merge_helper,
-    SequenceNumber last_sequence, std::vector<SequenceNumber>* snapshots,
+    SequenceNumber /*last_sequence*/, std::vector<SequenceNumber>* snapshots,
     SequenceNumber earliest_write_conflict_snapshot,
     const SnapshotChecker* snapshot_checker, Env* env,
-    bool expect_valid_internal_key, RangeDelAggregator* range_del_agg,
+    bool report_detailed_time, bool expect_valid_internal_key,
+    RangeDelAggregator* range_del_agg,
     std::unique_ptr<CompactionProxy> compaction,
     const CompactionFilter* compaction_filter,
-    CompactionEventListener* compaction_listener,
     const std::atomic<bool>* shutting_down,
-    const SequenceNumber preserve_deletes_seqnum
-  )
+    const SequenceNumber preserve_deletes_seqnum)
     : input_(input),
       cmp_(cmp),
       merge_helper_(merge_helper),
@@ -75,13 +48,11 @@ CompactionIterator::CompactionIterator(
       earliest_write_conflict_snapshot_(earliest_write_conflict_snapshot),
       snapshot_checker_(snapshot_checker),
       env_(env),
+      report_detailed_time_(report_detailed_time),
       expect_valid_internal_key_(expect_valid_internal_key),
       range_del_agg_(range_del_agg),
       compaction_(std::move(compaction)),
       compaction_filter_(compaction_filter),
-#ifndef ROCKSDB_LITE
-      compaction_listener_(compaction_listener),
-#endif  // ROCKSDB_LITE
       shutting_down_(shutting_down),
       preserve_deletes_seqnum_(preserve_deletes_seqnum),
       ignore_snapshots_(false),
@@ -199,13 +170,16 @@ void CompactionIterator::InvokeFilterIfNeeded(bool* need_skip,
     CompactionFilter::ValueType value_type =
         ikey_.type == kTypeValue ? CompactionFilter::ValueType::kValue
                                  : CompactionFilter::ValueType::kBlobIndex;
+    // Hack: pass internal key to BlobIndexCompactionFilter since it needs
+    // to get sequence number.
+    Slice& filter_key = ikey_.type == kTypeValue ? ikey_.user_key : key_;
     {
-      StopWatchNano timer(env_, true);
+      StopWatchNano timer(env_, report_detailed_time_);
       filter = compaction_filter_->FilterV2(
-          compaction_->level(), ikey_.user_key, value_type, value_,
+          compaction_->level(), filter_key, value_type, value_,
           &compaction_filter_value_, compaction_filter_skip_until_.rep());
       iter_stats_.total_filter_time +=
-          env_ != nullptr ? timer.ElapsedNanos() : 0;
+          env_ != nullptr && report_detailed_time_ ? timer.ElapsedNanos() : 0;
     }
 
     if (filter == CompactionFilter::Decision::kRemoveAndSkipUntil &&
@@ -293,28 +267,12 @@ void CompactionIterator::NextFromInput() {
           (snapshot_checker_ == nullptr ||
            snapshot_checker_->IsInSnapshot(ikey_.sequence, kMaxSequenceNumber));
 
-#ifndef ROCKSDB_LITE
-      if (compaction_listener_) {
-        compaction_listener_->OnCompaction(compaction_->level(), ikey_.user_key,
-                                           fromInternalValueType(ikey_.type),
-                                           value_, ikey_.sequence, true);
-      }
-#endif  // !ROCKSDB_LITE
-
       // Apply the compaction filter to the first committed version of the user
       // key.
       if (current_key_committed_) {
         InvokeFilterIfNeeded(&need_skip, &skip_until);
       }
     } else {
-#ifndef ROCKSDB_LITE
-      if (compaction_listener_) {
-        compaction_listener_->OnCompaction(compaction_->level(), ikey_.user_key,
-                                           fromInternalValueType(ikey_.type),
-                                           value_, ikey_.sequence, false);
-      }
-#endif  // ROCKSDB_LITE
-
       // Update the current key to reflect the new sequence number/type without
       // copying the user key.
       // TODO(rven): Compaction filter does not process keys in this path
@@ -596,7 +554,7 @@ void CompactionIterator::NextFromInput() {
       // 1. new user key -OR-
       // 2. different snapshot stripe
       bool should_delete = range_del_agg_->ShouldDelete(
-          key_, RangeDelAggregator::RangePositioningMode::kForwardTraversal);
+          key_, RangeDelPositioningMode::kForwardTraversal);
       if (should_delete) {
         ++iter_stats_.num_record_drop_hidden;
         ++iter_stats_.num_record_drop_range_del;
