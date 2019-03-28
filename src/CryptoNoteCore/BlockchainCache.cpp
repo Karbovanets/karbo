@@ -195,7 +195,7 @@ void BlockchainCache::doPushBlock(const CachedBlock& cachedBlock,
 
   assert(!hasBlock(blockInfo.blockHash));
 
-  blockInfos.get<BlockIndexTag>().emplace_back(std::move(blockInfo));
+  blockInfos.get<BlockIndexTag>().push_back(std::move(blockInfo));
 
   auto blockIndex = cachedBlock.getBlockIndex();
   assert(blockIndex == blockInfos.size() + startIndex - 1);
@@ -329,7 +329,7 @@ void BlockchainCache::removePaymentId(const Crypto::Hash& transactionHash, Block
     return;
   }
 
-  newCache.paymentIds.emplace(*it);
+  newCache.paymentIds.insert(*it);
   index.erase(it);
 }
 
@@ -381,7 +381,7 @@ void BlockchainCache::addSpentKeyImage(const Crypto::KeyImage& keyImage, uint32_
                                                    //to prevent fail when pushing block from DatabaseBlockchainCache.
                                                    //In case of pushing external block double spend within block
                                                    //should be checked by Core.
-  spentKeyImages.get<BlockIndexTag>().emplace(SpentKeyImage{blockIndex, keyImage});
+  spentKeyImages.get<BlockIndexTag>().insert(SpentKeyImage{ blockIndex, keyImage });
 }
 
 void BlockchainCache::addSpentMultisignature(uint64_t amount, uint32_t globalIndex, uint32_t blockIndex) {
@@ -399,7 +399,7 @@ std::vector<Crypto::Hash> BlockchainCache::getTransactionHashes() const {
   for (auto& tx : txInfos) {
     // skip base transaction
     if (tx.transactionIndex != 0) {
-      hashes.emplace_back(tx.transactionHash);
+		hashes.push_back(tx.transactionHash);
     }
   }
   return hashes;
@@ -440,7 +440,7 @@ void BlockchainCache::pushTransaction(const CachedTransaction& cachedTransaction
   }
 
   assert(transactions.get<TransactionHashTag>().count(transactionCacheInfo.transactionHash) == 0);
-  transactions.get<TransactionInBlockTag>().emplace(std::move(transactionCacheInfo));
+  transactions.get<TransactionInBlockTag>().insert(std::move(transactionCacheInfo));
 
   PaymentIdTransactionHashPair paymentIdTransactionHash;
   if (!getPaymentIdFromTxExtra(tx.extra, paymentIdTransactionHash.paymentId)) {
@@ -451,12 +451,12 @@ void BlockchainCache::pushTransaction(const CachedTransaction& cachedTransaction
   logger(Logging::DEBUGGING) << "Payment id found: " << paymentIdTransactionHash.paymentId;
 
   paymentIdTransactionHash.transactionHash = cachedTransaction.getTransactionHash();
-  paymentIds.emplace(std::move(paymentIdTransactionHash));
+  paymentIds.insert(std::move(paymentIdTransactionHash));
   logger(Logging::DEBUGGING) << "Transaction " << cachedTransaction.getTransactionHash() << " successfully added";
 }
 
 uint32_t BlockchainCache::insertKeyOutputToGlobalIndex(uint64_t amount, PackedOutIndex output, uint32_t blockIndex) {
-  auto pair = keyOutputsGlobalIndexes.emplace(amount, OutputGlobalIndexesForAmount{});
+  auto pair = keyOutputsGlobalIndexes.insert({ amount, OutputGlobalIndexesForAmount{} });
   auto& indexEntry = pair.first->second;
   indexEntry.outputs.push_back(output);
   if (pair.second && parent != nullptr) {
@@ -468,7 +468,7 @@ uint32_t BlockchainCache::insertKeyOutputToGlobalIndex(uint64_t amount, PackedOu
 }
 
 uint32_t BlockchainCache::insertMultisignatureToGlobalIndex(uint64_t amount, PackedOutIndex output, uint32_t blockIndex) {
-  auto pair = multisignatureStorage.emplace(amount, MultisignatureIndexes{});
+  auto pair = multisignatureStorage.insert({ amount, MultisignatureIndexes{} });
   auto& indexEntry = pair.first->second;
   indexEntry.outputs.push_back({output});
   if (pair.second && parent != nullptr) {
@@ -643,6 +643,8 @@ uint32_t BlockchainCache::getTimestampLowerBoundBlockIndex(uint64_t timestamp) c
     return 0;
   }
 
+  //uint32_t blockIndex = parent->getTimestampLowerBoundBlockIndex(timestamp);
+  //return blockIndex == INVALID_BLOCK_INDEX ? blockIndex : startIndex;
   try {
     uint32_t blockIndex = parent->getTimestampLowerBoundBlockIndex(timestamp);
     return blockIndex != INVALID_BLOCK_INDEX ? blockIndex : startIndex;
@@ -714,12 +716,12 @@ void BlockchainCache::getRawTransactions(const std::vector<Crypto::Hash>& reques
   for (const auto& transactionHash : requestedTransactions) {
     auto it = index.find(transactionHash);
     if (it == index.end()) {
-      missedTransactions.emplace_back(transactionHash);
+      missedTransactions.push_back(transactionHash);
       continue;
     }
 
     // assert(startIndex <= it->blockIndex);
-    foundTransactions.emplace_back(getRawTransaction(it->blockIndex, it->transactionIndex));
+    foundTransactions.push_back(getRawTransaction(it->blockIndex, it->transactionIndex));
   }
 }
 
@@ -930,9 +932,9 @@ ExtractOutputKeysResult BlockchainCache::extractKeyOutputs(
                                  << " because global index is greater than the last available: " << (startGlobalIndex + outputs.size());
       return ExtractOutputKeysResult::INVALID_GLOBAL_INDEX;
     }
-    
+
     auto outputIndex = outputs[globalIndex - startGlobalIndex];
-    
+
     assert(outputIndex.blockIndex >= startIndex);
     assert(outputIndex.blockIndex <= blockIndex);
 
@@ -969,7 +971,7 @@ std::vector<Crypto::Hash> BlockchainCache::getTransactionHashesByPaymentId(const
 
   transactionHashes.reserve(transactionHashes.size() + std::distance(range.first, range.second));
   for (auto it = range.first; it != range.second; ++it) {
-    transactionHashes.emplace_back(it->transactionHash);
+    transactionHashes.push_back(it->transactionHash);
   }
 
   logger(Logging::DEBUGGING) << "Found " << transactionHashes.size() << " transactions with payment id " << paymentId;
