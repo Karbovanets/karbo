@@ -668,9 +668,8 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
         mainChainStorage->pushBlock(rawBlock);
 
         cache->pushBlock(cachedBlock, transactions, validatorState, cumulativeBlockSize, emissionChange, currentDifficulty, std::move(rawBlock));
-
-        actualizePoolTransactions();
-
+		
+		//actualizePoolTransactions();
         updateBlockMedianSize();
         actualizePoolTransactionsLite(validatorState);
 
@@ -774,7 +773,6 @@ void Core::actualizePoolTransactions() {
     }
   }
 }
-
 
 void Core::actualizePoolTransactionsLite(const TransactionValidatorState& validatorState) {
   auto& pool = *transactionPool;

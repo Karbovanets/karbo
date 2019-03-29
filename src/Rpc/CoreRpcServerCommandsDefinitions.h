@@ -265,7 +265,8 @@ struct COMMAND_RPC_GET_INFO {
 
   struct response {
     std::string status;
-    uint64_t height;
+    std::string version;
+	uint64_t height;
     uint64_t difficulty;
     uint64_t tx_count;
     uint64_t tx_pool_size;
@@ -275,9 +276,11 @@ struct COMMAND_RPC_GET_INFO {
     uint64_t white_peerlist_size;
     uint64_t grey_peerlist_size;
     uint32_t last_known_block_index;
+    std::string fee_address;
 
     void serialize(ISerializer &s) {
       KV_MEMBER(status)
+      KV_MEMBER(version)
       KV_MEMBER(height)
       KV_MEMBER(difficulty)
       KV_MEMBER(tx_count)
@@ -288,6 +291,7 @@ struct COMMAND_RPC_GET_INFO {
       KV_MEMBER(white_peerlist_size)
       KV_MEMBER(grey_peerlist_size)
       KV_MEMBER(last_known_block_index)
+      KV_MEMBER(fee_address)
     }
   };
 };
@@ -802,6 +806,18 @@ struct COMMAND_RPC_GET_TRANSACTION_DETAILS_BY_HASHES {
       KV_MEMBER(status)
       KV_MEMBER(transactions)
     }
+  };
+};
+
+struct COMMAND_RPC_GEN_PAYMENT_ID {
+  typedef EMPTY_STRUCT request;
+  
+  struct response {
+	  std::string payment_id;
+
+	  void serialize(ISerializer &s) {
+		  KV_MEMBER(payment_id)
+	  }
   };
 };
 

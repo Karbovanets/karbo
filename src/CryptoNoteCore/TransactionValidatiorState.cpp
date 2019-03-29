@@ -19,7 +19,6 @@
 
 namespace CryptoNote {
 
-
 void mergeStates(TransactionValidatorState& destionation, const TransactionValidatorState& source) {
   destionation.spentKeyImages.insert(source.spentKeyImages.begin(), source.spentKeyImages.end());
   destionation.spentMultisignatureGlobalIndexes.insert(source.spentMultisignatureGlobalIndexes.begin(), source.spentMultisignatureGlobalIndexes.end());

@@ -105,7 +105,7 @@ void WalletHelper::IWalletRemoveObserverGuard::removeObserver() {
   m_removed = true;
 }
 
-void WalletHelper::storeWallet(CryptoNote::IWalletLegacy& wallet, const std::string& walletFilename) {
+bool WalletHelper::storeWallet(CryptoNote::IWalletLegacy& wallet, const std::string& walletFilename) {
   boost::filesystem::path tempFile = boost::filesystem::unique_path(walletFilename + ".tmp.%%%%-%%%%");
 
   if (boost::filesystem::exists(walletFilename)) {
@@ -120,6 +120,7 @@ void WalletHelper::storeWallet(CryptoNote::IWalletLegacy& wallet, const std::str
       boost::filesystem::rename(tempFile, walletFilename);
     }
     throw;
+	return false;
   }
 
   std::error_code saveError = walletSaveWrapper(wallet, file, true, true);
@@ -128,10 +129,13 @@ void WalletHelper::storeWallet(CryptoNote::IWalletLegacy& wallet, const std::str
     boost::filesystem::remove(walletFilename);
     boost::filesystem::rename(tempFile, walletFilename);
     throw std::system_error(saveError);
+	return false;
   }
 
   file.close();
 
   boost::system::error_code ignore;
   boost::filesystem::remove(tempFile, ignore);
+
+  return true;
 }

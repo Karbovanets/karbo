@@ -58,13 +58,18 @@ DaemonCommandsHandler::DaemonCommandsHandler(CryptoNote::Core& core, CryptoNote:
   m_consoleHandler.setHandler("print_pl", boost::bind(&DaemonCommandsHandler::print_pl, this, _1), "Print peer list");
   m_consoleHandler.setHandler("print_cn", boost::bind(&DaemonCommandsHandler::print_cn, this, _1), "Print connections");
   m_consoleHandler.setHandler("print_bc", boost::bind(&DaemonCommandsHandler::print_bc, this, _1), "Print blockchain info in a given blocks range, print_bc <begin_height> [<end_height>]");
+  m_consoleHandler.setHandler("height", boost::bind(&DaemonCommandsHandler::print_height, this, _1), "Print blockchain height");
   //m_consoleHandler.setHandler("print_bci", boost::bind(&DaemonCommandsHandler::print_bci, this, _1));
   //m_consoleHandler.setHandler("print_bc_outs", boost::bind(&DaemonCommandsHandler::print_bc_outs, this, _1));
   m_consoleHandler.setHandler("print_block", boost::bind(&DaemonCommandsHandler::print_block, this, _1), "Print block, print_block <block_hash> | <block_height>");
   m_consoleHandler.setHandler("print_tx", boost::bind(&DaemonCommandsHandler::print_tx, this, _1), "Print transaction, print_tx <transaction_hash>");
   m_consoleHandler.setHandler("print_pool", boost::bind(&DaemonCommandsHandler::print_pool, this, _1), "Print transaction pool (long format)");
   m_consoleHandler.setHandler("print_pool_sh", boost::bind(&DaemonCommandsHandler::print_pool_sh, this, _1), "Print transaction pool (short format)");
+  m_consoleHandler.setHandler("print_mp", boost::bind(&DaemonCommandsHandler::print_pool_count, this, _1), "Print number of transactions in memory pool");
+  //m_consoleHandler.setHandler("show_hr", boost::bind(&DaemonCommandsHandler::show_hr, this, _1), "Start showing hash rate");
+  //m_consoleHandler.setHandler("hide_hr", boost::bind(&DaemonCommandsHandler::hide_hr, this, _1), "Stop showing hash rate");
   m_consoleHandler.setHandler("set_log", boost::bind(&DaemonCommandsHandler::set_log, this, _1), "set_log <level> - Change current log level, <level> is a number 0-4");
+  m_consoleHandler.setHandler("print_diff", boost::bind(&DaemonCommandsHandler::print_diff, this, _1), "Difficulty for next block");
 }
 
 //--------------------------------------------------------------------------------
@@ -149,6 +154,11 @@ bool DaemonCommandsHandler::print_bc(const std::vector<std::string> &args) {
   }
 
   //TODO m_core.print_blockchain(start_index, end_index);
+  return true;
+}
+//--------------------------------------------------------------------------------
+bool DaemonCommandsHandler::print_height(const std::vector<std::string> &args) {
+  logger(Logging::INFO) << "Height: " << m_core.getTopBlockIndex() << std::endl;
   return true;
 }
 //--------------------------------------------------------------------------------
@@ -286,5 +296,17 @@ bool DaemonCommandsHandler::print_pool_sh(const std::vector<std::string>& args)
 
   std::cout << std::endl;
 
+  return true;
+}
+//--------------------------------------------------------------------------------
+bool DaemonCommandsHandler::print_diff(const std::vector<std::string>& args)
+{
+  logger(Logging::INFO) << "Difficulty for next block: " << m_core.getDifficultyForNextBlock() << std::endl;
+  return true;
+}
+//--------------------------------------------------------------------------------
+bool DaemonCommandsHandler::print_pool_count(const std::vector<std::string>& args)
+{
+  logger(Logging::INFO) << "Pending transactions in mempool: " << m_core.getPoolTransactionCount() << std::endl;
   return true;
 }

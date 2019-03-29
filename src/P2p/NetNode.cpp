@@ -474,6 +474,8 @@ std::string print_peerlist_to_string(const std::list<PeerlistEntry>& pl) {
     // m_net_server.get_config_object().m_pcommands_handler = this;
     // m_net_server.get_config_object().m_invoke_timeout = CryptoNote::P2P_DEFAULT_INVOKE_TIMEOUT;
 
+	logger(INFO) << "Network: " << m_network_id;
+
     //try to bind
     logger(INFO) << "Binding on " << m_bind_ip << ":" << m_port;
     m_listeningPort = Common::fromString<uint16_t>(m_port);
@@ -507,7 +509,7 @@ std::string print_peerlist_to_string(const std::list<PeerlistEntry>& pl) {
 
     m_stopEvent.wait();
 
-    logger(INFO) << "Stopping NodeServer and it's" << m_connections.size() << " connections...";
+    logger(INFO) << "Stopping NodeServer and its " << m_connections.size() << " connections...";
     safeInterrupt(m_workingContextGroup);
     m_workingContextGroup.wait();
 
@@ -888,7 +890,7 @@ std::string print_peerlist_to_string(const std::list<PeerlistEntry>& pl) {
 
     if (start_conn_count == get_outgoing_connections_count() && start_conn_count < m_config.m_net_config.connections_count && m_seed_nodes.size())
     {
-      logger(Logging::INFO) << "Failed to connect to any, trying seeds";
+      logger(Logging::INFO) << "Failed to connect to any peers, trying seeds";
       if (!connect_to_seed())
         return false;
     }

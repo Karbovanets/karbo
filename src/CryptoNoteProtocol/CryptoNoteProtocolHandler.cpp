@@ -154,10 +154,10 @@ void CryptoNoteProtocolHandler::set_p2p_endpoint(IP2pEndpoint* p2p) {
 }
 
 void CryptoNoteProtocolHandler::onConnectionOpened(CryptoNoteConnectionContext& context) {
-//  if (context.m_state != CryptoNoteConnectionContext::state_befor_handshake) {
-    m_peersCount++;
-    m_observerManager.notify(&ICryptoNoteProtocolObserver::peerCountUpdated, m_peersCount.load());
-//  }
+  //if (context.m_state != CryptoNoteConnectionContext::state_befor_handshake) {
+  //  m_peersCount++;
+  //  m_observerManager.notify(&ICryptoNoteProtocolObserver::peerCountUpdated, m_peersCount.load());
+  //}
 }
 
 void CryptoNoteProtocolHandler::onConnectionClosed(CryptoNoteConnectionContext& context) {
@@ -176,16 +176,16 @@ void CryptoNoteProtocolHandler::onConnectionClosed(CryptoNoteConnectionContext& 
     m_observerManager.notify(&ICryptoNoteProtocolObserver::lastKnownBlockHeightUpdated, m_observedHeight);
   }
 
-//  if (context.m_state != CryptoNoteConnectionContext::state_befor_handshake) {
+  if (context.m_state != CryptoNoteConnectionContext::state_befor_handshake) {
     m_peersCount--;
     m_observerManager.notify(&ICryptoNoteProtocolObserver::peerCountUpdated, m_peersCount.load());
-//  }
+  }
 }
 
 void CryptoNoteProtocolHandler::stop() {
   m_stop = true;
 }
-    
+
 bool CryptoNoteProtocolHandler::start_sync(CryptoNoteConnectionContext& context) {
   logger(Logging::TRACE) << context << "Starting synchronization";
 
@@ -259,10 +259,10 @@ bool CryptoNoteProtocolHandler::process_payload_sync_data(const CORE_SYNC_DATA& 
   updateObservedHeight(hshd.current_height, context);
   context.m_remote_blockchain_height = hshd.current_height;
 
-//  if (is_inital) {
-//    m_peersCount++;
-//    m_observerManager.notify(&ICryptoNoteProtocolObserver::peerCountUpdated, m_peersCount.load());
-//  }
+  if (is_inital) {
+    m_peersCount++;
+    m_observerManager.notify(&ICryptoNoteProtocolObserver::peerCountUpdated, m_peersCount.load());
+  }
 
   return true;
 }
@@ -693,7 +693,12 @@ void CryptoNoteProtocolHandler::updateObservedHeight(uint32_t peerHeight, const 
     std::lock_guard<std::mutex> lock(m_observedHeightMutex);
 
     uint32_t height = m_observedHeight;
-    if (peerHeight > context.m_remote_blockchain_height) {
+    if (context.m_remote_blockchain_height != 0 && context.m_last_response_height <= context.m_remote_blockchain_height - 1) {
+      m_observedHeight = context.m_remote_blockchain_height - 1;
+      if (m_observedHeight != height) {
+        updated = true;
+      }
+    } else if (peerHeight > context.m_remote_blockchain_height) {
       m_observedHeight = std::max(m_observedHeight, peerHeight);
       if (m_observedHeight != height) {
         updated = true;
@@ -723,6 +728,9 @@ void CryptoNoteProtocolHandler::recalculateMaxObservedHeight(const CryptoNoteCon
   });
 
   m_observedHeight = std::max(peerHeight, m_core.getTopBlockIndex() + 1);
+    if (context.m_state == CryptoNoteConnectionContext::state_normal) {
+      m_observedHeight = m_core.getTopBlockIndex();
+    }
 }
 
 uint32_t CryptoNoteProtocolHandler::getObservedHeight() const {
