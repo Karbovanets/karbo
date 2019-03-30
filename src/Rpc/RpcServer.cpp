@@ -197,7 +197,8 @@ bool RpcServer::processJsonRpcRequest(const HttpRequest& request, HttpResponse& 
       { "f_blocks_list_json", { makeMemberMethod(&RpcServer::f_on_blocks_list_json), false } },
       { "f_block_json", { makeMemberMethod(&RpcServer::f_on_block_json), false } },
       { "f_transaction_json", { makeMemberMethod(&RpcServer::f_on_transaction_json), false } },
-      { "f_mempool_json", { makeMemberMethod(&RpcServer::f_on_transactions_pool_json), false } },
+      { "f_transactions_pool", { makeMemberMethod(&RpcServer::f_on_transactions_pool_json), false } },
+      { "f_mempool_json", { makeMemberMethod(&RpcServer::f_on_mempool_json), false } },
       { "k_transactions_by_payment_id", { makeMemberMethod(&RpcServer::onTransactionsByPaymentId), false } }
     };
 
@@ -814,6 +815,26 @@ bool RpcServer::f_on_transactions_pool_json(const F_COMMAND_RPC_GET_POOL::reques
     transaction_short.fee = amount_in - amount_out;
     transaction_short.amount_out = amount_out;
     transaction_short.size = getObjectBinarySize(tx);
+    res.transactions.push_back(transaction_short);
+  }
+
+  res.status = CORE_RPC_STATUS_OK;
+  return true;
+}
+
+bool RpcServer::f_on_mempool_json(const F_COMMAND_RPC_GET_MEMPOOL::request& req, F_COMMAND_RPC_GET_MEMPOOL::response& res) {
+  auto pool = m_core.getPoolTransactionsWithReceiveTime();
+  for (const auto txrt : pool) {
+	transaction_pool_response transaction_short;
+	Transaction tx = txrt.first;
+    uint64_t amount_in = getInputAmount(tx);
+    uint64_t amount_out = getOutputAmount(tx);
+
+    transaction_short.hash = Common::podToHex(getObjectHash(tx));
+    transaction_short.fee = amount_in - amount_out;
+    transaction_short.amount_out = amount_out;
+    transaction_short.size = getObjectBinarySize(tx);
+	transaction_short.receiveTime = txrt.second;
     res.transactions.push_back(transaction_short);
   }
 

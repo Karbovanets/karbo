@@ -1246,6 +1246,23 @@ std::vector<Transaction> Core::getPoolTransactions() const {
   return transactions;
 }
 
+std::vector<std::pair<Transaction, uint64_t>> Core::getPoolTransactionsWithReceiveTime() const {
+  throwIfNotInitialized();
+
+  std::vector<std::pair<Transaction, uint64_t>> transactionsWithreceiveTimes;
+  std::vector<Transaction> transactions;
+  auto hashes = transactionPool->getPoolTransactions();
+  std::transform(std::begin(hashes), std::end(hashes), std::back_inserter(transactions),
+      [&](const CachedTransaction& tx) { return tx.getTransaction(); });
+  for (size_t i = 0; i < transactions.size(); ++i) {
+    uint64_t receiveTime = transactionPool->getTransactionReceiveTime(hashes[i].getTransactionHash());
+	auto p = std::make_pair(transactions[i], receiveTime);
+	transactionsWithreceiveTimes.push_back(p);
+  }
+
+  return transactionsWithreceiveTimes;
+}
+
 bool Core::extractTransactions(const std::vector<BinaryArray>& rawTransactions,
                                std::vector<CachedTransaction>& transactions, uint64_t& cumulativeSize) {
   try {
