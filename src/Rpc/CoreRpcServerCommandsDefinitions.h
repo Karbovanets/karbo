@@ -457,10 +457,18 @@ struct f_transaction_short_response {
   }
 };
 
-struct transaction_pool_response : public f_transaction_short_response {
+struct transaction_pool_response {
+  std::string hash;
+  uint64_t fee;
+  uint64_t amount_out;
+  uint64_t size;
   uint64_t receiveTime;
 
   void serialize(ISerializer &s) {
+    KV_MEMBER(hash)
+    KV_MEMBER(fee)
+    KV_MEMBER(amount_out)
+    KV_MEMBER(size)
     KV_MEMBER(receiveTime)
   }
 };
