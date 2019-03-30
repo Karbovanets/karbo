@@ -232,7 +232,7 @@ int main(int argc, char* argv[])
 	bool use_checkpoints = !command_line::get_arg(vm, arg_load_checkpoints).empty();
 
 	if (use_checkpoints && !testnet_mode) {
-      logger(INFO) << "Loading Checkpoints from file...";
+      logger(INFO) << "Loading checkpoints from file...";
       std::string checkpoints_file = command_line::get_arg(vm, arg_load_checkpoints);
       bool results = checkpoints.loadCheckpointsFromFile(checkpoints_file);
       if (!results) {

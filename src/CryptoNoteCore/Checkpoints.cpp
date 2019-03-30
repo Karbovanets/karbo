@@ -29,6 +29,7 @@
 #include <iterator>
 #include <fstream>
 
+#include "../CryptoNoteConfig.h"
 #include "Checkpoints.h"
 #include "Common/StringTools.h"
 #include "Common/DnsTools.h"
@@ -87,6 +88,15 @@ bool Checkpoints::checkBlock(uint32_t index, const Crypto::Hash &h) const {
 bool Checkpoints::isAlternativeBlockAllowed(uint32_t  blockchainSize,
                                             uint32_t  blockIndex) const {
   if (blockchainSize == 0) {
+    return false;
+  }
+
+  if (blockIndex < blockchainSize - CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW
+    && !isInCheckpointZone(blockIndex)) {
+    logger(Logging::ERROR, Logging::BRIGHT_WHITE)
+      << "An attempt of too deep reorganization: "
+      << blockchainSize - blockIndex << ", BLOCK REJECTED";
+
     return false;
   }
 
@@ -150,26 +160,28 @@ bool Checkpoints::loadCheckpointsFromDns()
   }
 
   for (const auto& record : records) {
-	  uint32_t height;
-	  Crypto::Hash hash = NULL_HASH;
-	  std::stringstream ss;
+    uint32_t height;
+    Crypto::Hash hash = NULL_HASH;
+    std::stringstream ss;
 
-	  int del = record.find_first_of(':');
-	  std::string height_str = record.substr(0, del), hash_str = record.substr(del + 1, 64);
-	  ss = std::stringstream(height_str);
-      ss >> height;
-	  char c;
-	  if ((ss.fail() || ss.get(c)) || !Common::podFromHex(hash_str, hash)) {
-		  logger(Logging::INFO) << "Failed to parse DNS checkpoint record: " << record;
-		  continue;
-	  }
+    size_t del = record.find_first_of(':');
+    std::string height_str = record.substr(0, del), hash_str = record.substr(del + 1, 64);
+    ss = std::stringstream(height_str);
+    ss >> height;
+    char c;
+    if (del == std::string::npos) continue;
+    if ((ss.fail() || ss.get(c)) || !Common::podFromHex(hash_str, hash)) {
+      logger(Logging::INFO) << "Failed to parse DNS checkpoint record: " << record;
+      continue;
+    }
 
-	  if (!(0 == points.count(height))) {
-		  logger(DEBUGGING) << "Checkpoint already exists for height: " << height << ". Ignoring DNS checkpoint.";
-	  }
-	  else {
-		  addCheckpoint(height, hash_str);
-	  }
+    if (!(0 == points.count(height))) {
+      logger(DEBUGGING) << "Checkpoint already exists for height: " << height << ". Ignoring DNS checkpoint.";
+    }
+    else {
+      addCheckpoint(height, hash_str);
+      logger(DEBUGGING) << "Added DNS checkpoint: " << height_str << ":" << hash_str;
+    }
   }
 
   return true;
