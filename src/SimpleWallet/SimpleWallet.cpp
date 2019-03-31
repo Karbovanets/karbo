@@ -2053,7 +2053,7 @@ void simple_wallet::printConnectionError() const {
 
 
 int main(int argc, char* argv[]) {
-#ifdef WIN32
+#ifdef _WIN32
    setlocale(LC_ALL, "");
    SetConsoleCP(1251);
    SetConsoleOutputCP(1251);
