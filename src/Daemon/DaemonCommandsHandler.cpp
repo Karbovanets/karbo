@@ -17,6 +17,10 @@
 
 #include "DaemonCommandsHandler.h"
 
+#include <ctime>
+#include <boost/format.hpp>
+#include "math.h"
+
 #include "P2p/NetNode.h"
 #include "CryptoNoteCore/Miner.h"
 #include "CryptoNoteCore/Core.h"
@@ -51,8 +55,8 @@ std::string printTransactionFullInfo(const CryptoNote::CachedTransaction& transa
 
 }
 
-DaemonCommandsHandler::DaemonCommandsHandler(CryptoNote::Core& core, CryptoNote::NodeServer& srv, Logging::LoggerManager& log) :
-  m_core(core), m_srv(srv), logger(log, "daemon"), m_logManager(log) {
+DaemonCommandsHandler::DaemonCommandsHandler(CryptoNote::Core& core, CryptoNote::NodeServer& srv, Logging::LoggerManager& log, const CryptoNote::ICryptoNoteProtocolQuery& protocol, CryptoNote::RpcServer* prpc_server) :
+  m_core(core), m_srv(srv), logger(log, "daemon"), m_logManager(log), protocolQuery(protocol), m_prpc_server(prpc_server) {
   m_consoleHandler.setHandler("exit", boost::bind(&DaemonCommandsHandler::exit, this, _1), "Shutdown the daemon");
   m_consoleHandler.setHandler("help", boost::bind(&DaemonCommandsHandler::help, this, _1), "Show this help");
   m_consoleHandler.setHandler("print_pl", boost::bind(&DaemonCommandsHandler::print_pl, this, _1), "Print peer list");
@@ -70,6 +74,7 @@ DaemonCommandsHandler::DaemonCommandsHandler(CryptoNote::Core& core, CryptoNote:
   //m_consoleHandler.setHandler("hide_hr", boost::bind(&DaemonCommandsHandler::hide_hr, this, _1), "Stop showing hash rate");
   m_consoleHandler.setHandler("set_log", boost::bind(&DaemonCommandsHandler::set_log, this, _1), "set_log <level> - Change current log level, <level> is a number 0-4");
   m_consoleHandler.setHandler("print_diff", boost::bind(&DaemonCommandsHandler::print_diff, this, _1), "Difficulty for next block");
+  m_consoleHandler.setHandler("status", boost::bind(&DaemonCommandsHandler::status, this, _1), "Show daemon status");
 }
 
 //--------------------------------------------------------------------------------
@@ -83,6 +88,27 @@ std::string DaemonCommandsHandler::get_commands_str()
   usage.insert(0, "  ");
   ss << usage << ENDL;
   return ss.str();
+}
+
+//--------------------------------------------------------------------------------
+std::string DaemonCommandsHandler::get_mining_speed(uint32_t hr)
+{
+  // Code snippet from Monero Project
+  if (hr>1e9) return (boost::format("%.2f GH/s") % (hr/1e9)).str();
+  if (hr>1e6) return (boost::format("%.2f MH/s") % (hr/1e6)).str();
+  if (hr>1e3) return (boost::format("%.2f kH/s") % (hr/1e3)).str();
+  return (boost::format("%.0f H/s") % hr).str();
+}
+
+//--------------------------------------------------------------------------------
+float DaemonCommandsHandler::get_sync_percentage(uint64_t height, uint64_t target_height)
+{
+  // Code snippet from Monero Project
+  target_height = target_height ? target_height < height ? height : target_height : height;
+  float pc = 100.0f * height / target_height;
+  if (height < target_height && pc > 99.9f)
+    return 99.9f; // to avoid 100% when not fully synced
+  return pc;
 }
 
 //--------------------------------------------------------------------------------
@@ -298,6 +324,41 @@ bool DaemonCommandsHandler::print_pool_sh(const std::vector<std::string>& args)
 
   return true;
 }
+
+//--------------------------------------------------------------------------------
+bool DaemonCommandsHandler::status(const std::vector<std::string>& args) {
+	uint32_t topBlkIndex = m_core.get_current_blockchain_height() - 1;
+	uint64_t difficulty = m_core.getDifficultyForNextBlock();
+	size_t tx_pool_size = m_core.getPoolTransactionCount();
+	size_t alt_blocks_count = m_core.getAlternativeBlockCount();
+	uint32_t last_known_block_index = std::max(static_cast<uint32_t>(1), protocolQuery.getObservedHeight()) - 1;
+	size_t total_conn = m_srv.get_connections_count();
+	size_t rpc_conn = m_prpc_server->getConnectionsCount();
+	size_t outgoing_connections_count = m_srv.get_outgoing_connections_count();
+	size_t incoming_connections_count = total_conn - outgoing_connections_count;
+	size_t white_peerlist_size = m_srv.getPeerlistManager().get_white_peers_count();
+	size_t grey_peerlist_size = m_srv.getPeerlistManager().get_gray_peers_count();
+	uint64_t hashrate = (uint32_t)round(difficulty / CryptoNote::parameters::DIFFICULTY_TARGET);
+	std::time_t uptime = std::time(nullptr) - m_core.getStartTime();
+	uint8_t majorVersion = m_core.getBlockMajorVersionForHeight(topBlkIndex);
+	bool synced = ((uint32_t)topBlkIndex == (uint32_t)last_known_block_index);
+
+	std::cout << std::endl
+		<< (synced ? "Synchronized " : "Synchronizing ")
+		<< topBlkIndex << "/" << last_known_block_index << " (" << get_sync_percentage(topBlkIndex, last_known_block_index) << "%), "
+		<< "on " << (m_core.getCurrency().isTestnet() ? "testnet, " : "mainnet, ")
+		<< "network hashrate: " << get_mining_speed(hashrate) << ", difficulty: " << difficulty << ", "
+		<< "block v. " << (int)majorVersion << ", "
+		<< outgoing_connections_count << " out. + " << incoming_connections_count << " inc. connections, "
+		<< rpc_conn << " rpc connections, "
+		<< alt_blocks_count << " alt. block(s), "
+		<< "uptime: " << (unsigned int)floor(uptime / 60.0 / 60.0 / 24.0) << "d " << (unsigned int)floor(fmod((uptime / 60.0 / 60.0), 24.0)) << "h "
+		<< (unsigned int)floor(fmod((uptime / 60.0), 60.0)) << "m " << (unsigned int)fmod(uptime, 60.0) << "s"
+		<< std::endl;
+
+	return true;
+}
+
 //--------------------------------------------------------------------------------
 bool DaemonCommandsHandler::print_diff(const std::vector<std::string>& args)
 {

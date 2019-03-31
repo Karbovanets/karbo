@@ -1709,6 +1709,8 @@ void Core::save() {
 void Core::load() {
   initRootSegment();
 
+  start_time = std::time(nullptr);
+
   auto dbBlocksCount = chainsLeaves[0]->getTopBlockIndex() + 1;
   auto storageBlocksCount = mainChainStorage->getBlockCount();
 
@@ -2553,6 +2555,14 @@ void Core::updateBlockMedianSize() {
   auto lastBlockSizes = mainChain->getLastBlocksSizes(currency.rewardBlocksWindow());
 
   blockMedianSize = std::max(Common::medianValue(lastBlockSizes), static_cast<uint64_t>(nextBlockGrantedFullRewardZone));
+}
+
+uint64_t Core::get_current_blockchain_height() const {
+  return mainChainStorage->getBlockCount();
+}
+
+std::time_t Core::getStartTime() const {
+  return start_time;
 }
 
 }

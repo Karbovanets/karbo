@@ -63,7 +63,7 @@ namespace CryptoNote
     void onConnectionClosed(CryptoNoteConnectionContext& context);
     CoreStatistics getStatistics();
     bool get_payload_sync_data(CORE_SYNC_DATA& hshd);
-    bool process_payload_sync_data(const CORE_SYNC_DATA& hshd, CryptoNoteConnectionContext& context, bool is_inital);
+    bool process_payload_sync_data(const CORE_SYNC_DATA& hshd, CryptoNoteConnectionContext& context, bool is_initial);
     int handleCommand(bool is_notify, int command, const BinaryArray& in_buff, BinaryArray& buff_out, CryptoNoteConnectionContext& context, bool& handled);
     virtual size_t getPeerCount() const override;
     virtual uint32_t getObservedHeight() const override;
