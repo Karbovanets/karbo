@@ -89,6 +89,7 @@ public:
   getMultisignatureOutput(uint64_t amount, uint32_t globalIndex) const = 0;
 
   virtual std::vector<Crypto::Hash> getPoolTransactionHashes() const = 0;
+  virtual std::vector<std::pair<Transaction, uint64_t>> getPoolTransactionsWithReceiveTime() const = 0;
   virtual bool getPoolChanges(const Crypto::Hash& lastBlockHash, const std::vector<Crypto::Hash>& knownHashes,
                               std::vector<BinaryArray>& addedTransactions,
                               std::vector<Crypto::Hash>& deletedTransactions) const = 0;

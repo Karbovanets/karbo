@@ -77,7 +77,6 @@ bool TransactionPool::pushTransaction(CachedTransaction&& transaction, Transacti
     return false;
   }
 
-
   if (hasIntersections(poolState, transactionState)) {
     logger(Logging::DEBUGGING) << "pushTransaction: failed to merge states, some keys already used";
     return false;

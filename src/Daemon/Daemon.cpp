@@ -1,4 +1,7 @@
-// Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2016, The Forknote developers
+// Copyright (c) 2018, The TurtleCoin developers
+// Copyright (c) 2016-2018, The Karbo developers
 //
 // This file is part of Bytecoin.
 //
@@ -71,6 +74,7 @@ namespace
   const command_line::arg_descriptor<std::vector<std::string>>        arg_enable_cors = { "enable-cors", "Adds header 'Access-Control-Allow-Origin' to the daemon's RPC responses. Uses the value as domain. Use * for all" };
   const command_line::arg_descriptor<bool>        arg_testnet_on  = {"testnet", "Used to deploy test nets. Checkpoints and hardcoded seeds are ignored, "
     "network id is changed. Use it with --data-dir flag. The wallet must be launched with --testnet flag.", false};
+  const command_line::arg_descriptor<std::string> arg_load_checkpoints = { "load-checkpoints", "<filename> Load checkpoints from csv file.", "" };
 }
 
 bool command_line_preprocessor(const boost::program_options::variables_map& vm, LoggerRef& logger);
@@ -105,7 +109,7 @@ JsonValue buildLoggerConfiguration(Level level, const std::string& logfile) {
 int main(int argc, char* argv[])
 {
 
-#ifdef WIN32
+#ifdef _WIN32
   _CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
 #endif
 
@@ -122,16 +126,14 @@ int main(int argc, char* argv[])
     // tools::get_default_data_dir() can't be called during static initialization
     command_line::add_arg(desc_cmd_only, command_line::arg_data_dir, Tools::getDefaultDataDirectory());
     command_line::add_arg(desc_cmd_only, arg_config_file);
-
     command_line::add_arg(desc_cmd_sett, arg_log_file);
     command_line::add_arg(desc_cmd_sett, arg_log_level);
     command_line::add_arg(desc_cmd_sett, arg_console);
-
     command_line::add_arg(desc_cmd_sett, arg_set_fee_address);
     command_line::add_arg(desc_cmd_sett, arg_testnet_on);
     command_line::add_arg(desc_cmd_sett, arg_enable_cors);
     command_line::add_arg(desc_cmd_sett, arg_print_genesis_tx);
-
+	command_line::add_arg(desc_cmd_sett, arg_load_checkpoints);
 
     RpcServerConfig::initOptions(desc_cmd_sett);
     NetNodeConfig::initOptions(desc_cmd_sett);
@@ -222,6 +224,22 @@ int main(int argc, char* argv[])
     CryptoNote::Currency currency = currencyBuilder.currency();
 
     CryptoNote::Checkpoints checkpoints(logManager);
+
+#ifndef __ANDROID__
+	checkpoints.loadCheckpointsFromDns();
+#endif
+
+	bool use_checkpoints = !command_line::get_arg(vm, arg_load_checkpoints).empty();
+
+	if (use_checkpoints && !testnet_mode) {
+      logger(INFO) << "Loading checkpoints from file...";
+      std::string checkpoints_file = command_line::get_arg(vm, arg_load_checkpoints);
+      bool results = checkpoints.loadCheckpointsFromFile(checkpoints_file);
+      if (!results) {
+        throw std::runtime_error("Failed to load checkpoints");
+      }
+    }
+
     if (!testnet_mode) {
       for (const auto& cp : CryptoNote::CHECKPOINTS) {
         checkpoints.addCheckpoint(cp.index, cp.blockId);
@@ -281,7 +299,8 @@ int main(int argc, char* argv[])
     CryptoNote::RpcServer rpcServer(dispatcher, logManager, ccore, p2psrv, cprotocol);
 
     cprotocol.set_p2p_endpoint(&p2psrv);
-    DaemonCommandsHandler dch(ccore, p2psrv, logManager);
+	DaemonCommandsHandler dch(ccore, p2psrv, logManager, cprotocol, &rpcServer);
+
     logger(INFO) << "Initializing p2p server...";
     if (!p2psrv.init(netNodeConfig)) {
       logger(ERROR, BRIGHT_RED) << "Failed to initialize p2p server.";

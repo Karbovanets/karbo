@@ -125,7 +125,7 @@ const CryptoNote::Currency PaymentGateService::getCurrency() {
 }
 
 void PaymentGateService::run() {
-  
+
   System::Dispatcher localDispatcher;
   System::Event localStopEvent(localDispatcher);
 
@@ -215,6 +215,11 @@ void PaymentGateService::runInProcess(Logging::LoggerRef& log) {
 
   CryptoNote::CryptoNoteProtocolHandler protocol(currency, *dispatcher, core, nullptr, logger);
   CryptoNote::NodeServer p2pNode(*dispatcher, protocol, logger);
+  CryptoNote::Checkpoints checkpoints(logger);
+  for (const auto& cp : CryptoNote::CHECKPOINTS) {
+    checkpoints.addCheckpoint(cp.index, cp.blockId);
+  }
+  checkpoints.loadCheckpointsFromDns();
 
   protocol.set_p2p_endpoint(&p2pNode);
 
@@ -240,7 +245,7 @@ void PaymentGateService::runInProcess(Logging::LoggerRef& log) {
   log(Logging::INFO) << "Spawning p2p server";
 
   System::Event p2pStarted(*dispatcher);
-  
+
   System::Context<> context(*dispatcher, [&]() {
     p2pStarted.set();
     p2pNode.run();
@@ -253,13 +258,13 @@ void PaymentGateService::runInProcess(Logging::LoggerRef& log) {
   p2pNode.sendStopSignal();
   context.get();
   node->shutdown();
-  p2pNode.deinit(); 
+  p2pNode.deinit();
 }
 
 void PaymentGateService::runRpcProxy(Logging::LoggerRef& log) {
   log(Logging::INFO) << "Starting Payment Gate with remote node";
   CryptoNote::Currency currency = currencyBuilder.currency();
-  
+
   std::unique_ptr<CryptoNote::INode> node(
     PaymentService::NodeFactory::createNode(
       config.remoteNodeConfig.daemonHost, 

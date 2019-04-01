@@ -18,6 +18,7 @@
 #include "Currency.h"
 #include <cctype>
 #include <boost/algorithm/string/trim.hpp>
+#include <boost/math/special_functions/round.hpp>
 #include <boost/lexical_cast.hpp>
 #include "../Common/Base58.h"
 #include "../Common/int-util.h"
@@ -895,7 +896,7 @@ CurrencyBuilder::CurrencyBuilder(Logging::ILogger& log) : m_currency(log) {
 
   numberOfDecimalPlaces(parameters::CRYPTONOTE_DISPLAY_DECIMAL_POINT);
 
-  minimumFee(parameters::MINIMUM_FEE);
+  minimumFee(parameters::MAXIMUM_FEE); // temporarily, should be MINIMUM_FEE
   defaultDustThreshold(parameters::DEFAULT_DUST_THRESHOLD);
 
   difficultyTarget(parameters::DIFFICULTY_TARGET);

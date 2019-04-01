@@ -1,4 +1,6 @@
-// Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2018, The TurtleCoin developers
+// Copyright (c) 2018, The Karbo developers
 //
 // This file is part of Bytecoin.
 //
@@ -32,8 +34,11 @@ namespace CryptoNote
     bool checkBlock(uint32_t index, const Crypto::Hash& h) const;
     bool checkBlock(uint32_t index, const Crypto::Hash& h, bool& isCheckpoint) const;
     bool isAlternativeBlockAllowed(uint32_t blockchainSize, uint32_t blockIndex) const;
+	bool loadCheckpointsFromFile(const std::string& fileName);
     std::vector<uint32_t> getCheckpointHeights() const;
-
+#ifndef __ANDROID__
+	bool loadCheckpointsFromDns();
+#endif
   private:
     std::map<uint32_t, Crypto::Hash> points;
     Logging::LoggerRef logger;

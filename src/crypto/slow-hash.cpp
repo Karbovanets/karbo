@@ -19,7 +19,7 @@
 
 #include "hash.h"
 
-#if defined(WIN32)
+#if defined(_WIN32)
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif

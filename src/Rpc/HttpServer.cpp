@@ -109,6 +109,7 @@ namespace CryptoNote {
 				HttpRequest req;
 				HttpResponse resp;
 				resp.addHeader("Access-Control-Allow-Origin", "*");
+				resp.addHeader("content-type", "application/json");
 
 				parser.receiveRequest(stream, req);
 				if (authenticate(req)) {
@@ -154,6 +155,10 @@ namespace CryptoNote {
 		}
 
 		return true;
+	}
+
+	size_t HttpServer::getConnectionsCount() const {
+		return m_connections.size();
 	}
 
 }

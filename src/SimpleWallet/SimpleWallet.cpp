@@ -1742,7 +1742,8 @@ bool simple_wallet::export_tracking_key(const std::vector<std::string>& args/* =
 //---------------------------------------------------------------------------------------------------- 
 bool simple_wallet::show_balance(const std::vector<std::string>& args/* = std::vector<std::string>()*/) {
   success_msg_writer() << "available balance: " << m_currency.formatAmount(m_wallet->actualBalance()) <<
-    ", locked amount: " << m_currency.formatAmount(m_wallet->pendingBalance());
+    ", locked amount: " << m_currency.formatAmount(m_wallet->pendingBalance()) <<
+	", total balance: " << m_currency.formatAmount(m_wallet->actualBalance() + m_wallet->pendingBalance());
 
   return true;
 }
@@ -2052,7 +2053,7 @@ void simple_wallet::printConnectionError() const {
 
 
 int main(int argc, char* argv[]) {
-#ifdef WIN32
+#ifdef _WIN32
    setlocale(LC_ALL, "");
    SetConsoleCP(1251);
    SetConsoleOutputCP(1251);

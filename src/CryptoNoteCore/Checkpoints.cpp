@@ -1,4 +1,6 @@
-// Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2018, The TurtleCoin developers
+// Copyright (c) 2018, The Karbo developers
 //
 // This file is part of Bytecoin.
 //
@@ -15,8 +17,22 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Bytecoin.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <cstdlib>
+#include <stdio.h>
+#include <stdlib.h>
+#include <iostream>
+#include <cstring>
+#include <string>
+#include <string.h>
+#include <sstream>
+#include <vector>
+#include <iterator>
+#include <fstream>
+
+#include "../CryptoNoteConfig.h"
 #include "Checkpoints.h"
 #include "Common/StringTools.h"
+#include "Common/DnsTools.h"
 
 using namespace Logging;
 
@@ -28,12 +44,12 @@ bool Checkpoints::addCheckpoint(uint32_t index, const std::string &hash_str) {
   Crypto::Hash h = NULL_HASH;
 
   if (!Common::podFromHex(hash_str, h)) {
-    logger(ERROR, BRIGHT_RED) << "WRONG HASH IN CHECKPOINTS!!!";
+    logger(WARNING) << "Wrong hash in checkpoint for height " << index;
     return false;
   }
 
-  if (!(0 == points.count(index))) {
-    logger(ERROR, BRIGHT_RED) << "WRONG HASH IN CHECKPOINTS!!!";
+  if (!points.insert({ index, h }).second) {
+    logger(WARNING) << "Checkpoint already exists for height" << index;
     return false;
   }
 
@@ -75,6 +91,15 @@ bool Checkpoints::isAlternativeBlockAllowed(uint32_t  blockchainSize,
     return false;
   }
 
+  if (blockIndex < blockchainSize - CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW
+    && !isInCheckpointZone(blockIndex)) {
+    logger(Logging::ERROR, Logging::BRIGHT_WHITE)
+      << "An attempt of too deep reorganization: "
+      << blockchainSize - blockIndex << ", BLOCK REJECTED";
+
+    return false;
+  }
+
   auto it = points.upper_bound(blockchainSize);
   // Is blockchainSize before the first checkpoint?
   if (it == points.begin()) {
@@ -95,5 +120,71 @@ std::vector<uint32_t> Checkpoints::getCheckpointHeights() const {
 
   return checkpointHeights;
 }
+//---------------------------------------------------------------------------
+bool Checkpoints::loadCheckpointsFromFile(const std::string& fileName) {
+  std::ifstream file(fileName);
+  if (!file) {
+    logger(Logging::ERROR, BRIGHT_RED) << "Could not load checkpoints file: " << fileName;
+    return false;
+  }
+  std::string indexString;
+  std::string hash;
+  uint32_t height;
+  uint32_t count = 0;
+  while (std::getline(file, indexString, ','), std::getline(file, hash)) {
+  	try {
+      height = std::stoi(indexString);
+    }
+    catch (const std::invalid_argument &) {
+      logger(ERROR, BRIGHT_RED) << "Invalid checkpoint file format - "
+          << "could not parse height as a number";
+      return false;
+    }
+      if (!addCheckpoint(height, hash)) {
+      return false;
+    }
+    ++count;
+  }
+  logger(Logging::INFO) << "Loaded " << count << " checkpoint(s) from " << fileName;
+  return true;
+}
+//---------------------------------------------------------------------------
+#ifndef __ANDROID__
+bool Checkpoints::loadCheckpointsFromDns()
+{
+  std::string domain("checkpoints.karbo.org");
+  std::vector<std::string>records;
 
+  if (!Common::fetch_dns_txt(domain, records)) {
+    logger(Logging::INFO) << "Failed to lookup DNS checkpoint records from " << domain;
+  }
+
+  for (const auto& record : records) {
+    uint32_t height;
+    Crypto::Hash hash = NULL_HASH;
+    std::stringstream ss;
+
+    size_t del = record.find_first_of(':');
+    std::string height_str = record.substr(0, del), hash_str = record.substr(del + 1, 64);
+    ss = std::stringstream(height_str);
+    ss >> height;
+    char c;
+    if (del == std::string::npos) continue;
+    if ((ss.fail() || ss.get(c)) || !Common::podFromHex(hash_str, hash)) {
+      logger(Logging::INFO) << "Failed to parse DNS checkpoint record: " << record;
+      continue;
+    }
+
+    if (!(0 == points.count(height))) {
+      logger(DEBUGGING) << "Checkpoint already exists for height: " << height << ". Ignoring DNS checkpoint.";
+    }
+    else {
+      addCheckpoint(height, hash_str);
+      logger(DEBUGGING) << "Added DNS checkpoint: " << height_str << ":" << hash_str;
+    }
+  }
+
+  return true;
+}
+#endif
 }

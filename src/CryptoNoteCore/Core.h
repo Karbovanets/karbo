@@ -16,6 +16,7 @@
 // along with Bytecoin.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
+#include <ctime>
 #include <vector>
 #include <unordered_map>
 #include "BlockchainCache.h"
@@ -97,6 +98,8 @@ public:
   virtual bool getBlockTemplate(BlockTemplate& b, const AccountPublicAddress& adr, const BinaryArray& extraNonce, Difficulty& difficulty, uint32_t& height) const override;
 
   virtual CoreStatistics getCoreStatistics() const override;
+  
+  virtual std::time_t getStartTime() const;
 
   //ICoreInformation
   virtual size_t getPoolTransactionCount() const override;
@@ -105,6 +108,7 @@ public:
   virtual uint64_t getTotalGeneratedAmount() const override;
   virtual std::vector<BlockTemplate> getAlternativeBlocks() const override;
   virtual std::vector<Transaction> getPoolTransactions() const override;
+  virtual std::vector<std::pair<Transaction, uint64_t>> getPoolTransactionsWithReceiveTime() const override;
   boost::optional<std::pair<MultisignatureOutput, uint64_t>>
   getMultisignatureOutput(uint64_t amount, uint32_t globalIndex) const override;
 
@@ -119,6 +123,9 @@ public:
   virtual std::vector<Crypto::Hash> getBlockHashesByTimestamps(uint64_t timestampBegin, size_t secondsCount) const override;
   virtual std::vector<Crypto::Hash> getTransactionHashesByPaymentId(const Crypto::Hash& paymentId) const override;
   virtual bool getTransactionsByPaymentId(const Crypto::Hash& paymentId, std::vector<Transaction>& transactions) override;
+
+  virtual uint64_t get_current_blockchain_height() const;
+  uint8_t getBlockMajorVersionForHeight(uint32_t height) const;
 
 private:
   const Currency& currency;
@@ -139,6 +146,8 @@ private:
   std::unique_ptr<IBlockchainCacheFactory> blockchainCacheFactory;
   std::unique_ptr<IMainChainStorage> mainChainStorage;
   bool initialized;
+
+  time_t start_time;
 
   size_t blockMedianSize;
 
@@ -180,7 +189,6 @@ private:
 
   void getTransactionPoolDifference(const std::vector<Crypto::Hash>& knownHashes, std::vector<Crypto::Hash>& newTransactions, std::vector<Crypto::Hash>& deletedTransactions) const;
 
-  uint8_t getBlockMajorVersionForHeight(uint32_t height) const;
   size_t calculateCumulativeBlocksizeLimit(uint32_t height) const;
   void fillBlockTemplate(BlockTemplate& block, size_t medianSize, size_t maxCumulativeSize, size_t& transactionsSize, uint64_t& fee) const;
   void deleteAlternativeChains();
