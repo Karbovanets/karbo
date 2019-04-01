@@ -726,7 +726,7 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
           if(reorgSize >= CryptoNote::parameters::POISSON_CHECK_TRIGGER)
           {
             std::vector<uint64_t> alt_chain = cache->getLastTimestamps(reorgSize);
-            std::vector<uint64_t> main_chain = mainChainCache->getLastTimestamps(CryptoNote::parameters::POISSON_CHECK_DEPTH, cache->getStartBlockIndex(), UseGenesis{false});
+            std::vector<uint64_t> main_chain = mainChainCache->getLastTimestamps(CryptoNote::parameters::POISSON_CHECK_DEPTH, cache->getStartBlockIndex() - 1, UseGenesis{false});
 
             logger(Logging::WARNING) << "Poisson check triggered by reorg size " << reorgSize;
             for(size_t i=0; i < alt_chain.size(); i++)
@@ -737,8 +737,8 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
             uint64_t high_timestamp = alt_chain.back();
               std::reverse(main_chain.begin(), main_chain.end());
 
-            uint64_t failed_checks = 0, i = 1;
-            for(; i <= CryptoNote::parameters::POISSON_CHECK_DEPTH; i++)
+            uint64_t failed_checks = 0, i = 0;
+            for(; i < CryptoNote::parameters::POISSON_CHECK_DEPTH; i++)
             {
               uint64_t low_timestamp = main_chain[i];
 
@@ -750,16 +750,15 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
               }
 
               double lam = double(high_timestamp - low_timestamp) / double(CryptoNote::parameters::DIFFICULTY_TARGET);
-              if(calc_poisson_ln(lam, reorgSize + i) < CryptoNote::parameters::POISSON_LOG_P_REJECT)
+              if(calc_poisson_ln(lam, reorgSize + i + 1) < CryptoNote::parameters::POISSON_LOG_P_REJECT)
               {
-                logger(Logging::WARNING) << "Poisson check at depth " << i << " failed! delta_t: " << (high_timestamp - low_timestamp) << " size: " << reorgSize + i;
+                logger(Logging::WARNING) << "Poisson check at depth " << i << " failed! delta_t: " << (high_timestamp - low_timestamp) << " size: " << reorgSize + i + 1;
                 failed_checks++;
               }
               else
-                logger(Logging::WARNING) << "Poisson check at depth " << i << " passed! delta_t: " << (high_timestamp - low_timestamp) << " size: " << reorgSize + i;
+                logger(Logging::WARNING) << "Poisson check at depth " << i << " passed! delta_t: " << (high_timestamp - low_timestamp) << " size: " << reorgSize + i + 1;
             }
 
-            i--; //Convert to number of checks
             logger(Logging::WARNING) << "Poisson check result " << failed_checks << " fails out of " << i;
 
             if(failed_checks > i / 2)
