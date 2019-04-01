@@ -1072,7 +1072,7 @@ bool Core::isTransactionValidForPool(const CachedTransaction& cachedTransaction,
   }
 
   bool isFusion = fee == 0 && currency.isFusionTransaction(cachedTransaction.getTransaction(), cachedTransaction.getTransactionBinaryArray().size());
-  if (!isFusion && fee < currency.minimumFee()) {
+  if (!isFusion && fee < /*currency.minimumFee()*/ CryptoNote::parameters::MINIMUM_FEE) {
     logger(Logging::WARNING) << "Transaction " << cachedTransaction.getTransactionHash()
       << " is not valid. Reason: fee is too small and it's not a fusion transaction";
     return false;
