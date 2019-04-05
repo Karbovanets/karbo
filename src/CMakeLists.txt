@@ -8,6 +8,7 @@ else()
 endif()
 
 include_directories(${CMAKE_SOURCE_DIR}/external/linenoise)
+include_directories(${CMAKE_SOURCE_DIR}/external/sqlite3)
 
 file(GLOB_RECURSE BlockchainExplorer BlockchainExplorer/*)
 file(GLOB_RECURSE Common Common/*)
@@ -98,13 +99,12 @@ if (MSVC)
     target_link_libraries(PaymentGateService Rpcrt4)
   endif()
 endif()
-
-target_link_libraries(Daemon ${KarboCore} ${KarboLink} ${KarboCommon} upnpc-static ${Boost_LIBRARIES})
+target_link_libraries(Daemon ${KarboCore} ${KarboLink} ${KarboCommon} upnpc-static sqlite3 ${Boost_LIBRARIES})
 target_link_libraries(SimpleWallet ${KarboWallet} ${KarboCore} ${KarboLink} Mnemonics ${KarboCommon} upnpc-static ${Boost_LIBRARIES})
 target_link_libraries(GreenWallet ${KarboWallet} ${KarboCore} ${KarboLink} Mnemonics ${KarboCommon} upnpc-static ${Boost_LIBRARIES})
 target_link_libraries(Miner ${KarboCore} ${KarboCommon} ${Boost_LIBRARIES})
 target_link_libraries(PaymentGateService ${KarboPaymentGate} ${KarboWallet} ${KarboCore}
-                      ${KarboLink} ${KarboCommon} upnpc-static ${Boost_LIBRARIES})
+                      ${KarboLink} ${KarboCommon} upnpc-static sqlite3 ${Boost_LIBRARIES})
 target_link_libraries(ConnectivityTool ${KarboCore} ${KarboLink} ${KarboCommon} ${Boost_LIBRARIES})
 
 if (MSVC)
