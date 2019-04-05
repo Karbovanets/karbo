@@ -115,7 +115,7 @@ namespace CryptoNote
     RawBlock MainChainStorageSqlite::getBlockByIndex(uint32_t index) const
     {
         sqlite3_stmt *stmt;
-        RawBlock rawBlock = RawBlock();
+        RawBlock rawBlock = {};
 
         const uint32_t maxBlocks = getBlockCount();
 
@@ -217,7 +217,7 @@ namespace CryptoNote
         fs::path blocksFilename = fs::path(dataDir) / currency.blocksFileName();
         fs::path indexesFilename = fs::path(dataDir) / currency.blockIndexesFileName();
 
-        std::unique_ptr<IMainChainStorage> storage(new MainChainStorageSqlite(blocksFilename.string() + ".sqlite3", indexesFilename.string()));
+        auto storage = std::make_unique<MainChainStorageSqlite>(blocksFilename.string() + ".sqlite3", indexesFilename.string());
 
         if (storage->getBlockCount() == 0)
         {
