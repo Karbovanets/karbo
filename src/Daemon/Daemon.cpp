@@ -39,6 +39,7 @@
 #include "CryptoNoteCore/DatabaseBlockchainCache.h"
 #include "CryptoNoteCore/DatabaseBlockchainCacheFactory.h"
 #include "CryptoNoteCore/MainChainStorage.h"
+#include "CryptoNoteCore/MainChainStorageSqlite.h"
 #include "CryptoNoteCore/MinerConfig.h"
 #include "CryptoNoteCore/RocksDBWrapper.h"
 #include "CryptoNoteProtocol/CryptoNoteProtocolHandler.h"
@@ -80,6 +81,7 @@ namespace
   const command_line::arg_descriptor<std::string> arg_load_checkpoints = { "load-checkpoints", "<filename> Load checkpoints from csv file.", "" };
   const command_line::arg_descriptor<bool>        arg_disable_checkpoints = { "without-checkpoints", "Synchronize without checkpoints" };
   const command_line::arg_descriptor<std::string> arg_rollback = { "rollback", "Rollback blockchain to <height>" };
+  const command_line::arg_descriptor<std::string> arg_sqlite_cache = { "sqlite", "Use SQLite3 for local cache files" };
 }
 
 bool command_line_preprocessor(const boost::program_options::variables_map& vm, LoggerRef& logger);
@@ -310,7 +312,12 @@ int main(int argc, char* argv[])
     System::Dispatcher dispatcher;
 
     std::unique_ptr<IMainChainStorage> mainChainStorage;
-    mainChainStorage = createSwappedMainChainStorage(data_dir_path.string(), currency);
+    if (command_line::has_arg(vm, arg_sqlite_cache)) {
+      mainChainStorage = createSwappedMainChainStorageSqlite(data_dir_path.string(), currency);
+    }
+    else {
+      mainChainStorage = createSwappedMainChainStorage(data_dir_path.string(), currency);
+    }
 
     if (command_line::has_arg(vm, arg_rollback)) {
       std::string rollback_str = command_line::get_arg(vm, arg_rollback);
