@@ -38,6 +38,10 @@ namespace CryptoNote
             throw std::runtime_error("Failed to create database table");
         }
 
+        /* We set the sqlite3 mode to synchronous to avoid delays in writing to the DB
+           this does run a small risk of corrupting the database in the event of system
+           failure or process crash in some rare situations but the performance impact
+           of synchronous writes is considerable and a risk we're willing to take */
         resultCode = sqlite3_exec(
                          m_db,
                          "PRAGMA synchronous = 0",
@@ -62,10 +66,14 @@ namespace CryptoNote
     {
         sqlite3_stmt *stmt;
 
+        /* Convert the RawBlock to a json structure for easier storage */
         nlohmann::json rawBlockJson = rawBlock;
 
         std::string rawBlockHex = rawBlockJson.dump();
 
+        /* We get the current count of blocks which, as we're a 0-based index
+           technically gives us the next blockIndex that we're pushing into
+           the database */
         const uint32_t nextBlockIndex = getBlockCount();
 
         const int resultCode = sqlite3_prepare_v2(m_db, "INSERT INTO rawBlocks (blockIndex, rawBlock) VALUES (?,?)", -1, &stmt, NULL);
@@ -106,8 +114,13 @@ namespace CryptoNote
         sqlite3_stmt *stmt;
         RawBlock rawBlock = {};
 
+        /* Go get how many blocks we have in the local blockchain cache */
         const uint32_t maxBlocks = getBlockCount();
 
+        /* As we're a 0-based index and getBlockCount() returns the total
+           number of blocks in the blockchain cache we need to account for
+           that when checking to see that we aren't requesting a blockindex
+           that we don't have in the blockchain cache */
         if (index > (maxBlocks - 1))
         {
             throw std::runtime_error("Cannot retrieve a block at an index higher than what we have");
@@ -125,6 +138,7 @@ namespace CryptoNote
 
         bool found = false;
 
+        /* Loop through the results to see if we got a block back */
         while((resultCode = sqlite3_step(stmt)) == SQLITE_ROW)
         {
             const std::string rawBlockString = std::string(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)));
@@ -141,6 +155,8 @@ namespace CryptoNote
 
         sqlite3_finalize(stmt);
 
+        /* If for some reason we did not find a block in our query results, error out
+           as this likely means that the database has a data integrity issue */
         if (!found)
         {
             throw std::runtime_error("Could not find block in cache for given blockIndex");
