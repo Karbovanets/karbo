@@ -26,7 +26,7 @@ namespace CryptoNote
 
         resultCode = sqlite3_exec(
                          m_db,
-                         "CREATE TABLE IF NOT EXISTS `rawBlocks` ( `blockIndex` INTEGER NOT NULL DEFAULT 0 PRIMARY KEY AUTOINCREMENT, `rawBlock` TEXT )",
+                         "CREATE TABLE IF NOT EXISTS `rawBlocks` ( `blockIndex` INTEGER NOT NULL DEFAULT 0 PRIMARY KEY, `rawBlock` TEXT )",
                          NULL,
                          NULL,
                          NULL
@@ -36,20 +36,6 @@ namespace CryptoNote
         {
             sqlite3_close(m_db);
             throw std::runtime_error("Failed to create database table");
-        }
-
-        resultCode = sqlite3_exec(
-                         m_db,
-                         "CREATE INDEX IF NOT EXISTS `blockIndex` ON `rawBlocks` ( `blockIndex` )",
-                         NULL,
-                         NULL,
-                         NULL
-        );
-
-        if (resultCode != SQLITE_OK)
-        {
-            sqlite3_close(m_db);
-            throw std::runtime_error("Failed to create database indexes");
         }
 
         resultCode = sqlite3_exec(
@@ -80,7 +66,9 @@ namespace CryptoNote
 
         std::string rawBlockHex = rawBlockJson.dump();
 
-        const int resultCode = sqlite3_prepare_v2(m_db, "INSERT INTO rawBlocks (rawBlock) VALUES (?)", -1, &stmt, NULL);
+        const uint32_t nextBlockIndex = getBlockCount();
+
+        const int resultCode = sqlite3_prepare_v2(m_db, "INSERT INTO rawBlocks (blockIndex, rawBlock) VALUES (?,?)", -1, &stmt, NULL);
 
         if (resultCode != SQLITE_OK)
         {
@@ -88,7 +76,8 @@ namespace CryptoNote
             throw std::runtime_error("Failed to prepare insert block statement");
         }
 
-        sqlite3_bind_text(stmt, 1, rawBlockHex.c_str(), -1, 0);
+        sqlite3_bind_int(stmt, 1, nextBlockIndex);
+        sqlite3_bind_text(stmt, 2, rawBlockHex.c_str(), -1, 0);
 
         sqlite3_step(stmt);
 
@@ -126,7 +115,7 @@ namespace CryptoNote
 
         int resultCode = sqlite3_prepare_v2(m_db, "SELECT rawBlock FROM rawBlocks WHERE blockIndex = ? LIMIT 1", -1, &stmt, NULL);
 
-        sqlite3_bind_int(stmt, 1, index + 1);
+        sqlite3_bind_int(stmt, 1, index);
 
         if (resultCode != SQLITE_OK)
         {
@@ -134,11 +123,14 @@ namespace CryptoNote
             throw std::runtime_error("Failed to prepare getBlockByIndex statement");
         }
 
+        bool found = false;
+
         while((resultCode = sqlite3_step(stmt)) == SQLITE_ROW)
         {
             const std::string rawBlockString = std::string(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)));
             auto j = nlohmann::json::parse(rawBlockString);
             rawBlock = j.get<RawBlock>();
+            found = true;
         }
 
         if (resultCode != SQLITE_DONE)
@@ -148,6 +140,11 @@ namespace CryptoNote
         }
 
         sqlite3_finalize(stmt);
+
+        if (!found)
+        {
+            throw std::runtime_error("Could not find block in cache for given blockIndex");
+        }
 
         return rawBlock;
     }
@@ -195,20 +192,6 @@ namespace CryptoNote
         {
             sqlite3_close(m_db);
             throw std::runtime_error("Failed to delete all blocks from the database");
-        }
-
-        const int resultCodeReset = sqlite3_exec(
-                                  m_db,
-                                  "DELETE FROM sqlite_sequence WHERE name='rawBlocks'",
-                                  NULL,
-                                  NULL,
-                                  NULL
-        );
-
-        if (resultCodeReset != SQLITE_OK)
-        {
-            sqlite3_close(m_db);
-            throw std::runtime_error("Failed to reset the autoincroment value of the table");
         }
     }
 
