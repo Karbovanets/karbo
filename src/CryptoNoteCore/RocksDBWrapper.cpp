@@ -211,9 +211,26 @@ rocksdb::Options RocksDBWrapper::getDBOptions(const DataBaseConfig& config) {
   fOptions.compaction_style = rocksdb::kCompactionStyleLevel;
 
   fOptions.compression_per_level.resize(fOptions.num_levels);
-  for (int i = 0; i < fOptions.num_levels; ++i) {
-    fOptions.compression_per_level[i] = rocksdb::kNoCompression;
+  if(!config.getCompressionEnabled())
+  {
+    fOptions.compression = rocksdb::kLZ4Compression;
   }
+  
+  for (int i = 0; i < fOptions.num_levels; ++i) {
+    if(!config.getCompressionEnabled())
+    {
+      fOptions.compression_per_level[i] = rocksdb::kNoCompression;
+    }
+    else
+    {
+      if(i < 2) {
+        fOptions.compression_per_level[i] = rocksdb::kNoCompression;
+      } else {
+        fOptions.compression_per_level[i] = rocksdb::kLZ4Compression;
+      }
+    }
+  }
+
 
   rocksdb::BlockBasedTableOptions tableOptions;
   tableOptions.block_cache = rocksdb::NewLRUCache(config.getReadCacheSize());
