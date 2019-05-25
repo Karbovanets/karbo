@@ -198,6 +198,10 @@ std::error_code PaymentServiceJsonRpcServer::handleGetStatus(const GetStatus::Re
   return service.getStatus(response.blockCount, response.knownBlockCount, response.localDaemonBlockCount, response.lastBlockHash, response.peerCount);
 }
 
+std::error_code PaymentServiceJsonRpcServer::handleValidateAddress(const ValidateAddress::Request& request, ValidateAddress::Response& response) {
+  return service.validateAddress(request.address, response.isvalid, response.address, response.spendPublicKey, response.viewPublicKey);
+}
+
 std::error_code PaymentServiceJsonRpcServer::handleGetAddresses(const GetAddresses::Request& request, GetAddresses::Response& response) {
   return service.getAddresses(response.addresses);
 }

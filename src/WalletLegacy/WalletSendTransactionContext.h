@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "CryptoNoteCore/CryptoNoteBasic.h"
+#include "Rpc/CoreRpcServerCommandsDefinitions.h"
 #include "IWalletLegacy.h"
 #include "ITransfersContainer.h"
 

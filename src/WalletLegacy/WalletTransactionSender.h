@@ -19,7 +19,7 @@
 
 #include "CryptoNoteCore/Account.h"
 #include "CryptoNoteCore/Currency.h"
-
+#include "CryptoNoteCore/CryptoNoteFormatUtils.h"
 #include "INode.h"
 #include "WalletLegacy/WalletSendTransactionContext.h"
 #include "WalletLegacy/WalletUserTransactionsCache.h"

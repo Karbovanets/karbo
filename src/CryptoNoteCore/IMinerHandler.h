@@ -26,6 +26,6 @@ namespace CryptoNote {
     virtual bool get_block_template(BlockTemplate& b, const AccountPublicAddress& adr, Difficulty& diffic, uint32_t& height, const BinaryArray& ex_nonce) = 0;
 
   protected:
-    ~IMinerHandler(){};
+    ~IMinerHandler() {}
   };
 }

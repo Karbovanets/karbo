@@ -160,6 +160,8 @@ private:
   BlockHeaderInfo lastLocalBlockHeaderInfo;
   //protect it with mutex if decided to add worker threads
   std::unordered_set<Crypto::Hash> m_knownTxs;
+  Crypto::Hash m_lastHash = CryptoNote::NULL_HASH;
+  Crypto::Hash nullHash = CryptoNote::NULL_HASH;
 
   bool m_connected;
 };

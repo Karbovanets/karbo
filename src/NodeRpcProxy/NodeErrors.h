@@ -39,11 +39,11 @@ class NodeErrorCategory : public std::error_category {
 public:
   static NodeErrorCategory INSTANCE;
 
-  virtual const char* name() const throw() override {
+  virtual const char* name() const noexcept override {
     return "NodeErrorCategory";
   }
 
-  virtual std::error_condition default_error_condition(int ev) const throw() override {
+  virtual std::error_condition default_error_condition(int ev) const noexcept override {
     return std::error_condition(ev, *this);
   }
 

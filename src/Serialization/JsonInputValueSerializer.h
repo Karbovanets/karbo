@@ -27,7 +27,7 @@ class JsonInputValueSerializer : public ISerializer {
 public:
   JsonInputValueSerializer(const Common::JsonValue& value);
   JsonInputValueSerializer(Common::JsonValue&& value);
-  virtual ~JsonInputValueSerializer();
+  virtual ~JsonInputValueSerializer() override;
 
   SerializerType type() const override;
 

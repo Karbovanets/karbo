@@ -123,6 +123,44 @@ bool DaemonCommandsHandler::help(const std::vector<std::string>& args) {
   std::cout << get_commands_str() << ENDL;
   return true;
 }
+
+//--------------------------------------------------------------------------------
+bool DaemonCommandsHandler::status(const std::vector<std::string>& args) {
+  uint32_t topBlkIndex = m_core.get_current_blockchain_height() - 1;
+  uint64_t difficulty = m_core.getDifficultyForNextBlock();
+  size_t tx_pool_size = m_core.getPoolTransactionCount();
+  size_t alt_blocks_count = m_core.getAlternativeBlockCount();
+  uint32_t last_known_block_index = std::max(static_cast<uint32_t>(1), protocolQuery.getObservedHeight());
+  size_t total_conn = m_srv.get_connections_count();
+  size_t rpc_conn = m_prpc_server->getConnectionsCount();
+  size_t outgoing_connections_count = m_srv.get_outgoing_connections_count();
+  size_t incoming_connections_count = total_conn - outgoing_connections_count;
+  size_t white_peerlist_size = m_srv.getPeerlistManager().get_white_peers_count();
+  size_t grey_peerlist_size = m_srv.getPeerlistManager().get_gray_peers_count();
+  uint64_t hashrate = (uint32_t)round(difficulty / CryptoNote::parameters::DIFFICULTY_TARGET);
+  std::time_t uptime = std::time(nullptr) - m_core.getStartTime();
+  uint8_t majorVersion = m_core.getBlockMajorVersionForHeight(topBlkIndex);
+  bool synced = ((uint32_t)topBlkIndex == (uint32_t)last_known_block_index);
+  Crypto::Hash last_block_hash = m_core.getTopBlockHash();
+
+  std::cout << std::endl
+    << (synced ? "Synchronized " : "Synchronizing ")
+    << topBlkIndex << "/" << last_known_block_index << " (" << get_sync_percentage(topBlkIndex, last_known_block_index) << "%), "
+    << "on " << (m_core.getCurrency().isTestnet() ? "testnet, " : "mainnet, ")
+    << "last block hash: " << Common::podToHex(last_block_hash) << ", "
+    << "network hashrate: " << get_mining_speed(hashrate) << ", difficulty: " << difficulty << ", "
+    << "block v. " << (int)majorVersion << ", "
+    << alt_blocks_count << " alt. block(s), "
+    << outgoing_connections_count << " out. + " << incoming_connections_count << " inc. connections, "
+    << rpc_conn << " rpc connections, "
+    << "peers: " << white_peerlist_size << " white / " << grey_peerlist_size << " grey, "
+    << "uptime: " << (unsigned int)floor(uptime / 60.0 / 60.0 / 24.0) << "d " << (unsigned int)floor(fmod((uptime / 60.0 / 60.0), 24.0)) << "h "
+    << (unsigned int)floor(fmod((uptime / 60.0), 60.0)) << "m " << (unsigned int)fmod(uptime, 60.0) << "s"
+    << std::endl;
+
+  return true;
+}
+
 //--------------------------------------------------------------------------------
 bool DaemonCommandsHandler::print_pl(const std::vector<std::string>& args) {
   m_srv.log_peerlist();
@@ -323,40 +361,6 @@ bool DaemonCommandsHandler::print_pool_sh(const std::vector<std::string>& args)
   std::cout << std::endl;
 
   return true;
-}
-
-//--------------------------------------------------------------------------------
-bool DaemonCommandsHandler::status(const std::vector<std::string>& args) {
-	uint32_t topBlkIndex = m_core.get_current_blockchain_height() - 1;
-	uint64_t difficulty = m_core.getDifficultyForNextBlock();
-	size_t tx_pool_size = m_core.getPoolTransactionCount();
-	size_t alt_blocks_count = m_core.getAlternativeBlockCount();
-	uint32_t last_known_block_index = std::max(static_cast<uint32_t>(1), protocolQuery.getObservedHeight()) - 1;
-	size_t total_conn = m_srv.get_connections_count();
-	size_t rpc_conn = m_prpc_server->getConnectionsCount();
-	size_t outgoing_connections_count = m_srv.get_outgoing_connections_count();
-	size_t incoming_connections_count = total_conn - outgoing_connections_count;
-	size_t white_peerlist_size = m_srv.getPeerlistManager().get_white_peers_count();
-	size_t grey_peerlist_size = m_srv.getPeerlistManager().get_gray_peers_count();
-	uint64_t hashrate = (uint32_t)round(difficulty / CryptoNote::parameters::DIFFICULTY_TARGET);
-	std::time_t uptime = std::time(nullptr) - m_core.getStartTime();
-	uint8_t majorVersion = m_core.getBlockMajorVersionForHeight(topBlkIndex);
-	bool synced = ((uint32_t)topBlkIndex == (uint32_t)last_known_block_index);
-
-	std::cout << std::endl
-		<< (synced ? "Synchronized " : "Synchronizing ")
-		<< topBlkIndex << "/" << last_known_block_index << " (" << get_sync_percentage(topBlkIndex, last_known_block_index) << "%), "
-		<< "on " << (m_core.getCurrency().isTestnet() ? "testnet, " : "mainnet, ")
-		<< "network hashrate: " << get_mining_speed(hashrate) << ", difficulty: " << difficulty << ", "
-		<< "block v. " << (int)majorVersion << ", "
-		<< outgoing_connections_count << " out. + " << incoming_connections_count << " inc. connections, "
-		<< rpc_conn << " rpc connections, "
-		<< alt_blocks_count << " alt. block(s), "
-		<< "uptime: " << (unsigned int)floor(uptime / 60.0 / 60.0 / 24.0) << "d " << (unsigned int)floor(fmod((uptime / 60.0 / 60.0), 24.0)) << "h "
-		<< (unsigned int)floor(fmod((uptime / 60.0), 60.0)) << "m " << (unsigned int)fmod(uptime, 60.0) << "s"
-		<< std::endl;
-
-	return true;
 }
 
 //--------------------------------------------------------------------------------

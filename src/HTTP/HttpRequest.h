@@ -25,6 +25,7 @@
 namespace CryptoNote {
   class HttpRequest {
   public:
+    virtual ~HttpRequest() {}
     typedef std::map<std::string, std::string> Headers;
 
     const std::string& getMethod() const;

@@ -33,7 +33,7 @@ class P2pConnectionProxy : public IP2pConnection {
 public:
 
   P2pConnectionProxy(P2pContextOwner&& ctx, IP2pNodeInternal& node);
-  ~P2pConnectionProxy();
+  ~P2pConnectionProxy() override;
 
   bool processIncomingHandshake();
 

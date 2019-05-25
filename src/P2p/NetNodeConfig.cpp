@@ -83,6 +83,9 @@ NetNodeConfig::NetNodeConfig() {
   testnet = false;
 }
 
+NetNodeConfig::~NetNodeConfig() {
+}
+
 bool NetNodeConfig::init(const boost::program_options::variables_map& vm)
 {
   if (vm.count(arg_p2p_bind_ip.name) != 0 && (!vm[arg_p2p_bind_ip.name].defaulted() || bindIp.empty())) {

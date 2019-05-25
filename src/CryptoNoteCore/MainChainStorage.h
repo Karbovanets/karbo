@@ -26,7 +26,7 @@ namespace CryptoNote {
 class MainChainStorage: public IMainChainStorage {
 public:
   MainChainStorage(const std::string& blocksFilame, const std::string& indexesFilename);
-  virtual ~MainChainStorage();
+  virtual ~MainChainStorage() override;
 
   virtual void pushBlock(const RawBlock& rawBlock) override;
   virtual void popBlock() override;

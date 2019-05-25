@@ -332,7 +332,6 @@ void WalletUserTransactionsCache::getGoodTransaction(TransactionId txId, size_t 
 	}
 
 	if (m_transfers.size() > 0) {
-		auto testVal = m_transfers.begin();
 		UserTransfers::const_iterator first = m_transfers.begin() + tx.firstTransferId;
 		UserTransfers::const_iterator last = first + tx.transferCount;
 

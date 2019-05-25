@@ -47,7 +47,7 @@ public:
   TransactionPoolCleanWrapper& operator=(const TransactionPoolCleanWrapper&) = delete;
   TransactionPoolCleanWrapper& operator=(TransactionPoolCleanWrapper&&) = delete;
 
-  virtual ~TransactionPoolCleanWrapper();
+  virtual ~TransactionPoolCleanWrapper() override;
 
   virtual bool pushTransaction(CachedTransaction&& tx, TransactionValidatorState&& transactionState) override;
   virtual const CachedTransaction& getTransaction(const Crypto::Hash& hash) const override;

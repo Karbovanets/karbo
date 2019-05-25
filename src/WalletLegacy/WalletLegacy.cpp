@@ -1,5 +1,6 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2017-2018, Karbo developers
+// Copyright (c) 2018, The BBSCoin Developers
 // 
 // All rights reserved.
 // 
@@ -112,7 +113,7 @@ namespace CryptoNote {
 class SyncStarter : public CryptoNote::IWalletLegacyObserver {
 public:
   SyncStarter(BlockchainSynchronizer& sync) : m_sync(sync) {}
-  virtual ~SyncStarter() {}
+  virtual ~SyncStarter() override {}
 
   virtual void initCompleted(std::error_code result) override {
     if (!result) {
@@ -285,6 +286,15 @@ void WalletLegacy::doLoad(std::istream& source) {
       }
     } catch (const std::exception&) {
       // ignore cache loading errors
+    }
+    // Read all output keys cache
+    std::vector<TransactionOutputInformation> allTransfers;
+    m_transferDetails->getOutputs(allTransfers, ITransfersContainer::IncludeAll);
+    std::cout << "Loaded " + std::to_string(allTransfers.size()) + " known transfer(s)\r\n";
+    for (auto& o : allTransfers) {
+        if (o.type == TransactionTypes::OutputType::Key) {
+            m_transfersSync.addPublicKeysSeen(m_account.getAccountKeys().address, o.transactionHash, o.outputKey);
+        }
     }
   } catch (std::system_error& e) {
     runAtomic(m_cacheMutex, [this] () {this->m_state = WalletLegacy::NOT_INITIALIZED;} );

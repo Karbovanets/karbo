@@ -25,6 +25,7 @@ namespace CryptoNote {
 	public:
 
 		HttpServer(System::Dispatcher& dispatcher, Logging::ILogger& log);
+    virtual ~HttpServer() {}
 
 		void start(const std::string& address, uint16_t port, const std::string& user = "", const std::string& password = "");
 		void stop();

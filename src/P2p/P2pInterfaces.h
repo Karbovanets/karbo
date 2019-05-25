@@ -42,6 +42,7 @@ class IP2pNode {
 public:
   virtual std::unique_ptr<IP2pConnection> receiveConnection() = 0;
   virtual void stop() = 0;
+  virtual ~IP2pNode();
 };
 
 }

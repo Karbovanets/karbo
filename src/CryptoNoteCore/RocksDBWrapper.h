@@ -33,7 +33,7 @@ namespace CryptoNote {
 class RocksDBWrapper : public IDataBase {
 public:
   RocksDBWrapper(Logging::ILogger& logger);
-  virtual ~RocksDBWrapper();
+  virtual ~RocksDBWrapper() override;
 
   RocksDBWrapper(const RocksDBWrapper&) = delete;
   RocksDBWrapper(RocksDBWrapper&&) = delete;

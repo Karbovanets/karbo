@@ -24,6 +24,7 @@
 #include <boost/program_options.hpp>
 
 #include "Logging/ILogger.h"
+#include "SimpleWallet/PasswordContainer.cpp"
 
 namespace po = boost::program_options;
 
@@ -135,8 +136,13 @@ void Configuration::init(const boost::program_options::variables_map& options) {
   }
 
   if (!registerService && !unregisterService) {
-    if (containerFile.empty()) {
-      throw ConfigurationError("container-file parameter are required");
+    if (containerFile.empty() && containerPassword.empty()) {
+      throw ConfigurationError("Both container-file and container-password parameters are required");
+    }
+    if (containerPassword.empty()) {
+      if (pwd_container.read_password()) {
+        containerPassword = pwd_container.password();
+      }
     }
   }
 }

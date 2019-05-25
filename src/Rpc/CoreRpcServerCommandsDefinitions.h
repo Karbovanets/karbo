@@ -1,4 +1,6 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2016, The Forknote developers
+// Copyright (c) 2017-2019, The Karbo developers
 //
 // This file is part of Bytecoin.
 //
@@ -266,7 +268,8 @@ struct COMMAND_RPC_GET_INFO {
   struct response {
     std::string status;
     std::string version;
-	uint64_t height;
+    uint64_t height;
+    std::string top_block_hash;
     uint64_t difficulty;
     uint64_t tx_count;
     uint64_t tx_pool_size;
@@ -281,11 +284,13 @@ struct COMMAND_RPC_GET_INFO {
     std::string fee_address;
     uint8_t block_major_version;
     std::string already_generated_coins;
+    std::string contact;
 
     void serialize(ISerializer &s) {
       KV_MEMBER(status)
       KV_MEMBER(version)
       KV_MEMBER(height)
+      KV_MEMBER(top_block_hash)
       KV_MEMBER(difficulty)
       KV_MEMBER(tx_count)
       KV_MEMBER(tx_pool_size)
@@ -300,6 +305,7 @@ struct COMMAND_RPC_GET_INFO {
       KV_MEMBER(fee_address)
       KV_MEMBER(block_major_version)
       KV_MEMBER(already_generated_coins)
+      KV_MEMBER(contact)
     }
   };
 };
@@ -488,6 +494,7 @@ struct f_transaction_details_response {
   uint64_t mixin;
   uint64_t fee;
   uint64_t amount_out;
+  uint32_t confirmations = 0;
 
   void serialize(ISerializer &s) {
     KV_MEMBER(hash)
@@ -496,6 +503,7 @@ struct f_transaction_details_response {
     KV_MEMBER(mixin)
     KV_MEMBER(fee)
     KV_MEMBER(amount_out)
+    KV_MEMBER(confirmations)
   }
 };
 
@@ -513,7 +521,7 @@ struct f_block_short_response {
     KV_MEMBER(hash)
     KV_MEMBER(cumul_size)
     KV_MEMBER(tx_count)
-	KV_MEMBER(difficulty)
+    KV_MEMBER(difficulty)
   }
 };
 
@@ -681,21 +689,7 @@ struct F_COMMAND_RPC_GET_TRANSACTION_DETAILS {
   };
 };
 
-struct F_COMMAND_RPC_GET_POOL {
-  typedef EMPTY_STRUCT request;
-
-  struct response {
-    std::vector<f_transaction_short_response> transactions; //transactions blobs as hex
-    std::string status;
-
-    void serialize(ISerializer &s) {
-      KV_MEMBER(transactions)
-      KV_MEMBER(status)
-    }
-  };
-};
-
-struct F_COMMAND_RPC_GET_MEMPOOL {
+struct COMMAND_RPC_GET_MEMPOOL {
   typedef EMPTY_STRUCT request;
 
   struct response {
@@ -856,6 +850,32 @@ struct COMMAND_RPC_GEN_PAYMENT_ID {
 	  void serialize(ISerializer &s) {
 		  KV_MEMBER(payment_id)
 	  }
+  };
+};
+
+struct COMMAND_RPC_VALIDATE_ADDRESS {
+  struct request {
+    std::string address;
+
+    void serialize(ISerializer &s) {
+      KV_MEMBER(address)
+    }
+  };
+
+  struct response {
+    bool isvalid;
+    std::string address;
+    std::string spendPublicKey;
+    std::string viewPublicKey;
+    std::string status;
+
+    void serialize(ISerializer &s) {
+      KV_MEMBER(isvalid)
+      KV_MEMBER(address)
+      KV_MEMBER(spendPublicKey)
+      KV_MEMBER(viewPublicKey)
+      KV_MEMBER(status)
+    }
   };
 };
 

@@ -29,7 +29,7 @@ namespace CryptoNote {
 class JsonInputStreamSerializer : public JsonInputValueSerializer {
 public:
   JsonInputStreamSerializer(std::istream& stream);
-  virtual ~JsonInputStreamSerializer();
+  virtual ~JsonInputStreamSerializer() override;
 };
 
 }

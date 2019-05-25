@@ -142,6 +142,9 @@ CryptoNoteProtocolHandler::CryptoNoteProtocolHandler(const Currency& currency, S
   }
 }
 
+CryptoNoteProtocolHandler::~CryptoNoteProtocolHandler() {
+}
+
 size_t CryptoNoteProtocolHandler::getPeerCount() const {
   return m_peersCount;
 }

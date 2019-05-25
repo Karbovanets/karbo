@@ -47,6 +47,7 @@ class JsonRpcServer : HttpServer {
 public:
   JsonRpcServer(System::Dispatcher& sys, System::Event& stopEvent, Logging::ILogger& loggerGroup);
   JsonRpcServer(const JsonRpcServer&) = delete;
+  virtual ~JsonRpcServer() override {}
 
   void start(const std::string& bindAddress, uint16_t bindPort, const std::string& m_rpcUser, const std::string& m_rpcPassword);
 

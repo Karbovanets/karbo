@@ -29,8 +29,10 @@
 #include "CryptoNoteCore/Core.h"
 #include "CryptoNoteCore/Miner.h"
 #include "CryptoNoteCore/TransactionExtra.h"
-
+#include "CryptoNoteCore/TransactionUtils.h"
+#include "CryptoNoteCore/CryptoNoteFormatUtils.h"
 #include "CryptoNoteProtocol/CryptoNoteProtocolHandlerCommon.h"
+#include "CryptoNoteProtocol/ICryptoNoteProtocolQuery.h"
 
 #include "P2p/NetNode.h"
 
@@ -197,8 +199,9 @@ bool RpcServer::processJsonRpcRequest(const HttpRequest& request, HttpResponse& 
       { "f_block_json", { makeMemberMethod(&RpcServer::f_on_block_json), false } },
       { "f_transaction_json", { makeMemberMethod(&RpcServer::f_on_transaction_json), false } },
       { "f_transactions_pool", { makeMemberMethod(&RpcServer::f_on_transactions_pool_json), false } },
-      { "f_mempool_json", { makeMemberMethod(&RpcServer::f_on_mempool_json), false } },
-      { "k_transactions_by_payment_id", { makeMemberMethod(&RpcServer::onTransactionsByPaymentId), false } }
+      { "k_transactions_by_payment_id", { makeMemberMethod(&RpcServer::onTransactionsByPaymentId), false } },
+      { "validateaddress", { makeMemberMethod(&RpcServer::on_validate_address), false } }
+
     };
 
     auto it = jsonRpcHandlers.find(jsonRequest.getMethod());
@@ -233,13 +236,67 @@ bool RpcServer::enableCors(const std::vector<std::string> domains) {
   return true;
 }
 
-bool RpcServer::setFeeAddress(const std::string fee_address) {
+bool RpcServer::setFeeAddress(const std::string& fee_address, const AccountPublicAddress& fee_acc) {
   m_fee_address = fee_address;
+  m_fee_acc = fee_acc;
+  return true;
+}
+
+bool RpcServer::setViewKey(const std::string& view_key) {
+  Crypto::Hash private_view_key_hash;
+  size_t size;
+  if (!Common::fromHex(view_key, &private_view_key_hash, sizeof(private_view_key_hash), size) || size != sizeof(private_view_key_hash)) {
+    logger(INFO) << "Could not parse private view key";
+    return false;
+  }
+  m_view_key = *(struct Crypto::SecretKey *) &private_view_key_hash;
+  return true;
+}
+
+bool RpcServer::setContactInfo(const std::string& contact) {
+  m_contact_info = contact;
   return true;
 }
 
 bool RpcServer::isCoreReady() {
   return m_core.getCurrency().isTestnet() || m_p2p.get_payload_object().isSynchronized();
+}
+
+bool RpcServer::masternode_check_incoming_tx(const BinaryArray& tx_blob) {
+  Crypto::Hash tx_hash = NULL_HASH;
+  Crypto::Hash tx_prefixt_hash = NULL_HASH;
+  Transaction tx;
+  if (!parseAndValidateTransactionFromBinaryArray(tx_blob, tx, tx_hash, tx_prefixt_hash)) {
+    logger(INFO) << "Could not parse tx from blob";
+    return false;
+  }
+	
+  // always relay fusion transactions
+  uint64_t inputs_amount = 0;
+  getInputsMoneyAmount(tx, inputs_amount);
+  uint64_t outputs_amount = get_outs_money_amount(tx);
+
+  const uint64_t fee = inputs_amount - outputs_amount;
+  if (fee == 0 && m_core.getCurrency().isFusionTransaction(tx, tx_blob.size())) {
+    logger(DEBUGGING) << "Masternode received fusion transaction, relaying with no fee check";
+    return true;
+  }
+
+  CryptoNote::TransactionPrefix transaction = *static_cast<const TransactionPrefix*>(&tx);
+
+  std::vector<uint32_t> out;
+  uint64_t amount;
+
+  if (!CryptoNote::findOutputsToAccount(transaction, m_fee_acc, m_view_key, out, amount)) {
+    logger(INFO) << "Could not find outputs to masternode fee address";
+    return false;
+  }
+
+  if (amount != 0) {
+    logger(INFO) << "Masternode received relayed transaction fee: " << m_core.getCurrency().formatAmount(amount) << " KRB";
+    return true;
+  }
+  return false;
 }
 
 //
@@ -463,9 +520,12 @@ bool RpcServer::on_get_info(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RP
   res.rpc_connections_count = getConnectionsCount();
   res.white_peerlist_size = m_p2p.getPeerlistManager().get_white_peers_count();
   res.grey_peerlist_size = m_p2p.getPeerlistManager().get_gray_peers_count();
-  res.last_known_block_index = std::max(static_cast<uint32_t>(1), m_protocol.getObservedHeight()) - 1;
+  res.last_known_block_index = std::max(static_cast<uint32_t>(1), m_protocol.getObservedHeight() - 1);
+  Crypto::Hash last_block_hash = m_core.getTopBlockHash();
+  res.top_block_hash = Common::podToHex(last_block_hash);
   res.version = PROJECT_VERSION_LONG;
   res.fee_address = m_fee_address.empty() ? std::string() : m_fee_address;
+  res.contact = m_contact_info.empty() ? std::string() : m_contact_info;
   res.start_time = (uint64_t)m_core.getStartTime();
   res.already_generated_coins = m_core.getCurrency().formatAmount(m_core.getTotalGeneratedAmount()); // that large uint64_t number is unsafe in JavaScript environment and therefore as a JSON value so we display it as a formatted string
   res.block_major_version = m_core.getBlockMajorVersionForHeight(m_core.getTopBlockIndex());
@@ -523,6 +583,13 @@ bool RpcServer::on_send_raw_tx(const COMMAND_RPC_SEND_RAW_TX::request& req, COMM
   Crypto::Hash transactionHash = Crypto::cn_fast_hash(transactions.back().data(), transactions.back().size());
   logger(DEBUGGING) << "transaction " << transactionHash << " came in on_send_raw_tx";
 
+  if (!m_fee_address.empty() && m_view_key != NULL_SECRET_KEY) {
+    if (!masternode_check_incoming_tx(transactions.back())) {
+      logger(INFO) << "Transaction not relayed due to lack of masternode fee";
+      throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Not relayed due to lack of node fee" };
+    }
+  }
+
   if (!m_core.addTransactionToPool(transactions.back())) {
     logger(INFO) << "[on_send_raw_tx]: tx verification failed";
     res.status = "Failed";
@@ -530,6 +597,7 @@ bool RpcServer::on_send_raw_tx(const COMMAND_RPC_SEND_RAW_TX::request& req, COMM
   }
 
   m_protocol.relayTransactions(transactions);
+
   //TODO: make sure that tx has reached other nodes here, probably wait to receive reflections from other nodes
   res.status = CORE_RPC_STATUS_OK;
   return true;
@@ -680,9 +748,6 @@ bool RpcServer::f_on_block_json(const F_COMMAND_RPC_GET_BLOCK_DETAILS::request& 
   res.block.blockSize = blkDetails.blockSize;
   res.block.orphan_status = blkDetails.isAlternative;
 
-  uint64_t maxReward = 0;
-  uint64_t currentReward = 0;
-  int64_t emissionChange = 0;
   size_t blockGrantedFullRewardZone = m_core.getCurrency().blockGrantedFullRewardZoneByBlockVersion(block_header.major_version);
   res.block.effectiveSizeMedian = std::max(res.block.sizeMedian, blockGrantedFullRewardZone);
 
@@ -762,6 +827,7 @@ bool RpcServer::f_on_transaction_json(const F_COMMAND_RPC_GET_TRANSACTION_DETAIL
         CORE_RPC_ERROR_CODE_INTERNAL_ERROR,
         "Internal error: can't get transaction by hash. Hash = " + Common::podToHex(hash) + '.' };
     }
+    res.txDetails.confirmations = m_protocol.getObservedHeight() - blockHeight;
     blockHash = m_core.getBlockHashByIndex(blockHeight);
     BlockTemplate blk = m_core.getBlockByHash(blockHash);
     BlockDetails blkDetails = m_core.getBlockDetails(blockHash);
@@ -803,25 +869,7 @@ bool RpcServer::f_on_transaction_json(const F_COMMAND_RPC_GET_TRANSACTION_DETAIL
   return true;
 }
 
-bool RpcServer::f_on_transactions_pool_json(const F_COMMAND_RPC_GET_POOL::request& req, F_COMMAND_RPC_GET_POOL::response& res) {
-  auto pool = m_core.getPoolTransactions();
-  for (const Transaction tx : pool) {
-    f_transaction_short_response transaction_short;
-    uint64_t amount_in = getInputAmount(tx);
-    uint64_t amount_out = getOutputAmount(tx);
-
-    transaction_short.hash = Common::podToHex(getObjectHash(tx));
-    transaction_short.fee = amount_in - amount_out;
-    transaction_short.amount_out = amount_out;
-    transaction_short.size = getObjectBinarySize(tx);
-    res.transactions.push_back(transaction_short);
-  }
-
-  res.status = CORE_RPC_STATUS_OK;
-  return true;
-}
-
-bool RpcServer::f_on_mempool_json(const F_COMMAND_RPC_GET_MEMPOOL::request& req, F_COMMAND_RPC_GET_MEMPOOL::response& res) {
+bool RpcServer::f_on_transactions_pool_json(const COMMAND_RPC_GET_MEMPOOL::request& req, COMMAND_RPC_GET_MEMPOOL::response& res) {
   auto pool = m_core.getPoolTransactionsWithReceiveTime();
   for (const auto txrt : pool) {
 	transaction_pool_response transaction_short;
@@ -1108,5 +1156,17 @@ bool RpcServer::on_get_block_header_by_height(const COMMAND_RPC_GET_BLOCK_HEADER
   return true;
 }
 
+bool RpcServer::on_validate_address(const COMMAND_RPC_VALIDATE_ADDRESS::request& req, COMMAND_RPC_VALIDATE_ADDRESS::response& res) {
+  AccountPublicAddress acc = boost::value_initialized<AccountPublicAddress>();
+  bool r = m_core.getCurrency().parseAccountAddressString(req.address, acc);
+  res.isvalid = r;
+  if (r) {
+    res.address = m_core.getCurrency().accountAddressAsString(acc);
+    res.spendPublicKey = Common::podToHex(acc.spendPublicKey);
+    res.viewPublicKey = Common::podToHex(acc.viewPublicKey);
+  }
+  res.status = CORE_RPC_STATUS_OK;
+  return true;
+}
 
 }

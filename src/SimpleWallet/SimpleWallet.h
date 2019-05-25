@@ -56,9 +56,11 @@
 #include <System/Ipv4Address.h>
 
 std::string remote_fee_address;
+
 namespace{
-	Tools::PasswordContainer pwd_container;
+  Tools::PasswordContainer pwd_container;
 }
+
 namespace CryptoNote
 {
   /************************************************************************/
@@ -104,7 +106,7 @@ namespace CryptoNote
     bool close_wallet();
 
     bool help(const std::vector<std::string> &args = std::vector<std::string>());
-	bool seed(const std::vector<std::string> &args = std::vector<std::string>());
+    bool seed(const std::vector<std::string> &args = std::vector<std::string>());
     bool exit(const std::vector<std::string> &args);
     bool start_mining(const std::vector<std::string> &args);
     bool stop_mining(const std::vector<std::string> &args);

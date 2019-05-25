@@ -18,8 +18,6 @@
 #include "BlockchainSynchronizer.h"
 
 #include <functional>
-#include <iostream>
-#include <sstream>
 #include <unordered_set>
 
 #include "Common/StreamTools.h"

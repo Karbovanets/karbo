@@ -40,7 +40,7 @@ class WalletGreen : public IWallet,
                     public IFusionManager {
 public:
   WalletGreen(System::Dispatcher& dispatcher, const Currency& currency, INode& node, Logging::ILogger& logger, uint32_t transactionSoftLockTime = 1);
-  virtual ~WalletGreen();
+  virtual ~WalletGreen() override;
 
   virtual void initialize(const std::string& path, const std::string& password) override;
   virtual void initializeWithViewKey(const std::string& path, const std::string& password, const Crypto::SecretKey& viewSecretKey) override;

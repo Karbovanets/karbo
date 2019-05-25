@@ -54,7 +54,7 @@ public:
     const Crypto::Hash& genesisHash, 
     PeerIdType peerId);
 
-  ~P2pNode();
+  virtual ~P2pNode() override;
   
   // IP2pNode
   virtual std::unique_ptr<IP2pConnection> receiveConnection() override;

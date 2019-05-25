@@ -17,6 +17,9 @@
 
 #pragma once
 #include <cstdint>
+#include <vector>
+#include <stddef.h>
+#include "CryptoNote.h"
 
 namespace CryptoNote {
 

@@ -27,6 +27,7 @@ public:
   StreamLogger(Level level = DEBUGGING);
   StreamLogger(std::ostream& stream, Level level = DEBUGGING);
   void attachToStream(std::ostream& stream);
+  virtual ~StreamLogger() override {}
 
 protected:
   virtual void doLogString(const std::string& message) override;

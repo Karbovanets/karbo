@@ -32,6 +32,7 @@ namespace CryptoNote
   struct ICryptoNoteProtocol {
     virtual void relayBlock(NOTIFY_NEW_BLOCK_request& arg) = 0;
     virtual void relayTransactions(const std::vector<BinaryArray>& transactions) = 0;
+    virtual ~ICryptoNoteProtocol() {}
   };
   
   struct ICryptoNoteProtocolHandler : ICryptoNoteProtocol, public ICryptoNoteProtocolQuery {

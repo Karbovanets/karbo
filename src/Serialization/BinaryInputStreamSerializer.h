@@ -26,7 +26,7 @@ namespace CryptoNote {
 class BinaryInputStreamSerializer : public ISerializer {
 public:
   BinaryInputStreamSerializer(Common::IInputStream& strm) : stream(strm) {}
-  virtual ~BinaryInputStreamSerializer() {}
+  virtual ~BinaryInputStreamSerializer() override {}
 
   virtual ISerializer::SerializerType type() const override;
 

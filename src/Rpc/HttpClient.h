@@ -23,6 +23,7 @@
 #include <HTTP/HttpResponse.h>
 #include <System/TcpConnection.h>
 #include <System/TcpStream.h>
+#include "JsonRpc.h"
 
 #include "Serialization/SerializationTools.h"
 
@@ -37,7 +38,7 @@ class HttpClient {
 public:
 
   HttpClient(System::Dispatcher& dispatcher, const std::string& address, uint16_t port);
-  ~HttpClient();
+  virtual ~HttpClient();
   void request(const HttpRequest& req, HttpResponse& res);
   
   bool isConnected() const;

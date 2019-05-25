@@ -49,7 +49,7 @@ public:
   InProcessNode& operator=(const InProcessNode&) = delete;
   InProcessNode& operator=(InProcessNode&&) = delete;
 
-  virtual ~InProcessNode();
+  virtual ~InProcessNode() override;
 
   //precondition: must be called in dispatcher's thread
   virtual void init(const Callback& callback) override;

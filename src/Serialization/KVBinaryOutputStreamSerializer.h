@@ -28,7 +28,7 @@ class KVBinaryOutputStreamSerializer : public ISerializer {
 public:
 
   KVBinaryOutputStreamSerializer();
-  virtual ~KVBinaryOutputStreamSerializer() {}
+  virtual ~KVBinaryOutputStreamSerializer() override {}
 
   void dump(Common::IOutputStream& target);
 

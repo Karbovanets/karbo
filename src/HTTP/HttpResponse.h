@@ -35,7 +35,7 @@ namespace CryptoNote {
     };
 
     HttpResponse();
-
+    virtual ~HttpResponse() {}
     void setStatus(HTTP_STATUS s);
     void addHeader(const std::string& name, const std::string& value);
     void setBody(const std::string& b);

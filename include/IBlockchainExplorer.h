@@ -38,7 +38,7 @@ public:
 
 class IBlockchainExplorer {
 public:
-  virtual ~IBlockchainExplorer() {};
+  virtual ~IBlockchainExplorer() {}
 
   virtual bool addObserver(IBlockchainObserver* observer) = 0;
   virtual bool removeObserver(IBlockchainObserver* observer) = 0;

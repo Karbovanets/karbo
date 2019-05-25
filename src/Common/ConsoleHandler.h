@@ -80,7 +80,7 @@ private:
 
   typedef std::map<std::string, std::pair<ConsoleCommandHandler, std::string>> CommandHandlersMap;
 
-  virtual void handleCommand(const std::string& cmd);
+  void handleCommand(const std::string& cmd);
 
   void handlerThread();
 

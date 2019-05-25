@@ -42,7 +42,7 @@ enum State {
 
 class BlockchainExplorer : public IBlockchainExplorer, public INodeObserver {
 public:
-  BlockchainExplorer(INode& node, Logging::ILogger& logger/*, IDataBase& dataBase*/);
+  BlockchainExplorer(INode& node, Logging::ILogger& logger, IDataBase &database);
 
   BlockchainExplorer(const BlockchainExplorer&) = delete;
   BlockchainExplorer(BlockchainExplorer&&) = delete;
@@ -50,7 +50,7 @@ public:
   BlockchainExplorer& operator=(const BlockchainExplorer&) = delete;
   BlockchainExplorer& operator=(BlockchainExplorer&&) = delete;
 
-  virtual ~BlockchainExplorer();
+  virtual ~BlockchainExplorer() override;
     
   virtual bool addObserver(IBlockchainObserver* observer) override;
   virtual bool removeObserver(IBlockchainObserver* observer) override;

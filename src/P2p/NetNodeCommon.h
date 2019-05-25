@@ -29,6 +29,7 @@ namespace CryptoNote {
     virtual bool invoke_notify_to_peer(int command, const BinaryArray& req_buff, const CryptoNote::CryptoNoteConnectionContext& context) = 0;
     virtual uint64_t get_connections_count()=0;
     virtual void for_each_connection(std::function<void(CryptoNote::CryptoNoteConnectionContext&, PeerIdType)> f) = 0;
+    virtual ~IP2pEndpoint() {}
     // can be called from external threads
     virtual void externalRelayNotifyToAll(int command, const BinaryArray& data_buff) = 0;
   };

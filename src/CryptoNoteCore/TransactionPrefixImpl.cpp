@@ -34,7 +34,7 @@ public:
   TransactionPrefixImpl();
   TransactionPrefixImpl(const TransactionPrefix& prefix, const Hash& transactionHash);
 
-  virtual ~TransactionPrefixImpl() { }
+  virtual ~TransactionPrefixImpl() override {}
 
   virtual Hash getTransactionHash() const override;
   virtual Hash getTransactionPrefixHash() const override;

@@ -1146,7 +1146,7 @@ std::string print_peerlist_to_string(const std::list<PeerlistEntry>& pl) {
     }
 
     //fill response
-    rsp.local_time = time(NULL);
+    rsp.local_time = time(nullptr);
     m_peerlist.get_peerlist_head(rsp.local_peerlist);
     m_payload_handler.get_payload_sync_data(rsp.payload_data);
     logger(Logging::TRACE) << context << "COMMAND_TIMED_SYNC";

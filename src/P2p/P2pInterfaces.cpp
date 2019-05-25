@@ -22,4 +22,8 @@ namespace CryptoNote {
 IP2pConnection::~IP2pConnection() {
 }
 
+IP2pNode::~IP2pNode() {
+
+}
+
 }

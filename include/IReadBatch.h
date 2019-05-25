@@ -27,6 +27,7 @@ class IReadBatch {
 public:
   virtual std::vector<std::string> getRawKeys() const = 0; 
   virtual void submitRawResult(const std::vector<std::string>& values, const std::vector<bool>& resultStates) = 0;
+  virtual ~IReadBatch() {}
 };
 
 } //namespace CryptoNote

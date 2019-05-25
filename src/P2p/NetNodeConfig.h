@@ -29,6 +29,7 @@ namespace CryptoNote {
 class NetNodeConfig {
 public:
   NetNodeConfig();
+  virtual ~NetNodeConfig();
   static void initOptions(boost::program_options::options_description& desc);
   bool init(const boost::program_options::variables_map& vm);
 

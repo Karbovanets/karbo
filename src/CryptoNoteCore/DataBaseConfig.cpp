@@ -29,10 +29,10 @@ using namespace CryptoNote;
 
 namespace {
 
-const uint64_t WRITE_BUFFER_MB_DEFAULT_SIZE = 256;
-const uint64_t READ_BUFFER_MB_DEFAULT_SIZE = 10;
-const uint32_t DEFAULT_MAX_OPEN_FILES = 100;
-const uint16_t DEFAULT_BACKGROUND_THREADS_COUNT = 2;
+const uint64_t WRITE_BUFFER_MB_DEFAULT_SIZE = 512;
+const uint64_t READ_BUFFER_MB_DEFAULT_SIZE = 128;
+const uint32_t DEFAULT_MAX_OPEN_FILES = 256;
+const uint16_t DEFAULT_BACKGROUND_THREADS_COUNT = 4;
 
 const uint64_t MEGABYTE = 1024 * 1024;
 

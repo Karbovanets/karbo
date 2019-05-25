@@ -1174,7 +1174,7 @@ bool Core::getBlockTemplate(BlockTemplate& b, const AccountPublicAddress& adr, c
   }
 
   b.previousBlockHash = getTopBlockHash();
-  b.timestamp = time(nullptr);
+  b.timestamp = static_cast<uint64_t>(time(nullptr));
 
   // Don't generate a block template with invalid timestamp
   // Fix by Jagerman
@@ -1207,7 +1207,7 @@ bool Core::getBlockTemplate(BlockTemplate& b, const AccountPublicAddress& adr, c
   */
   // make blocks coin-base tx looks close to real coinbase tx to get truthful blob size
   bool r = currency.constructMinerTx(b.majorVersion, height, medianSize, alreadyGeneratedCoins, transactionsSize, fee, adr,
-                                     b.baseTransaction, extraNonce, 11);
+                                     b.baseTransaction, extraNonce, 14);
   if (!r) {
     logger(Logging::ERROR, Logging::BRIGHT_RED) << "Failed to construct miner tx, first chance";
     return false;
@@ -1217,7 +1217,7 @@ bool Core::getBlockTemplate(BlockTemplate& b, const AccountPublicAddress& adr, c
   const size_t TRIES_COUNT = 10;
   for (size_t tryCount = 0; tryCount < TRIES_COUNT; ++tryCount) {
     r = currency.constructMinerTx(b.majorVersion, height, medianSize, alreadyGeneratedCoins, cumulativeSize, fee, adr,
-                                  b.baseTransaction, extraNonce, 11);
+                                  b.baseTransaction, extraNonce, 14);
     if (!r) {
       logger(Logging::ERROR, Logging::BRIGHT_RED) << "Failed to construct miner tx, second chance";
       return false;
