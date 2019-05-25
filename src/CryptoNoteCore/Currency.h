@@ -82,6 +82,8 @@ public:
 
   uint64_t minimumFee() const { return m_minimumFee; }
 
+  uint64_t getMinimalFee(uint64_t dailyDifficulty, uint64_t reward, uint64_t avgHistoricalDifficulty, uint64_t medianHistoricalReward, uint32_t height) const;
+
   uint64_t defaultDustThreshold() const { return m_defaultDustThreshold; }
 
   uint64_t difficultyTarget() const { return m_difficultyTarget; }
@@ -151,6 +153,8 @@ public:
   std::string formatAmount(int64_t amount) const;
   bool parseAmount(const std::string& str, uint64_t& amount) const;
 
+  uint64_t roundUpMinFee(uint64_t minimalFee, int digits) const;
+
   Difficulty nextDifficulty(uint8_t blockMajorVersion, uint32_t blockIndex, std::vector<uint64_t> timestamps, std::vector<Difficulty> cumulativeDifficulties) const;
   Difficulty nextDifficultyV1(std::vector<uint64_t> timestamps, std::vector<Difficulty> cumulativeDifficulties) const;
   Difficulty nextDifficultyV2(std::vector<uint64_t> timestamps, std::vector<Difficulty> cumulativeDifficulties) const;
@@ -165,6 +169,8 @@ public:
   Currency(Currency&& currency);
 
   size_t getApproximateMaximumInputCount(size_t transactionSize, size_t outputCount, size_t mixinCount) const;
+
+  static const std::vector<uint64_t> PRETTY_AMOUNTS;
 
 private:
   Currency(Logging::ILogger& log) : logger(log, "currency") {
@@ -238,8 +244,6 @@ private:
   std::string m_blocksFileName;
   std::string m_blockIndexesFileName;
   std::string m_txPoolFileName;
-
-  static const std::vector<uint64_t> PRETTY_AMOUNTS;
 
   bool m_testnet;
 

@@ -88,6 +88,7 @@ public:
 
   virtual uint64_t actualBalance() override;
   virtual uint64_t pendingBalance() override;
+  virtual uint64_t dustBalance() override;
 
   virtual size_t getTransactionCount() override;
   virtual size_t getTransferCount() override;
@@ -101,13 +102,17 @@ public:
 
   virtual TransactionId sendTransaction(const WalletLegacyTransfer& transfer, uint64_t fee, const std::string& extra = "", uint64_t mixIn = 0, uint64_t unlockTimestamp = 0) override;
   virtual TransactionId sendTransaction(const std::vector<WalletLegacyTransfer>& transfers, uint64_t fee, const std::string& extra = "", uint64_t mixIn = 0, uint64_t unlockTimestamp = 0) override;
+  virtual TransactionId sendFusionTransaction(const std::list<TransactionOutputInformation>& fusionInputs, uint64_t fee, const std::string& extra = "", uint64_t mixIn = 0, uint64_t unlockTimestamp = 0) override;
   virtual std::error_code cancelTransaction(size_t transactionId) override;
+
+  virtual size_t estimateFusion(const uint64_t& threshold);
+  virtual std::list<TransactionOutputInformation> selectFusionTransfersToSend(uint64_t threshold, size_t minInputCount, size_t maxInputCount);
 
   virtual void getAccountKeys(AccountKeys& keys) override;
   virtual bool getSeed(std::string& electrum_words) override;
   
-  virtual std::string sign(const std::string &data) override;
-  virtual bool verify(const std::string &data, const CryptoNote::AccountPublicAddress &address, const std::string &signature) override;
+  virtual std::string sign_message(const std::string &message) override;
+  virtual bool verify_message(const std::string &message, const CryptoNote::AccountPublicAddress &address, const std::string &signature) override;
 
   virtual Crypto::SecretKey getTxKey(Crypto::Hash& txid) override;
   virtual bool getTxProof(Crypto::Hash& txid, CryptoNote::AccountPublicAddress& address, std::string& tx_key, std::string& sig_str) override;
@@ -155,6 +160,7 @@ private:
 
   std::atomic<uint64_t> m_lastNotifiedActualBalance;
   std::atomic<uint64_t> m_lastNotifiedPendingBalance;
+  std::atomic<uint64_t> m_lastNotifiedUnmixableBalance;
 
   BlockchainSynchronizer m_blockchainSync;
   TransfersSyncronizer m_transfersSync;

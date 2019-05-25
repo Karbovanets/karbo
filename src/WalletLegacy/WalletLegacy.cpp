@@ -31,10 +31,18 @@
 
 #include "WalletLegacy.h"
 
+#include <algorithm>
+#include <numeric>
+#include <random>
+#include <set>
+#include <tuple>
+#include <utility>
 #include <string.h>
 #include <time.h>
 
-#include <Common/Base58.h>
+#include "crypto/crypto.h"
+#include "Common/Base58.h"
+#include "Common/ShuffleGenerator.h"
 #include "Logging/ConsoleLogger.h"
 #include "WalletLegacy/WalletHelper.h"
 #include "WalletLegacy/WalletLegacySerialization.h"
@@ -466,23 +474,23 @@ std::vector<Payments> WalletLegacy::getTransactionsByPaymentIds(const std::vecto
   return m_transactionsCache.getTransactionsByPaymentIds(paymentIds);
 }
 
-std::string WalletLegacy::sign(const std::string &data) {
+std::string WalletLegacy::sign_message(const std::string &message) {
   Crypto::Hash hash;
-  Crypto::cn_fast_hash(data.data(), data.size(), hash);
+  Crypto::cn_fast_hash(message.data(), message.size(), hash);
   const CryptoNote::AccountKeys &keys = m_account.getAccountKeys();
   Crypto::Signature signature;
   Crypto::generate_signature(hash, keys.address.spendPublicKey, keys.spendSecretKey, signature);
   return std::string("SigV1") + Tools::Base58::encode(std::string((const char *)&signature, sizeof(signature)));
 }
 
-bool WalletLegacy::verify(const std::string &data, const CryptoNote::AccountPublicAddress &address, const std::string &signature) {
+bool WalletLegacy::verify_message(const std::string &message, const CryptoNote::AccountPublicAddress &address, const std::string &signature) {
   const size_t header_len = strlen("SigV1");
   if (signature.size() < header_len || signature.substr(0, header_len) != "SigV1") {
     std::cout << "Signature header check error";
     return false;
   }
   Crypto::Hash hash;
-  Crypto::cn_fast_hash(data.data(), data.size(), hash);
+  Crypto::cn_fast_hash(message.data(), message.size(), hash);
   std::string decoded;
   if (!Tools::Base58::decode(signature.substr(header_len), decoded)) {
     std::cout <<"Signature decoding error";
@@ -511,6 +519,27 @@ uint64_t WalletLegacy::pendingBalance() {
 
   uint64_t change = m_transactionsCache.unconfrimedOutsAmount() - m_transactionsCache.unconfirmedTransactionsAmount();
   return m_transferDetails->balance(ITransfersContainer::IncludeKeyNotUnlocked) + change;
+}
+
+uint64_t WalletLegacy::dustBalance() { // unmixable balance
+  std::unique_lock<std::mutex> lock(m_cacheMutex);
+  throwIfNotInitialised();
+
+  std::vector<TransactionOutputInformation> outputs;
+  m_transferDetails->getOutputs(outputs, ITransfersContainer::IncludeKeyUnlocked);
+
+  uint64_t money = 0;
+
+  for (size_t i = 0; i < outputs.size(); ++i) {
+    const auto& out = outputs[i];
+    if (!m_transactionsCache.isUsed(out)) {
+      if (!is_valid_decomposed_amount(out.amount)) {
+        money += out.amount;
+      }
+    }
+  }
+
+  return money;
 }
 
 size_t WalletLegacy::getTransactionCount() {
@@ -554,6 +583,96 @@ size_t WalletLegacy::getUnlockedOutputsCount() {
   return outputs.size();
 }
 
+size_t WalletLegacy::estimateFusion(const uint64_t& threshold) {
+  size_t fusionReadyCount = 0;
+  std::vector<TransactionOutputInformation> outputs;
+  m_transferDetails->getOutputs(outputs, ITransfersContainer::IncludeKeyUnlocked);
+  std::array<size_t, std::numeric_limits<uint64_t>::digits10 + 1> bucketSizes;
+  bucketSizes.fill(0);
+  for (auto& out : outputs) {
+    uint8_t powerOfTen = 0;
+	if (m_currency.isAmountApplicableInFusionTransactionInput(out.amount, threshold, powerOfTen)) {
+      assert(powerOfTen < std::numeric_limits<uint64_t>::digits10 + 1);
+      bucketSizes[powerOfTen]++;
+	}
+  }
+  for (auto bucketSize : bucketSizes) {
+    if (bucketSize >= m_currency.fusionTxMinInputCount()) {
+      fusionReadyCount += bucketSize;
+    }
+  }
+  return fusionReadyCount;
+}
+
+std::list<TransactionOutputInformation> WalletLegacy::selectFusionTransfersToSend(uint64_t threshold, size_t minInputCount, size_t maxInputCount) {
+  std::list<TransactionOutputInformation> selectedOutputs;
+  std::vector<TransactionOutputInformation> outputs;
+  std::vector<TransactionOutputInformation> allFusionReadyOuts;
+  m_transferDetails->getOutputs(outputs, ITransfersContainer::IncludeKeyUnlocked);
+  std::array<size_t, std::numeric_limits<uint64_t>::digits10 + 1> bucketSizes;
+  bucketSizes.fill(0);
+  for (auto& out : outputs) {
+    uint8_t powerOfTen = 0;
+    if (m_currency.isAmountApplicableInFusionTransactionInput(out.amount, threshold, powerOfTen)) {
+      allFusionReadyOuts.push_back(std::move(out));
+      assert(powerOfTen < std::numeric_limits<uint64_t>::digits10 + 1);
+      bucketSizes[powerOfTen]++;
+    }
+  }
+
+  //now, pick the bucket
+  std::vector<uint8_t> bucketNumbers(bucketSizes.size());
+  std::iota(bucketNumbers.begin(), bucketNumbers.end(), 0);
+  std::shuffle(bucketNumbers.begin(), bucketNumbers.end(), std::default_random_engine{ Crypto::rand<std::default_random_engine::result_type>() });
+  size_t bucketNumberIndex = 0;
+  for (; bucketNumberIndex < bucketNumbers.size(); ++bucketNumberIndex) {
+	  if (bucketSizes[bucketNumbers[bucketNumberIndex]] >= minInputCount) {
+		  break;
+	  }
+  }
+
+  if (bucketNumberIndex == bucketNumbers.size()) {
+	  return {};
+  }
+
+  size_t selectedBucket = bucketNumbers[bucketNumberIndex];
+  assert(selectedBucket < std::numeric_limits<uint64_t>::digits10 + 1);
+  assert(bucketSizes[selectedBucket] >= minInputCount);
+  uint64_t lowerBound = 1;
+  for (size_t i = 0; i < selectedBucket; ++i) {
+	  lowerBound *= 10;
+  }
+
+  uint64_t upperBound = selectedBucket == std::numeric_limits<uint64_t>::digits10 ? UINT64_MAX : lowerBound * 10;
+  std::vector<TransactionOutputInformation> selectedOuts;
+  selectedOuts.reserve(bucketSizes[selectedBucket]);
+  for (size_t outIndex = 0; outIndex < allFusionReadyOuts.size(); ++outIndex) {
+	  if (allFusionReadyOuts[outIndex].amount >= lowerBound && allFusionReadyOuts[outIndex].amount < upperBound) {
+		  selectedOuts.push_back(std::move(allFusionReadyOuts[outIndex]));
+	  }
+  }
+
+  assert(selectedOuts.size() >= minInputCount);
+
+  auto outputsSortingFunction = [](const TransactionOutputInformation& l, const TransactionOutputInformation& r) { return l.amount < r.amount; };
+  if (selectedOuts.size() <= maxInputCount) {
+	  std::sort(selectedOuts.begin(), selectedOuts.end(), outputsSortingFunction);
+	  std::copy(selectedOuts.begin(), selectedOuts.end(), std::back_inserter(selectedOutputs));
+	  return selectedOutputs;
+  }
+
+  ShuffleGenerator<size_t, Crypto::random_engine<size_t>> generator(selectedOuts.size());
+  std::vector<TransactionOutputInformation> trimmedSelectedOuts;
+  trimmedSelectedOuts.reserve(maxInputCount);
+  for (size_t i = 0; i < maxInputCount; ++i) {
+	  trimmedSelectedOuts.push_back(std::move(selectedOuts[generator()]));
+  }
+
+  std::sort(trimmedSelectedOuts.begin(), trimmedSelectedOuts.end(), outputsSortingFunction);
+  std::copy(trimmedSelectedOuts.begin(), trimmedSelectedOuts.end(), std::back_inserter(selectedOutputs));
+  return selectedOutputs;
+}
+
 TransactionId WalletLegacy::sendTransaction(const WalletLegacyTransfer& transfer, uint64_t fee, const std::string& extra, uint64_t mixIn, uint64_t unlockTimestamp) {
   std::vector<WalletLegacyTransfer> transfers;
   transfers.push_back(transfer);
@@ -581,6 +700,35 @@ TransactionId WalletLegacy::sendTransaction(const std::vector<WalletLegacyTransf
   }
 
   return txId;
+}
+
+TransactionId WalletLegacy::sendFusionTransaction(const std::list<TransactionOutputInformation>& fusionInputs, uint64_t fee, const std::string& extra, uint64_t mixIn, uint64_t unlockTimestamp) {
+	TransactionId txId = 0;
+	std::shared_ptr<WalletRequest> request;
+	std::deque<std::shared_ptr<WalletLegacyEvent>> events;
+	throwIfNotInitialised();
+	std::vector<WalletLegacyTransfer> transfers;
+	WalletLegacyTransfer destination;
+	destination.amount = 0;
+	for (auto& out : fusionInputs) {
+		destination.amount += out.amount;
+	}
+	destination.address = getAddress();
+	transfers.push_back(destination);
+
+	{
+		std::unique_lock<std::mutex> lock(m_cacheMutex);
+		request = m_sender->makeSendFusionRequest(txId, events, transfers, fusionInputs, fee, extra, mixIn, unlockTimestamp);
+	}
+
+	notifyClients(events);
+
+	if (request) {
+		m_asyncContextCounter.addAsyncContext();
+		request->perform(m_node, std::bind(&WalletLegacy::sendTransactionCallback, this, std::placeholders::_1, std::placeholders::_2));
+	}
+
+	return txId;
 }
 
 void WalletLegacy::sendTransactionCallback(WalletRequest::Callback callback, std::error_code ec) {
@@ -711,6 +859,13 @@ void WalletLegacy::notifyIfBalanceChanged() {
 
   if (prevPending != pending) {
     m_observerManager.notify(&IWalletLegacyObserver::pendingBalanceUpdated, pending);
+  }
+
+  auto dust = dustBalance();
+  auto prevDust = m_lastNotifiedUnmixableBalance.exchange(dust);
+
+  if (prevDust != dust) {
+    m_observerManager.notify(&IWalletLegacyObserver::unmixableBalanceUpdated, dust);
   }
 
 }

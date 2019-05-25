@@ -29,6 +29,7 @@
 #include "CryptoNoteSerialization.h"
 #include "TransactionExtra.h"
 #include "CryptoNoteTools.h"
+#include "Currency.h"
 
 #include "CryptoNoteConfig.h"
 
@@ -444,6 +445,14 @@ bool lookup_acc_outs(const AccountKeys& acc, const Transaction& tx, const Public
     }
 
     ++outputIndex;
+  }
+  return true;
+}
+
+bool is_valid_decomposed_amount(uint64_t amount) {
+  auto it = std::lower_bound(Currency::PRETTY_AMOUNTS.begin(), Currency::PRETTY_AMOUNTS.end(), amount);
+  if (it == Currency::PRETTY_AMOUNTS.end() || amount != *it) {
+    return false;
   }
   return true;
 }

@@ -597,6 +597,8 @@ bool RpcServer::on_get_info(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RP
   res.version = PROJECT_VERSION_LONG;
   res.fee_address = m_fee_address.empty() ? std::string() : m_fee_address;
   res.contact = m_contact_info.empty() ? std::string() : m_contact_info;
+  res.min_tx_fee = m_core.getMinimalFee();
+  res.readable_tx_fee = m_core.getCurrency().formatAmount(res.min_tx_fee);
   res.start_time = (uint64_t)m_core.getStartTime();
   res.already_generated_coins = m_core.getCurrency().formatAmount(m_core.getTotalGeneratedAmount()); // that large uint64_t number is unsafe in JavaScript environment and therefore as a JSON value so we display it as a formatted string
   res.block_major_version = m_core.getBlockMajorVersionForHeight(m_core.getTopBlockIndex());
@@ -754,6 +756,7 @@ bool RpcServer::f_on_blocks_list_json(const F_COMMAND_RPC_GET_BLOCKS_LIST::reque
     block_short.hash = Common::podToHex(block_hash);
     block_short.tx_count = blk.transactionHashes.size() + 1;
     block_short.difficulty = m_core.getBlockDifficulty(static_cast<uint32_t>(i));
+    block_short.min_tx_fee = m_core.getMinimalFeeForHeight(i);
 
     res.blocks.push_back(block_short);
 

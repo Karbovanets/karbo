@@ -436,6 +436,38 @@ bool Currency::parseAmount(const std::string& str, uint64_t& amount) const {
   return Common::fromString(strAmount, amount);
 }
 
+// Copyright (c) 2017-2018 Zawy 
+  // http://zawy1.blogspot.com/2017/12/using-difficulty-to-get-constant-value.html
+  // Moore's law application by Sergey Kozlov
+uint64_t Currency::getMinimalFee(uint64_t dailyDifficulty, uint64_t reward, uint64_t avgHistoricalDifficulty, uint64_t medianHistoricalReward, uint32_t height) const {
+  const uint64_t blocksInTwoYears = CryptoNote::parameters::EXPECTED_NUMBER_OF_BLOCKS_PER_DAY * 365 * 2;
+  const double gauge = double(0.25);
+  uint64_t minimumFee(0);
+  double dailyDifficultyMoore = dailyDifficulty / pow(2, static_cast<double>(height) / static_cast<double>(blocksInTwoYears));
+  double minFee = gauge * CryptoNote::parameters::COIN * static_cast<double>(avgHistoricalDifficulty)
+    / dailyDifficultyMoore * static_cast<double>(reward)
+    / static_cast<double>(medianHistoricalReward);
+  if (minFee == 0 || !std::isfinite(minFee))
+    return CryptoNote::parameters::MAXIMUM_FEE; // zero test 
+  minimumFee = static_cast<uint64_t>(minFee);
+
+  return std::min<uint64_t>(CryptoNote::parameters::MAXIMUM_FEE, minimumFee);
+}
+
+uint64_t Currency::roundUpMinFee(uint64_t minimalFee, int digits) const {
+  uint64_t ret(0);
+  std::string minFeeString = formatAmount(minimalFee);
+  double minFee = boost::lexical_cast<double>(minFeeString);
+  double scale = pow(10., floor(log10(fabs(minFee))) + (1 - digits));
+  double roundedFee = ceil(minFee / scale) * scale;
+  std::stringstream ss;
+  ss << std::fixed << std::setprecision(12) << roundedFee;
+  std::string roundedFeeString = ss.str();
+  parseAmount(roundedFeeString, ret);
+  return ret;
+}
+
+
 Difficulty Currency::nextDifficulty(uint8_t blockMajorVersion, uint32_t blockIndex, std::vector<uint64_t> timestamps,
 	std::vector<Difficulty> cumulativeDifficulties) const {
 	if (blockMajorVersion >= BLOCK_MAJOR_VERSION_5) {

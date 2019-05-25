@@ -66,6 +66,7 @@ public:
   virtual uint32_t getLocalBlockCount() const override;
   virtual uint32_t getKnownBlockCount() const override;
   virtual uint64_t getLastLocalBlockTimestamp() const override;
+  virtual uint64_t getMinimalFee() const override;
   virtual uint32_t getNodeHeight() const override;
 
   virtual void getBlockHashesByTimestamps(uint64_t timestampBegin, size_t secondsCount, std::vector<Crypto::Hash>& blockHashes, const Callback& callback) override;
@@ -158,6 +159,7 @@ private:
   std::atomic<size_t> m_peerCount;
   std::atomic<uint32_t> m_networkHeight;
   std::atomic<uint32_t> m_nodeHeight;
+  std::atomic<uint64_t> m_minimalFee;
 
   BlockHeaderInfo lastLocalBlockHeaderInfo;
   //protect it with mutex if decided to add worker threads

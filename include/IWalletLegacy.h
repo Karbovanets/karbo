@@ -20,14 +20,18 @@
 #pragma once
 
 #include <istream>
-#include <limits>
 #include <ostream>
+#include <limits>
 #include <string>
+#include <list>
 #include <system_error>
 #include <boost/optional.hpp>
 #include "CryptoNote.h"
 #include "CryptoTypes.h"
 #include "CryptoNote.h"
+#include "crypto/crypto.h"
+#include "CryptoNoteCore/CryptoNoteBasic.h"
+#include "ITransfersContainer.h"
 
 namespace CryptoNote {
 
@@ -86,6 +90,7 @@ public:
   virtual void synchronizationCompleted(std::error_code result) {}
   virtual void actualBalanceUpdated(uint64_t actualBalance) {}
   virtual void pendingBalanceUpdated(uint64_t pendingBalance) {}
+  virtual void unmixableBalanceUpdated(uint64_t dustBalance) {}
   virtual void externalTransactionCreated(TransactionId transactionId) {}
   virtual void sendTransactionCompleted(TransactionId transactionId, std::error_code result) {}
   virtual void transactionUpdated(TransactionId transactionId) {}
@@ -113,7 +118,7 @@ public:
 
   virtual uint64_t actualBalance() = 0;
   virtual uint64_t pendingBalance() = 0;
-  //virtual uint64_t dustBalance() = 0;
+  virtual uint64_t dustBalance() = 0;
 
   virtual size_t getTransactionCount() = 0;
   virtual size_t getTransferCount() = 0;
@@ -127,7 +132,11 @@ public:
 
   virtual TransactionId sendTransaction(const WalletLegacyTransfer& transfer, uint64_t fee, const std::string& extra = "", uint64_t mixIn = 0, uint64_t unlockTimestamp = 0) = 0;
   virtual TransactionId sendTransaction(const std::vector<WalletLegacyTransfer>& transfers, uint64_t fee, const std::string& extra = "", uint64_t mixIn = 0, uint64_t unlockTimestamp = 0) = 0;
+  virtual TransactionId sendFusionTransaction(const std::list<TransactionOutputInformation>& fusionInputs, uint64_t fee, const std::string& extra = "", uint64_t mixIn = 0, uint64_t unlockTimestamp = 0) = 0;
   virtual std::error_code cancelTransaction(size_t transferId) = 0;
+
+  virtual size_t estimateFusion(const uint64_t& threshold) = 0;
+  virtual std::list<TransactionOutputInformation> selectFusionTransfersToSend(uint64_t threshold, size_t minInputCount, size_t maxInputCount) = 0;
 
   virtual void getAccountKeys(AccountKeys& keys) = 0;
   virtual bool getSeed(std::string& electrum_words) = 0;
@@ -136,8 +145,8 @@ public:
   virtual bool getTxProof(Crypto::Hash& txid, CryptoNote::AccountPublicAddress& address, std::string& tx_key, std::string& sig_str) = 0;
   virtual bool checkTxProof(Crypto::Hash& txid, CryptoNote::AccountPublicAddress& address, std::string& sig_str) = 0;
 
-  virtual std::string sign(const std::string &data) = 0;
-  virtual bool verify(const std::string &data, const CryptoNote::AccountPublicAddress &address, const std::string &signature) = 0;
+  virtual std::string sign_message(const std::string &data) = 0;
+  virtual bool verify_message(const std::string &data, const CryptoNote::AccountPublicAddress &address, const std::string &signature) = 0;
 };
 
 }

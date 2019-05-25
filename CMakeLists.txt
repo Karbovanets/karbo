@@ -28,6 +28,12 @@ set(ENABLE_PTHREAD_MUTEX_ADAPTIVE_NP OFF CACHE STRING "Enable RocksDB PTHREAD_MU
 set(ENABLE_MALLOC_USABLE_SIZE OFF CACHE STRING "Enable RocksDB MALLOC_USABLE_SIZE support detection? Defaults to OFF")
 set(ENABLE_SCHED_GETCPU OFF CACHE STRING "Enable RocksDB SCHED_GETCPU support detection? Defaults to OFF")
 
+option(WITH_LITE_WALLET "Lite wallet specific" OFF)
+
+if(WITH_LITE_WALLET)
+  add_definitions("-DUSE_LITE_WALLET")
+endif()
+
 # We need to set the label and import it into CMake if it exists
 set(LABEL "")
 if(DEFINED ENV{LABEL})

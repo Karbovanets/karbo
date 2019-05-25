@@ -18,6 +18,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Bytecoin.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <list>
 #include <boost/algorithm/string/predicate.hpp>
 #include "WalletRpcServer.h"
 #include "crypto/hash.h"
@@ -32,6 +33,8 @@
 #include "Common/StringTools.h"
 #include "Common/Base58.h"
 #include "Common/Util.h"
+
+#include "ITransfersContainer.h"
 
 using namespace Logging;
 using namespace CryptoNote;
@@ -142,8 +145,10 @@ namespace Tools {
         { "reset"           , makeMemberMethod(&wallet_rpc_server::on_reset)            },
         { "get_paymentid"   , makeMemberMethod(&wallet_rpc_server::on_gen_paymentid)    },
         { "get_tx_key"      , makeMemberMethod(&wallet_rpc_server::on_get_tx_key)       },
-        { "sign"            , makeMemberMethod(&wallet_rpc_server::on_sign)             },
-        { "verify"          , makeMemberMethod(&wallet_rpc_server::on_verify)           },
+        { "sign_message"    , makeMemberMethod(&wallet_rpc_server::on_sign)             },
+        { "verify_message"  , makeMemberMethod(&wallet_rpc_server::on_verify)           },
+        { "estimate_fusion" , makeMemberMethod(&wallet_rpc_server::on_estimate_fusion)  },
+        { "send_fusion"     , makeMemberMethod(&wallet_rpc_server::on_send_fusion)      },
       };
 
       auto it = s_methods.find(jsonRequest.getMethod());
@@ -180,8 +185,9 @@ namespace Tools {
     wallet_rpc::COMMAND_RPC_TRANSFER::response& res)
   {
     if (req.mixin < m_currency.minMixin() && req.mixin != 0) {
+      logger(ERROR) << "Requested mixin " << std::to_string(req.mixin) << " is too low";
       throw JsonRpc::JsonRpcError(WALLET_RPC_ERROR_CODE_WRONG_MIXIN,
-        std::string("Requested mixin \"" + std::to_string(req.mixin) + "\" is too low"));
+        std::string("Requested mixin " + std::to_string(req.mixin) + " is too low"));
     }
     if (req.mixin > m_currency.maxMixin() && req.mixin != 0) {
       throw JsonRpc::JsonRpcError(WALLET_RPC_ERROR_CODE_WRONG_MIXIN,
@@ -205,7 +211,7 @@ namespace Tools {
       if (!CryptoNote::parsePaymentId(payment_id_str, payment_id))
       {
         throw JsonRpc::JsonRpcError(WALLET_RPC_ERROR_CODE_WRONG_PAYMENT_ID,
-          "Payment ID has invalid format: \"" + payment_id_str + "\", expected 64-character string");
+          "Payment ID has invalid format: " + payment_id_str + ", expected 64-character string");
       }
 
       BinaryArray extra_nonce;
@@ -213,7 +219,7 @@ namespace Tools {
       if (!CryptoNote::addExtraNonceToTransactionExtra(extra, extra_nonce))
       {
         throw JsonRpc::JsonRpcError(WALLET_RPC_ERROR_CODE_WRONG_PAYMENT_ID,
-          "Something went wrong with payment_id. Please check its format: \"" + payment_id_str + "\", expected 64-character string");
+          "Something went wrong with payment_id. Please check its format: " + payment_id_str + ", expected 64-character string");
       }
     }
 
@@ -497,7 +503,7 @@ namespace Tools {
   //------------------------------------------------------------------------------------------------------------------------------
   bool wallet_rpc_server::on_sign(const wallet_rpc::COMMAND_RPC_SIGN::request& req, wallet_rpc::COMMAND_RPC_SIGN::response& res)
   {
-    res.signature = m_wallet.sign(req.data);
+    res.signature = m_wallet.sign_message(req.data);
     return true;
   }
   //------------------------------------------------------------------------------------------------------------------------------
@@ -517,7 +523,7 @@ namespace Tools {
       throw JsonRpc::JsonRpcError(WALLET_RPC_ERROR_CODE_WRONG_SIGNATURE, std::string("Signature decoding error"));
       return false;
     }
-    res.good = m_wallet.verify(req.data, address, req.signature);
+    res.good = m_wallet.verify_message(req.data, address, req.signature);
     return true;
   }
 
@@ -535,6 +541,77 @@ namespace Tools {
     }
     else {
       throw JsonRpc::JsonRpcError(WALLET_RPC_ERROR_CODE_UNKNOWN_ERROR, std::string("No tx key found for this txid"));
+    }
+    return true;
+  }
+
+  //------------------------------------------------------------------------------------------------------------------------------
+  bool wallet_rpc_server::on_estimate_fusion(const wallet_rpc::COMMAND_RPC_ESTIMATE_FUSION::request& req, wallet_rpc::COMMAND_RPC_ESTIMATE_FUSION::response& res)
+  {
+    if (req.threshold <= m_currency.defaultDustThreshold()) {
+      throw JsonRpc::JsonRpcError(WALLET_RPC_ERROR_CODE_UNKNOWN_ERROR, std::string("Fusion transaction threshold is too small. Threshold: " +
+        m_currency.formatAmount(req.threshold)) + ", minimum threshold " + m_currency.formatAmount(m_currency.defaultDustThreshold() + 1));
+    }
+    try {
+      res.fusion_ready_count = m_wallet.estimateFusion(req.threshold);
+    }
+    catch (std::exception &e) {
+      throw JsonRpc::JsonRpcError(WALLET_RPC_ERROR_CODE_UNKNOWN_ERROR, std::string("Failed to estimate fusion ready count: ") + e.what());
+    }
+    return true;
+  }
+
+  //------------------------------------------------------------------------------------------------------------------------------
+  bool wallet_rpc_server::on_send_fusion(const wallet_rpc::COMMAND_RPC_SEND_FUSION::request& req, wallet_rpc::COMMAND_RPC_SEND_FUSION::response& res)
+  {
+    const size_t MAX_FUSION_OUTPUT_COUNT = 4;
+
+    if (req.mixin < m_currency.minMixin() && req.mixin != 0) {
+      logger(ERROR) << "Requested mixin " << std::to_string(req.mixin) << " is too low";
+      throw JsonRpc::JsonRpcError(WALLET_RPC_ERROR_CODE_WRONG_MIXIN,
+        std::string("Requested mixin " + std::to_string(req.mixin) + " is too low"));
+    }
+
+    if (req.threshold <= m_currency.defaultDustThreshold()) {
+      throw JsonRpc::JsonRpcError(WALLET_RPC_ERROR_CODE_UNKNOWN_ERROR, std::string("Fusion transaction threshold is too small. Threshold: " +
+        m_currency.formatAmount(req.threshold)) + ", minimum threshold " + m_currency.formatAmount(m_currency.defaultDustThreshold() + 1));
+    }
+
+    size_t estimatedFusionInputsCount = m_currency.getApproximateMaximumInputCount(m_currency.fusionTxMaxSize(), MAX_FUSION_OUTPUT_COUNT, req.mixin);
+    if (estimatedFusionInputsCount < m_currency.fusionTxMinInputCount()) {
+      throw JsonRpc::JsonRpcError(WALLET_RPC_ERROR_CODE_WRONG_MIXIN,
+        std::string("Fusion transaction mixin is too big " + std::to_string(req.mixin)));
+    }
+
+    try {
+      std::list<TransactionOutputInformation> fusionInputs = m_wallet.selectFusionTransfersToSend(req.threshold, m_currency.fusionTxMinInputCount(), estimatedFusionInputsCount);
+      if (fusionInputs.size() < m_currency.fusionTxMinInputCount()) {
+        //nothing to optimize
+        throw JsonRpc::JsonRpcError(WALLET_RPC_ERROR_CODE_UNKNOWN_ERROR,
+          std::string("Fusion transaction not created: nothing to optimize for threshold " + std::to_string(req.threshold)));
+      }
+
+      std::string extraString;
+      CryptoNote::WalletHelper::SendCompleteResultObserver sent;
+      WalletHelper::IWalletRemoveObserverGuard removeGuard(m_wallet, sent);
+
+      CryptoNote::TransactionId tx = m_wallet.sendFusionTransaction(fusionInputs, 0, extraString, req.mixin, req.unlock_time);
+      if (tx == WALLET_LEGACY_INVALID_TRANSACTION_ID)
+        throw std::runtime_error("Couldn't send fusion transaction");
+
+      std::error_code sendError = sent.wait(tx);
+      removeGuard.removeObserver();
+
+      if (sendError)
+        throw std::system_error(sendError);
+
+      CryptoNote::WalletLegacyTransaction txInfo;
+      m_wallet.getTransaction(tx, txInfo);
+      res.tx_hash = Common::podToHex(txInfo.hash);
+    }
+    catch (const std::exception& e)
+    {
+      throw JsonRpc::JsonRpcError(WALLET_RPC_ERROR_CODE_GENERIC_TRANSFER_ERROR, e.what());
     }
     return true;
   }

@@ -128,6 +128,9 @@ public:
   virtual uint64_t get_current_blockchain_height() const;
   uint8_t getBlockMajorVersionForHeight(uint32_t height) const;
 
+  virtual uint64_t getMinimalFeeForHeight(uint32_t height) override;
+  virtual uint64_t getMinimalFee() override;
+
 private:
   const Currency& currency;
   System::Dispatcher& dispatcher;
