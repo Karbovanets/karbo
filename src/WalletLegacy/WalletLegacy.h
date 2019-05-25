@@ -109,6 +109,10 @@ public:
   virtual std::string sign(const std::string &data) override;
   virtual bool verify(const std::string &data, const CryptoNote::AccountPublicAddress &address, const std::string &signature) override;
 
+  virtual Crypto::SecretKey getTxKey(Crypto::Hash& txid) override;
+  virtual bool getTxProof(Crypto::Hash& txid, CryptoNote::AccountPublicAddress& address, std::string& tx_key, std::string& sig_str) override;
+  virtual bool checkTxProof(Crypto::Hash& txid, CryptoNote::AccountPublicAddress& address, std::string& sig_str) override;
+
 private:
 
   // IBlockchainSynchronizerObserver

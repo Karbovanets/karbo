@@ -84,10 +84,12 @@ using CryptoNote::ISerializer;
 		struct response
 		{
 			std::string tx_hash;
+			std::string tx_key;
 
 			void serialize(ISerializer& s)
 			{
 				KV_MEMBER(tx_hash)
+				KV_MEMBER(tx_key)
 			}
 		};
 	};
@@ -166,6 +168,7 @@ using CryptoNote::ISerializer;
 		uint64_t blockIndex;
 		uint64_t unlockTime;
 		uint64_t confirmations;
+		std::string txKey;
 
 		void serialize(ISerializer& s)
 		{
@@ -179,6 +182,7 @@ using CryptoNote::ISerializer;
 			KV_MEMBER(blockIndex)
 			KV_MEMBER(unlockTime)
 			KV_MEMBER(confirmations)
+			KV_MEMBER(txKey)
 		}
 	};
 
@@ -295,54 +299,78 @@ using CryptoNote::ISerializer;
 		};
 	};
 
-	struct COMMAND_RPC_SIGN
-	{
-		struct request
-		{
-			std::string data;
- 
-			void serialize(ISerializer& s)
-			{
-				KV_MEMBER(data);
-			}
-		};
+  /* Commands: sign / verify */
+  struct COMMAND_RPC_SIGN
+  {
+    struct request
+    {
+      std::string data;
 
-		struct response
-		{
-			std::string signature;
+      void serialize(ISerializer& s)
+      {
+        KV_MEMBER(data)
+      }
+    };
 
-			void serialize(ISerializer& s)
-			{
-				KV_MEMBER(signature);
-			}
-		};
-	};
+    struct response
+    {
+      std::string signature;
 
-	struct COMMAND_RPC_VERIFY
-	{
-		struct request
-		{
-			std::string data;
-			std::string address;
-			std::string signature;
+      void serialize(ISerializer& s)
+      {
+        KV_MEMBER(signature)
+      }
+    };
+  };
 
-			void serialize(ISerializer& s)
-			{
-				KV_MEMBER(data);
-				KV_MEMBER(address);
-				KV_MEMBER(signature);
-			}
-		};
+  struct COMMAND_RPC_VERIFY
+  {
+    struct request
+    {
+      std::string data;
+      std::string address;
+      std::string signature;
 
-		struct response
-		{
-			bool good;
- 
-			void serialize(ISerializer& s)
-			{
-				KV_MEMBER(good);
-			}
-		};
-	};
+      void serialize(ISerializer& s)
+      {
+        KV_MEMBER(data)
+        KV_MEMBER(address)
+        KV_MEMBER(signature)
+      }
+    };
+
+    struct response
+    {
+      bool good;
+
+      void serialize(ISerializer& s)
+      {
+        KV_MEMBER(good)
+      }
+    };
+  };
+
+	/* Command: get_tx_key */
+  struct COMMAND_RPC_GET_TX_KEY
+  {
+    struct request
+    {
+      std::string tx_hash;
+
+      void serialize(ISerializer& s)
+      {
+        KV_MEMBER(tx_hash)
+      }
+    };
+    struct response
+    {
+      std::string tx_key;
+
+      void serialize(ISerializer& s)
+      {
+        KV_MEMBER(tx_key)
+      }
+    };
+  };
 
 }} //Tools::wallet_rpc
