@@ -1,4 +1,4 @@
-// Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers, The Karbowanec developers
 //
 // This file is part of Bytecoin.
 //
@@ -326,6 +326,17 @@ namespace Crypto {
     ge_fromfe_frombytes_vartime(&point, reinterpret_cast<const unsigned char *>(&h));
     ge_mul8(&point2, &point);
     ge_p1p1_to_p3(&res, &point2);
+  }
+
+  KeyImage crypto_ops::scalarmultKey(const KeyImage & P, const KeyImage & a) {
+    ge_p3 A;
+    ge_p2 R;
+    // maybe use assert instead?
+    ge_frombytes_vartime(&A, reinterpret_cast<const unsigned char*>(&P));
+    ge_scalarmult(&R, reinterpret_cast<const unsigned char*>(&a), &A);
+    KeyImage aP;
+    ge_tobytes(reinterpret_cast<unsigned char*>(&aP), &R);
+    return aP;
   }
 
   void crypto_ops::hash_data_to_ec(const uint8_t* data, std::size_t len, PublicKey& key) {

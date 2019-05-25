@@ -759,12 +759,32 @@ struct COMMAND_RPC_QUERY_BLOCKS_LITE {
   };
 };
 
+struct COMMAND_RPC_GET_BLOCKS_DETAILS_BY_HEIGHTS {
+  struct request {
+    std::vector<uint32_t> blockHeights;
+
+    void serialize(ISerializer& s) {
+      KV_MEMBER(blockHeights);
+    }
+  };
+
+  struct response {
+    std::vector<BlockDetails> blocks;
+    std::string status;
+
+    void serialize(ISerializer& s) {
+      KV_MEMBER(status)
+      KV_MEMBER(blocks)
+    }
+  };
+};
+
 struct COMMAND_RPC_GET_BLOCKS_DETAILS_BY_HASHES {
   struct request {
     std::vector<Crypto::Hash> blockHashes;
 
     void serialize(ISerializer& s) {
-      serializeAsBinary(blockHashes, "blockHashes", s);
+      KV_MEMBER(blockHashes);
     }
   };
 
@@ -816,7 +836,7 @@ struct COMMAND_RPC_GET_TRANSACTION_HASHES_BY_PAYMENT_ID {
 
     void serialize(ISerializer &s) {
       KV_MEMBER(status)
-      serializeAsBinary(transactionHashes, "transactionHashes", s);
+        KV_MEMBER(transactionHashes);
     }
   };
 };
@@ -826,7 +846,7 @@ struct COMMAND_RPC_GET_TRANSACTION_DETAILS_BY_HASHES {
     std::vector<Crypto::Hash> transactionHashes;
 
     void serialize(ISerializer &s) {
-      serializeAsBinary(transactionHashes, "transactionHashes", s);
+      KV_MEMBER(transactionHashes);
     }
   };
 
@@ -837,6 +857,46 @@ struct COMMAND_RPC_GET_TRANSACTION_DETAILS_BY_HASHES {
     void serialize(ISerializer &s) {
       KV_MEMBER(status)
       KV_MEMBER(transactions)
+    }
+  };
+};
+
+struct COMMAND_RPC_GET_TRANSACTION_DETAILS_BY_HASH {
+  struct request {
+    Crypto::Hash hash;
+
+    void serialize(ISerializer &s) {
+      KV_MEMBER(hash);
+    }
+  };
+
+  struct response {
+    TransactionDetails transaction;
+    std::string status;
+
+    void serialize(ISerializer &s) {
+      KV_MEMBER(status)
+      KV_MEMBER(transaction)
+    }
+  };
+};
+
+struct COMMAND_RPC_GET_BLOCK_DETAILS_BY_HEIGHT {
+  struct request {
+    uint64_t blockHeight;
+
+    void serialize(ISerializer &s) {
+      KV_MEMBER(blockHeight)
+    }
+  };
+
+  struct response {
+    BlockDetails block;
+    std::string status;
+
+    void serialize(ISerializer& s) {
+      KV_MEMBER(status)
+      KV_MEMBER(block)
     }
   };
 };

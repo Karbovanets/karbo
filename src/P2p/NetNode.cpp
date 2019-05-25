@@ -84,7 +84,7 @@ void addPortMapping(Logging::LoggerRef& logger, uint32_t port) {
         portString.str().c_str(), lanAddress, CryptoNote::CRYPTONOTE_NAME, "TCP", 0, "0") != 0) {
         logger(ERROR) << "UPNP_AddPortMapping failed.";
       } else {
-        logger(INFO, BRIGHT_GREEN) << "Added IGD port mapping.";
+        logger(INFO) << "Added IGD port mapping.";
       }
     } else if (result == 2) {
       logger(INFO) << "IGD was found but reported as not connected.";

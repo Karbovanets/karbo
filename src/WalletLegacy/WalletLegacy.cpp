@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2014-2016, The Monero Project
 // Copyright (c) 2017-2018, Karbo developers
 // Copyright (c) 2018, The BBSCoin Developers
 // 
@@ -33,6 +34,7 @@
 #include <string.h>
 #include <time.h>
 
+#include <Common/Base58.h>
 #include "Logging/ConsoleLogger.h"
 #include "WalletLegacy/WalletHelper.h"
 #include "WalletLegacy/WalletLegacySerialization.h"
@@ -254,7 +256,7 @@ void WalletLegacy::initAndLoad(std::istream& source, const std::string& password
 void WalletLegacy::initSync() {
   AccountSubscription sub;
   sub.keys = reinterpret_cast<const AccountKeys&>(m_account.getAccountKeys());
-  sub.transactionSpendableAge = 1;
+  sub.transactionSpendableAge = CryptoNote::parameters::CRYPTONOTE_TX_SPENDABLE_AGE;
   sub.syncStart.height = 0;
   sub.syncStart.timestamp = m_account.get_createtime() - ACCOUNT_CREATE_TIME_ACCURACY;
   
@@ -461,6 +463,37 @@ std::string WalletLegacy::getAddress() {
 
 std::vector<Payments> WalletLegacy::getTransactionsByPaymentIds(const std::vector<PaymentId>& paymentIds) const {
   return m_transactionsCache.getTransactionsByPaymentIds(paymentIds);
+}
+
+std::string WalletLegacy::sign(const std::string &data) {
+  Crypto::Hash hash;
+  Crypto::cn_fast_hash(data.data(), data.size(), hash);
+  const CryptoNote::AccountKeys &keys = m_account.getAccountKeys();
+  Crypto::Signature signature;
+  Crypto::generate_signature(hash, keys.address.spendPublicKey, keys.spendSecretKey, signature);
+  return std::string("SigV1") + Tools::Base58::encode(std::string((const char *)&signature, sizeof(signature)));
+}
+
+bool WalletLegacy::verify(const std::string &data, const CryptoNote::AccountPublicAddress &address, const std::string &signature) {
+  const size_t header_len = strlen("SigV1");
+  if (signature.size() < header_len || signature.substr(0, header_len) != "SigV1") {
+    std::cout << "Signature header check error";
+    return false;
+  }
+  Crypto::Hash hash;
+  Crypto::cn_fast_hash(data.data(), data.size(), hash);
+  std::string decoded;
+  if (!Tools::Base58::decode(signature.substr(header_len), decoded)) {
+    std::cout <<"Signature decoding error";
+    return false;
+  }
+  Crypto::Signature s;
+  if (sizeof(s) != decoded.size()) {
+    std::cout << "Signature decoding error";
+    return false;
+  }
+  memcpy(&s, decoded.data(), sizeof(s));
+  return Crypto::check_signature(hash, address.spendPublicKey, s);
 }
 
 uint64_t WalletLegacy::actualBalance() {

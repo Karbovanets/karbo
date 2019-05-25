@@ -49,7 +49,10 @@ enum class TransactionValidationError {
   OUTPUTS_AMOUNT_OVERFLOW,
   WRONG_AMOUNT,
   WRONG_TRANSACTION_UNLOCK_TIME,
-  INVALID_MIXIN
+  INVALID_MIXIN,
+  EXTRA_TOO_LARGE,
+  BASE_INVALID_SIGNATURES_COUNT,
+  INPUT_INVALID_SIGNATURES_COUNT
 };
 
 // custom category:
@@ -94,7 +97,10 @@ public:
       case TransactionValidationError::OUTPUTS_AMOUNT_OVERFLOW: return "Transaction has outputs amount overflow";
       case TransactionValidationError::WRONG_AMOUNT: return "Transaction wrong amount";
       case TransactionValidationError::WRONG_TRANSACTION_UNLOCK_TIME: return "Transaction has wrong unlock time";
-	  case TransactionValidationError::INVALID_MIXIN: return "Transaction has wrong mixin";
+      case TransactionValidationError::INVALID_MIXIN: return "Transaction has wrong mixin";
+      case TransactionValidationError::EXTRA_TOO_LARGE: return "Transaction extra is too large";
+      case TransactionValidationError::BASE_INVALID_SIGNATURES_COUNT: return "Coinbase transactions must not have input signatures";
+      case TransactionValidationError::INPUT_INVALID_SIGNATURES_COUNT: return "The number of input signatures is not correct";
       default: return "Unknown error";
     }
   }

@@ -1,4 +1,8 @@
-// Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2017, The Monero Project
+// Copyright (c) 2018, The Galaxia Project Developers
+// Copyright (c) 2018, The TurtleCoin Developers
+// Copyright (c) 2017-2019, The The Karbo Developers
 //
 // This file is part of Bytecoin.
 //
@@ -140,6 +144,7 @@ TransactionValidatorState extractSpentOutputs(const CachedTransaction& transacti
     if (input.type() == typeid(KeyInput)) {
       const KeyInput& in = boost::get<KeyInput>(input);
       bool r = spentOutputs.spentKeyImages.insert(in.keyImage).second;
+      if (r) {}
       assert(r);
     } else if (input.type() == typeid(MultisignatureInput)) {
       const MultisignatureInput& in = boost::get<MultisignatureInput>(input);
@@ -465,8 +470,8 @@ bool Core::queryBlocksLite(const std::vector<Crypto::Hash>& knownBlockHashes, ui
     fillQueryBlockShortInfo(fullOffset, currentIndex, BLOCKS_SYNCHRONIZING_DEFAULT_COUNT, entries);
 
     return true;
-  } catch (std::exception&) {
-    // TODO log
+  } catch (std::exception& e) {
+	logger(Logging::ERROR) << "Failed to query blocks: " << e.what();
     return false;
   }
 }
@@ -1180,7 +1185,7 @@ bool Core::getBlockTemplate(BlockTemplate& b, const AccountPublicAddress& adr, c
   // Fix by Jagerman
   if(height >= currency.timestampCheckWindow(b.majorVersion)) {
     std::vector<uint64_t> timestamps;
-    for(size_t offset = height - currency.timestampCheckWindow(b.majorVersion); offset < height; ++offset){
+    for(uint32_t offset = height - static_cast<uint32_t>(currency.timestampCheckWindow(b.majorVersion)); offset < height; ++offset){
       timestamps.push_back(getBlockTimestampByIndex(offset));
     }
     uint64_t median_ts = Common::medianValue(timestamps);
@@ -1416,6 +1421,11 @@ std::error_code Core::validateTransaction(const CachedTransaction& cachedTransac
           return error::TransactionValidationError::INPUT_SPEND_LOCKED_OUT;
         }
 
+        if (outputKeys.size() != cachedTransaction.getTransaction().signatures[inputIndex].size())
+        {
+          return error::TransactionValidationError::INPUT_INVALID_SIGNATURES_COUNT;
+        }
+
         std::vector<const Crypto::PublicKey*> outputKeyPointers;
         outputKeyPointers.reserve(outputKeys.size());
         std::for_each(outputKeys.begin(), outputKeys.end(), [&outputKeyPointers] (const Crypto::PublicKey& key) { outputKeyPointers.push_back(&key); });
@@ -1538,6 +1548,9 @@ std::error_code Core::validateSemantic(const Transaction& transaction, uint64_t&
     summaryOutputAmount += output.amount;
   }
 
+  // parameters used for the additional key_image check
+  static const Crypto::KeyImage I = { {0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } };
+  static const Crypto::KeyImage L = { {0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58, 0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10 } };
 
   uint64_t summaryInputAmount = 0;
   std::unordered_set<Crypto::KeyImage> ki;
@@ -1553,6 +1566,13 @@ std::error_code Core::validateSemantic(const Transaction& transaction, uint64_t&
 
       if (in.outputIndexes.empty()) {
         return error::TransactionValidationError::INPUT_EMPTY_OUTPUT_USAGE;
+      }
+
+      // additional key_image check
+      // Fix discovered by Monero Lab and suggested by "fluffypony" (bitcointalk.org)
+      if (!(scalarmultKey(in.keyImage, L) == I)) {
+        logger(Logging::ERROR) << "Transaction uses key image not in the valid domain";
+        return error::TransactionValidationError::INPUT_INVALID_DOMAIN_KEYIMAGES;
       }
 
       // outputIndexes are packed here, first is absolute, others are offsets to previous,
@@ -1653,6 +1673,11 @@ std::error_code Core::validateBlock(const CachedBlock& cachedBlock, IBlockchainC
 
   if (!(block.baseTransaction.unlockTime == previousBlockIndex + 1 + currency.minedMoneyUnlockWindow())) {
     return error::TransactionValidationError::WRONG_TRANSACTION_UNLOCK_TIME;
+  }
+
+  if (!block.baseTransaction.signatures.empty())
+  {
+    return error::TransactionValidationError::BASE_INVALID_SIGNATURES_COUNT;
   }
 
   for (const auto& output : block.baseTransaction.outputs) {
@@ -1828,8 +1853,21 @@ IBlockchainCache* Core::findSegmentContainingBlock(const Crypto::Hash& blockHash
     return blockSegment;
   }
 
-  // than search in alternative chains
+  // then search in alternative chains
   return findAlternativeSegmentContainingBlock(blockHash);
+}
+
+IBlockchainCache* Core::findSegmentContainingBlock(uint32_t blockHeight) const {
+  assert(chainsLeaves.size() > 0);
+
+  // first search in main chain
+  auto blockSegment = findMainChainSegmentContainingBlock(blockHeight);
+  if (blockSegment != nullptr) {
+    return blockSegment;
+  }
+
+  // then search in alternative chains
+  return findAlternativeSegmentContainingBlock(blockHeight);
 }
 
 IBlockchainCache* Core::findAlternativeSegmentContainingBlock(const Crypto::Hash& blockHash) const {
@@ -2091,6 +2129,7 @@ void Core::deleteLeaf(size_t leafIndex) {
   IBlockchainCache* parent = leaf->getParent();
   if (parent != nullptr) {
     bool r = parent->deleteChild(leaf);
+    if (r) {}
     assert(r);
   }
 
@@ -2173,6 +2212,17 @@ void Core::mergeSegments(IBlockchainCache* acceptingSegment, IBlockchainCache* s
   }
 }
 
+BlockDetails Core::getBlockDetails(const uint32_t blockHeight) const {
+  throwIfNotInitialized();
+
+  IBlockchainCache* segment = findSegmentContainingBlock(blockHeight);
+  if (segment == nullptr) {
+    throw std::runtime_error("Requested block height wasn't found in blockchain.");
+  }
+
+  return getBlockDetails(segment->getBlockHash(blockHeight));
+}
+
 BlockDetails Core::getBlockDetails(const Crypto::Hash& blockHash) const {
   throwIfNotInitialized();
 
@@ -2223,6 +2273,7 @@ BlockDetails Core::getBlockDetails(const Crypto::Hash& blockHash) const {
 
   int64_t emissionChange = 0;
   bool result = currency.getBlockReward(blockDetails.majorVersion, blockDetails.sizeMedian, 0, prevBlockGeneratedCoins, 0, blockDetails.baseReward, emissionChange);
+  if (result) {}
   assert(result);
 
   uint64_t currentReward = 0;
@@ -2354,12 +2405,19 @@ TransactionDetails Core::getTransactionDetails(const Crypto::Hash& transactionHa
       outputReferences.reserve(txInToKeyDetails.input.outputIndexes.size());
       std::vector<uint32_t> globalIndexes = relativeOutputOffsetsToAbsolute(txInToKeyDetails.input.outputIndexes);
       ExtractOutputKeysResult result = segment->extractKeyOtputReferences(txInToKeyDetails.input.amount, { globalIndexes.data(), globalIndexes.size() }, outputReferences);
+      if (result == result) {}
       assert(result == ExtractOutputKeysResult::SUCCESS);
       assert(txInToKeyDetails.input.outputIndexes.size() == outputReferences.size());
 
       txInToKeyDetails.mixin = txInToKeyDetails.input.outputIndexes.size();
-      txInToKeyDetails.output.number = outputReferences.back().second;
-      txInToKeyDetails.output.transactionHash = outputReferences.back().first;
+      
+      for (const auto& r : outputReferences) {
+        TransactionOutputReferenceDetails d;
+        d.number = r.second;
+        d.transactionHash = r.first;
+        txInToKeyDetails.outputs.push_back(d);
+      }
+
       txInDetails = txInToKeyDetails;
     } else if (transaction->getInputType(i) == TransactionTypes::InputType::Multisignature) {
       MultisignatureInputDetails txInMultisigDetails;

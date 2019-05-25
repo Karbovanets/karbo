@@ -838,6 +838,7 @@ void WalletGreen::subscribeWallets() {
 
       auto& subscription = m_synchronizer.addSubscription(sub);
       bool r = index.modify(it, [&subscription](WalletRecord& rec) { rec.container = &subscription.getContainer(); });
+      if (r) {}
       assert(r);
 
       subscription.addObserver(this);
@@ -1405,7 +1406,7 @@ void WalletGreen::prepareTransaction(std::vector<WalletOuts>&& wallets,
   uint64_t donationAmount = pushDonationTransferIfPossible(donation, foundMoney - preparedTransaction.neededMoney, m_currency.defaultDustThreshold(), preparedTransaction.destinations);
   preparedTransaction.changeAmount = foundMoney - preparedTransaction.neededMoney - donationAmount;
 
-  std::vector<ReceiverAmounts> decomposedOutputs = splitDestinations(preparedTransaction.destinations, m_currency.defaultDustThreshold(), m_currency);
+  std::vector<ReceiverAmounts> decomposedOutputs = splitDestinations(preparedTransaction.destinations, 0, m_currency);
   if (preparedTransaction.changeAmount != 0) {
     WalletTransfer changeTransfer;
     changeTransfer.type = WalletTransferType::CHANGE;
@@ -1413,7 +1414,7 @@ void WalletGreen::prepareTransaction(std::vector<WalletOuts>&& wallets,
     changeTransfer.amount = static_cast<int64_t>(preparedTransaction.changeAmount);
     preparedTransaction.destinations.emplace_back(std::move(changeTransfer));
 
-    auto splittedChange = splitAmount(preparedTransaction.changeAmount, changeDestination, m_currency.defaultDustThreshold());
+    auto splittedChange = splitAmount(preparedTransaction.changeAmount, changeDestination, 0);
     decomposedOutputs.emplace_back(std::move(splittedChange));
   }
 
@@ -1847,6 +1848,7 @@ bool WalletGreen::updateWalletTransactionInfo(size_t transactionId, const Crypto
     }
   });
 
+  if (r) {}
   assert(r);
 
   if (updated) {
@@ -2345,7 +2347,7 @@ std::vector<CryptoNote::WalletGreen::ReceiverAmounts> WalletGreen::splitDestinat
   std::vector<ReceiverAmounts> decomposedOutputs;
   for (const auto& destination: destinations) {
     AccountPublicAddress address = parseAccountAddressString(destination.address);
-    decomposedOutputs.push_back(splitAmount(destination.amount, address, dustThreshold));
+    decomposedOutputs.push_back(splitAmount(destination.amount, address, 0));
   }
 
   return decomposedOutputs;
@@ -2359,7 +2361,7 @@ CryptoNote::WalletGreen::ReceiverAmounts WalletGreen::splitAmount(
   ReceiverAmounts receiverAmounts;
 
   receiverAmounts.receiver = destination;
-  decomposeAmount(amount, dustThreshold, receiverAmounts.amounts);
+  decomposeAmount(amount, 0, receiverAmounts.amounts);
   return receiverAmounts;
 }
 
@@ -2673,6 +2675,7 @@ void WalletGreen::onTransactionUpdated(const Crypto::PublicKey&, const Crypto::H
     // Don't move this code to the following remote spawn, because it guarantees that the container has the transaction
     uint64_t outputsAmount;
     bool found = container->getTransactionInformation(transactionHash, info, &inputsAmount, &outputsAmount);
+    if (found) {}
     assert(found);
 
     ContainerAmounts containerAmounts;
@@ -3051,7 +3054,6 @@ size_t WalletGreen::createFusionTransaction(uint64_t threshold, uint16_t mixin,
   std::unique_ptr<ITransaction> fusionTransaction;
   size_t transactionSize;
   int round = 0;
-  uint64_t transactionAmount;
   do {
     if (round != 0) {
       fusionInputs.pop_back();
@@ -3061,8 +3063,6 @@ size_t WalletGreen::createFusionTransaction(uint64_t threshold, uint16_t mixin,
     uint64_t inputsAmount = std::accumulate(fusionInputs.begin(), fusionInputs.end(), static_cast<uint64_t>(0), [] (uint64_t amount, const OutputToTransfer& input) {
       return amount + input.out.amount;
     });
-
-    transactionAmount = inputsAmount;
 
     ReceiverAmounts decomposedOutputs = decomposeFusionOutputs(destination, inputsAmount);
     assert(decomposedOutputs.amounts.size() <= MAX_FUSION_OUTPUT_COUNT);

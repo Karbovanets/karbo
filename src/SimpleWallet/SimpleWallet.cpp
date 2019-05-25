@@ -3,7 +3,7 @@
 // Copyright (c) 2014-2016, The Monero Project
 // Copyright (c) 2014-2017, The Forknote developers
 // Copyright (c) 2014-2017, The Monero Project
-// Copyright (c) 2016-2018, The Karbo developers
+// Copyright (c) 2016-2019, The Karbo developers
 //
 // All rights reserved.
 // 
@@ -630,6 +630,15 @@ bool simple_wallet::help(const std::vector<std::string> &args/* = std::vector<st
 
 bool simple_wallet::seed(const std::vector<std::string> &args/* = std::vector<std::string>()*/) {
   std::string electrum_words;
+
+  m_consoleHandler.pause();
+  if (!pwd_container.read_and_validate()) {
+    std::cout << "Incorrect password!" << std::endl;
+    m_consoleHandler.unpause();
+    return false;
+  }
+  m_consoleHandler.unpause();
+
   bool success = m_wallet->getSeed(electrum_words);
 
   if (success)
@@ -682,6 +691,8 @@ simple_wallet::simple_wallet(System::Dispatcher& dispatcher, const CryptoNote::C
   m_consoleHandler.setHandler("show_seed", boost::bind(&simple_wallet::seed, this, _1), "Get wallet recovery phrase (deterministic seed)");
   m_consoleHandler.setHandler("payment_id", boost::bind(&simple_wallet::payment_id, this, _1), "Generate random Payment ID");
   m_consoleHandler.setHandler("password", boost::bind(&simple_wallet::change_password, this, _1), "Change password");
+  m_consoleHandler.setHandler("sign", boost::bind(&simple_wallet::sign, this, _1), "Sign the contents of a file");
+  m_consoleHandler.setHandler("verify", boost::bind(&simple_wallet::verify, this, _1), "Verify a signature on the contents of a file");
   m_consoleHandler.setHandler("help", boost::bind(&simple_wallet::help, this, _1), "Show this help");
   m_consoleHandler.setHandler("exit", boost::bind(&simple_wallet::exit, this, _1), "Close wallet");
 }
@@ -1720,6 +1731,15 @@ void simple_wallet::synchronizationProgressUpdated(uint32_t current, uint32_t to
 bool simple_wallet::export_keys(const std::vector<std::string>& args/* = std::vector<std::string>()*/) {
   AccountKeys keys;
   m_wallet->getAccountKeys(keys);
+
+  m_consoleHandler.pause();
+  if (!pwd_container.read_and_validate()) {
+    std::cout << "Incorrect password!" << std::endl;
+    m_consoleHandler.unpause();
+    return false;
+  }
+  m_consoleHandler.unpause();
+
   std::cout << "Spend secret key: " << Common::podToHex(keys.spendSecretKey) << std::endl;
   std::cout << "View secret key: " << Common::podToHex(keys.viewSecretKey) << std::endl;
   std::cout << "Private keys: " << Tools::Base58::encode_addr(CryptoNote::parameters::CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX,
@@ -1936,6 +1956,15 @@ bool simple_wallet::transfer(const std::vector<std::string> &args) {
     fail_msg_writer() << "This is tracking wallet. Spending is impossible.";
     return true;
   }
+
+  m_consoleHandler.pause();
+  if (!pwd_container.read_and_validate()) {
+    std::cout << "Incorrect password!" << std::endl;
+    m_consoleHandler.unpause();
+    return false;
+  }
+  m_consoleHandler.unpause();
+
   try {
     TransferCommand cmd(m_currency, *m_node);
 
@@ -2040,6 +2069,58 @@ void simple_wallet::stop() {
 //----------------------------------------------------------------------------------------------------
 bool simple_wallet::print_address(const std::vector<std::string> &args/* = std::vector<std::string>()*/) {
   success_msg_writer() << m_wallet->getAddress();
+  return true;
+}
+//----------------------------------------------------------------------------------------------------
+bool simple_wallet::sign(const std::vector<std::string> &args) {
+  if (args.size() != 1) {
+    fail_msg_writer() << "usage: sign \"message to sign\" (use quotes if case of spaces)";
+    return true;
+  }
+  if (m_trackingWallet) {
+    fail_msg_writer() << "wallet is watch-only and cannot sign";
+    return true;
+  }
+  std::string data = args[0];
+  std::string signature = m_wallet->sign(data);
+  success_msg_writer() << signature;
+  return true;
+}
+//----------------------------------------------------------------------------------------------------
+bool simple_wallet::verify(const std::vector<std::string> &args) {
+  if (args.size() != 3) {
+    fail_msg_writer() << "usage: verify \"message to verify\" <address> <signature>";
+    return true;
+  }
+  std::string data = args[0];
+  std::string address_string = args[1];
+  std::string signature = args[2];
+  CryptoNote::AccountPublicAddress address;
+  if (!m_currency.parseAccountAddressString(address_string, address)) {
+    fail_msg_writer() << "failed to parse address " << address_string;
+	return true;
+  }
+  const size_t header_len = strlen("SigV1");
+  if (signature.size() < header_len || signature.substr(0, header_len) != "SigV1") {
+    fail_msg_writer() << ("Signature header check error");
+    return false;
+  }
+  std::string decoded;
+  if (!Tools::Base58::decode(signature.substr(header_len), decoded)) {
+    fail_msg_writer() << ("Signature decoding error");
+    return false;
+  }
+  Crypto::Signature s;
+  if (sizeof(s) != decoded.size()) {
+    fail_msg_writer() << ("Signature decoding error");
+    return false;
+  }
+  bool r = m_wallet->verify(data, address, signature);
+  if (!r) {
+    fail_msg_writer() << "Invalid signature from " << address_string;
+  } else {
+    success_msg_writer() << "Valid signature from " << address_string;
+  }
   return true;
 }
 //----------------------------------------------------------------------------------------------------

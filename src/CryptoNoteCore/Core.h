@@ -118,6 +118,7 @@ public:
   virtual void load() override;
 
   virtual BlockDetails getBlockDetails(const Crypto::Hash& blockHash) const override;
+  BlockDetails getBlockDetails(const uint32_t blockHeight) const;
   virtual TransactionDetails getTransactionDetails(const Crypto::Hash& transactionHash) const override;
   virtual std::vector<Crypto::Hash> getAlternativeBlockHashesByIndex(uint32_t blockIndex) const override;
   virtual std::vector<Crypto::Hash> getBlockHashesByTimestamps(uint64_t timestampBegin, size_t secondsCount) const override;
@@ -160,6 +161,8 @@ private:
   std::error_code validateMixin(const Transaction& transaction, uint32_t blockIndex);
   std::error_code validateFee(const Transaction& transaction, uint32_t blockIndex);
 
+  bool check_tx_inputs_keyimages_diff(const Transaction& tx);
+
   uint32_t findBlockchainSupplement(const std::vector<Crypto::Hash>& remoteBlockIds) const;
   std::vector<Crypto::Hash> getBlockHashes(uint32_t startBlockIndex, uint32_t maxCount) const;
 
@@ -168,6 +171,7 @@ private:
   uint64_t getAdjustedTime() const;
   void updateMainChainSet();
   IBlockchainCache* findSegmentContainingBlock(const Crypto::Hash& blockHash) const;
+  IBlockchainCache* findSegmentContainingBlock(uint32_t blockHeight) const;
   IBlockchainCache* findMainChainSegmentContainingBlock(const Crypto::Hash& blockHash) const;
   IBlockchainCache* findAlternativeSegmentContainingBlock(const Crypto::Hash& blockHash) const;
 
