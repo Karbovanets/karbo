@@ -1933,7 +1933,7 @@ bool simple_wallet::show_balance(const std::vector<std::string>& args/* = std::v
   success_msg_writer() << "available balance: " << m_currency.formatAmount(m_wallet->actualBalance()) <<
   ", locked amount: " << m_currency.formatAmount(m_wallet->pendingBalance()) <<
   ", total balance: " << m_currency.formatAmount(m_wallet->actualBalance() + m_wallet->pendingBalance()) <<
-  ", unixable dust: " << m_currency.formatAmount(m_wallet->dustBalance());
+  ", unmixable dust: " << m_currency.formatAmount(m_wallet->dustBalance());
 
   return true;
 }
