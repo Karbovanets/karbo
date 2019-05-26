@@ -127,6 +127,7 @@ public:
 
   virtual uint64_t get_current_blockchain_height() const;
   uint8_t getBlockMajorVersionForHeight(uint32_t height) const;
+  virtual bool getMixin(const Transaction& transaction, uint64_t& mixin) override;
 
   virtual uint64_t getMinimalFeeForHeight(uint32_t height) override;
   virtual uint64_t getMinimalFee() override;
@@ -159,7 +160,6 @@ private:
 
   void throwIfNotInitialized() const;
   bool extractTransactions(const std::vector<BinaryArray>& rawTransactions, std::vector<CachedTransaction>& transactions, uint64_t& cumulativeSize);
-  bool getMixin(const Transaction& transaction, uint64_t& mixin);
 
   std::error_code validateSemantic(const Transaction& transaction, uint64_t& fee, uint32_t blockIndex);
   std::error_code validateTransaction(const CachedTransaction& transaction, TransactionValidatorState& state, IBlockchainCache* cache, uint64_t& fee, uint32_t blockIndex);

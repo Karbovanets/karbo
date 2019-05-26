@@ -164,6 +164,8 @@ void NodeRpcProxy::workerThread(const INode::Callback& initialized_callback) {
       m_cv_initialized.notify_all();
     }
 
+	getFeeAddress();
+
     initialized_callback(std::error_code());
 
     contextGroup.spawn([this]() {
@@ -297,6 +299,24 @@ void NodeRpcProxy::updatePoolState(const std::vector<std::unique_ptr<ITransactio
     Hash hash = tx->getTransactionHash();
     m_knownTxs.emplace(std::move(hash));
   }
+}
+
+void NodeRpcProxy::getFeeAddress() {
+  CryptoNote::COMMAND_RPC_GET_FEE_ADDRESS::request ireq = AUTO_VAL_INIT(ireq);
+  CryptoNote::COMMAND_RPC_GET_FEE_ADDRESS::response iresp = AUTO_VAL_INIT(iresp);
+
+  std::error_code ec = jsonCommand("/feeaddress", ireq, iresp);
+
+  if (ec || iresp.status != CORE_RPC_STATUS_OK) {
+    return;
+  }
+  m_fee_address = iresp.fee_address;
+
+  return;
+}
+
+std::string NodeRpcProxy::feeAddress() const {
+  return m_fee_address;
 }
 
 std::vector<Crypto::Hash> NodeRpcProxy::getKnownTxsVector() const {
@@ -503,6 +523,16 @@ void NodeRpcProxy::getBlocks(const std::vector<Crypto::Hash>& blockHashes, std::
   scheduleRequest(std::bind(&NodeRpcProxy::doGetBlocksByHashes, this, std::cref(blockHashes), std::ref(blocks)), callback);
 }
 
+void NodeRpcProxy::getBlock(const uint32_t blockHeight, BlockDetails &block, const Callback& callback) {
+  std::lock_guard<std::mutex> lock(m_mutex);
+  if (m_state != STATE_INITIALIZED) {
+    callback(make_error_code(error::NOT_INITIALIZED));
+    return;
+  }
+
+  scheduleRequest(std::bind(&NodeRpcProxy::doGetBlock, this, blockHeight, std::ref(block)), callback);
+}
+
 void NodeRpcProxy::getTransactions(const std::vector<Crypto::Hash>& transactionHashes, std::vector<TransactionDetails>& transactions, const Callback& callback) {
   std::lock_guard<std::mutex> lock(m_mutex);
   if (m_state != STATE_INITIALIZED) {
@@ -511,6 +541,17 @@ void NodeRpcProxy::getTransactions(const std::vector<Crypto::Hash>& transactionH
   }
 
   scheduleRequest(std::bind(&NodeRpcProxy::doGetTransactions, this, std::cref(transactionHashes), std::ref(transactions)), callback);
+}
+
+void NodeRpcProxy::getTransactionsByPaymentId(const Crypto::Hash& paymentId, std::vector<TransactionDetails>& transactions, const Callback& callback) {
+  std::lock_guard<std::mutex> lock(m_mutex);
+  if (m_state != STATE_INITIALIZED) {
+    callback(make_error_code(error::NOT_INITIALIZED));
+    return;
+  }
+
+  // TODO NOT IMPLEMENTED
+  callback(std::error_code());
 }
 
 void NodeRpcProxy::isSynchronized(bool& syncStatus, const Callback& callback) {
@@ -704,6 +745,23 @@ std::error_code NodeRpcProxy::doGetBlocksByHashes(const std::vector<Crypto::Hash
   }
 
   blocks = std::move(resp.blocks);
+  return ec;
+}
+
+std::error_code NodeRpcProxy::doGetBlock(const uint32_t blockHeight, BlockDetails& block) {
+  COMMAND_RPC_GET_BLOCK_DETAILS_BY_HEIGHT::request req = AUTO_VAL_INIT(req);
+  COMMAND_RPC_GET_BLOCK_DETAILS_BY_HEIGHT::response resp = AUTO_VAL_INIT(resp);
+
+  req.blockHeight = blockHeight;
+
+  std::error_code ec = jsonCommand("/get_block_details_by_height", req, resp);
+
+  if (ec) {
+    return ec;
+  }
+
+  block = std::move(resp.block);
+
   return ec;
 }
 

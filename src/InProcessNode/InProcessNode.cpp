@@ -560,6 +560,15 @@ BlockHeaderInfo InProcessNode::getLastLocalBlockHeaderInfo() const {
   return lastLocalBlockHeaderInfo;
 }
 
+void InProcessNode::getFeeAddress() {
+  // Do nothing
+  return;
+}
+
+std::string InProcessNode::feeAddress() const {
+  return std::string();
+}
+
 void InProcessNode::getBlockHashesByTimestamps(uint64_t timestampBegin, size_t secondsCount, std::vector<Crypto::Hash>& blockHashes, const Callback& callback) {
   std::unique_lock<std::mutex> lock(mutex);
   if (state != INITIALIZED) {
@@ -567,18 +576,20 @@ void InProcessNode::getBlockHashesByTimestamps(uint64_t timestampBegin, size_t s
   }
   lock.unlock();
 
-  executeInDispatcherThread([this, timestampBegin, secondsCount, &blockHashes, callback] () mutable {
+  executeInDispatcherThread([this, timestampBegin, secondsCount, &blockHashes, callback]() mutable {
     std::error_code ec;
 
     try {
       blockHashes = core.getBlockHashesByTimestamps(timestampBegin, secondsCount);
-    } catch (std::system_error& e) {
+    }
+    catch (std::system_error& e) {
       ec = e.code();
-    } catch (std::exception&) {
+    }
+    catch (std::exception&) {
       ec = make_error_code(error::INTERNAL_NODE_ERROR);
     }
 
-    executeInRemoteThread([callback, ec] () { callback(ec); });
+    executeInRemoteThread([callback, ec]() { callback(ec); });
   });
 }
 
@@ -812,6 +823,26 @@ void InProcessNode::getBlocks(const std::vector<uint32_t>& blockHeights, std::ve
   });
 }
 
+void InProcessNode::getBlock(const uint32_t blockHeight, BlockDetails &block, const Callback& callback) {
+  std::unique_lock<std::mutex> lock(mutex);
+  if (state != INITIALIZED) {
+    lock.unlock();
+    callback(make_error_code(CryptoNote::error::NOT_INITIALIZED));
+    return;
+  }
+
+  std::vector<uint32_t> blockHeights;
+  std::vector<std::vector<BlockDetails>> blocks;
+  blockHeights.push_back(blockHeight);
+ 
+  executeInDispatcherThread([=, &blocks]() {
+    auto ec = doGetBlocks(blockHeights, blocks);
+    executeInRemoteThread([callback, ec]() { callback(ec); });
+  });
+
+  block = blocks[0][0];
+}
+
 std::error_code InProcessNode::doGetBlocks(const std::vector<uint32_t>& blockIndexes,
                                            std::vector<std::vector<BlockDetails>>& blocks) {
   try {
@@ -874,7 +905,6 @@ std::error_code InProcessNode::doGetBlocks(const std::vector<Crypto::Hash>& bloc
   return std::error_code();
 }
 
-
 void InProcessNode::getTransactions(const std::vector<Crypto::Hash>& transactionHashes,
                                     std::vector<TransactionDetails>& transactions, const Callback& callback) {
   std::unique_lock<std::mutex> lock(mutex);
@@ -907,6 +937,40 @@ std::error_code InProcessNode::doGetTransactions(const std::vector<Crypto::Hash>
   }
 
 
+  return std::error_code();
+}
+
+void InProcessNode::getTransactionsByPaymentId(const Crypto::Hash& paymentId, std::vector<TransactionDetails>& transactions, const Callback& callback) {
+  std::unique_lock<std::mutex> lock(mutex);
+  if (state != INITIALIZED) {
+    lock.unlock();
+    callback(make_error_code(CryptoNote::error::NOT_INITIALIZED));
+    return;
+  }
+
+  executeInDispatcherThread([=, &paymentId, &transactions]() {
+    auto ec = doGetTransactionsByPaymentId(paymentId, transactions);
+    executeInRemoteThread([callback, ec]() { callback(ec); });
+  });
+}
+
+std::error_code InProcessNode::doGetTransactionsByPaymentId(const Crypto::Hash& paymentId, std::vector<TransactionDetails>& transactions) {
+  try {
+    std::vector<Crypto::Hash> transactionHashes = core.getTransactionHashesByPaymentId(paymentId);
+    for (const auto& hash : transactionHashes) {
+      if (!core.hasTransaction(hash)) {
+        return make_error_code(CryptoNote::error::REQUEST_ERROR);
+      }
+      TransactionDetails transactionDetails = core.getTransactionDetails(hash);
+      transactions.push_back(std::move(transactionDetails));
+    }
+  }
+  catch (std::system_error& e) {
+    return e.code();
+  }
+  catch (std::exception&) {
+    return make_error_code(CryptoNote::error::INTERNAL_NODE_ERROR);
+  }
   return std::error_code();
 }
 

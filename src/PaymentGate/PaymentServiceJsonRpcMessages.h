@@ -1,4 +1,6 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2018, The TurtleCoin Developers
+// Copyright (c) 2018-2019 The Karbo developers
 //
 // This file is part of Bytecoin.
 //
@@ -78,6 +80,20 @@ struct GetViewKey {
   };
 };
 
+struct GetMnemonicSeed {
+  struct Request {
+    std::string address;
+
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+
+  struct Response {
+    std::string mnemonicSeed;
+
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+};
+
 struct GetStatus {
   struct Request {
     void serialize(CryptoNote::ISerializer& serializer);
@@ -143,6 +159,7 @@ struct CreateAddress {
 struct CreateAddressList {
   struct Request {
     std::vector<std::string> spendSecretKeys;
+    bool reset;
 
     void serialize(CryptoNote::ISerializer& serializer);
   };

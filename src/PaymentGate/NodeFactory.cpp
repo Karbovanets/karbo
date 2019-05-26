@@ -18,6 +18,7 @@
 #include "NodeFactory.h"
 
 #include "NodeRpcProxy/NodeRpcProxy.h"
+#include "BlockchainExplorerData.h"
 #include <memory>
 #include <future>
 
@@ -49,6 +50,8 @@ public:
     callback(std::error_code());
   }
 
+  virtual void getFeeAddress() override { }
+
   virtual CryptoNote::BlockHeaderInfo getLastLocalBlockHeaderInfo() const override { return CryptoNote::BlockHeaderInfo(); }
 
   virtual void relayTransaction(const CryptoNote::Transaction& transaction, const Callback& callback) override { callback(std::error_code()); }
@@ -79,13 +82,21 @@ public:
   virtual void getBlocks(const std::vector<Crypto::Hash>& blockHashes, std::vector<CryptoNote::BlockDetails>& blocks,
     const Callback& callback) override { }
 
+  virtual void getBlock(const uint32_t blockHeight, CryptoNote::BlockDetails &block,
+    const Callback& callback) override { }
+
   virtual void getTransactions(const std::vector<Crypto::Hash>& transactionHashes, std::vector<CryptoNote::TransactionDetails>& transactions,
+    const Callback& callback) override { }
+
+  virtual void getTransactionsByPaymentId(const Crypto::Hash& paymentId, std::vector<CryptoNote::TransactionDetails>& transactions,
     const Callback& callback) override { }
 
   virtual void getMultisignatureOutputByGlobalIndex(uint64_t amount, uint32_t gindex, CryptoNote::MultisignatureOutput& out,
     const Callback& callback) override { }
 
   virtual void isSynchronized(bool& syncStatus, const Callback& callback) override { }
+
+  virtual std::string feeAddress() const override { return std::string(); }
 
 };
 

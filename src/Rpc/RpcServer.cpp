@@ -48,6 +48,8 @@ using namespace Logging;
 using namespace Crypto;
 using namespace Common;
 
+static const Crypto::SecretKey I = { { 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } };
+
 namespace CryptoNote {
 
 static inline void serialize(COMMAND_RPC_GET_BLOCKS_FAST::response& response, ISerializer &s) {
@@ -201,7 +203,6 @@ bool RpcServer::processJsonRpcRequest(const HttpRequest& request, HttpResponse& 
       { "getlastblockheader", { makeMemberMethod(&RpcServer::on_get_last_block_header), false } },
       { "getblockheaderbyhash", { makeMemberMethod(&RpcServer::on_get_block_header_by_hash), false } },
       { "getblockheaderbyheight", { makeMemberMethod(&RpcServer::on_get_block_header_by_height), false } },
-      { "get_block_by_height", { makeMemberMethod(&RpcServer::onGetBlockDetailsByHeight), false } },
       { "getblockcount", { makeMemberMethod(&RpcServer::on_getblockcount), true } },
       { "f_blocks_list_json", { makeMemberMethod(&RpcServer::f_on_blocks_list_json), false } },
       { "f_block_json", { makeMemberMethod(&RpcServer::f_on_block_json), false } },
@@ -924,7 +925,7 @@ bool RpcServer::f_on_transaction_json(const F_COMMAND_RPC_GET_TRANSACTION_DETAIL
   res.txDetails.size = getObjectBinarySize(res.tx);
 
   uint64_t mixin;
-  if (!f_getMixin(res.tx, mixin)) {
+  if (!m_core.getMixin(res.tx, mixin)) {
     return false;
   }
   res.txDetails.mixin = mixin;
@@ -957,20 +958,6 @@ bool RpcServer::f_on_transactions_pool_json(const COMMAND_RPC_GET_MEMPOOL::reque
   }
 
   res.status = CORE_RPC_STATUS_OK;
-  return true;
-}
-
-bool RpcServer::f_getMixin(const Transaction& transaction, uint64_t& mixin) {
-  mixin = 0;
-  for (const TransactionInput& txin : transaction.inputs) {
-    if (txin.type() != typeid(KeyInput)) {
-      continue;
-    }
-    uint64_t currentMixin = boost::get<KeyInput>(txin).outputIndexes.size();
-    if (currentMixin > mixin) {
-      mixin = currentMixin;
-    }
-  }
   return true;
 }
 
@@ -1394,8 +1381,7 @@ bool RpcServer::k_on_check_tx_proof(const K_COMMAND_RPC_CHECK_TX_PROOF::request&
   }
   // parse pubkey r*A & signature
   const size_t header_len = strlen("ProofV1");
-  if (req.signature.size() < header_len || req.signature.substr(0, header_len) != "ProofV1")
-  {
+  if (req.signature.size() < header_len || req.signature.substr(0, header_len) != "ProofV1") {
     throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Signature header check error" };
   }
   Crypto::PublicKey rA;
@@ -1407,16 +1393,14 @@ bool RpcServer::k_on_check_tx_proof(const K_COMMAND_RPC_CHECK_TX_PROOF::request&
   if (!Tools::Base58::decode(req.signature.substr(header_len, rA_len), rA_decoded)) {
     throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Signature decoding error" };
   }
-  if (!Tools::Base58::decode(req.signature.substr(header_len + rA_len, sig_len), sig_decoded))
-  {
+  if (!Tools::Base58::decode(req.signature.substr(header_len + rA_len, sig_len), sig_decoded)) {
     throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Signature decoding error" };
   }
-  if (sizeof(Crypto::PublicKey) != rA_decoded.size() || sizeof(Crypto::Signature) != sig_decoded.size())
-  {
+  if (sizeof(Crypto::PublicKey) != rA_decoded.size() || sizeof(Crypto::Signature) != sig_decoded.size()) {
     throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Signature decoding error" };
   }
   memcpy(&rA, rA_decoded.data(), sizeof(Crypto::PublicKey));
-  memcpy(&sig, sig_decoded.data(), sizeof(Crypto::PublicKey));
+  memcpy(&sig, sig_decoded.data(), sizeof(Crypto::Signature));
 
   // fetch tx pubkey
   Transaction tx;
@@ -1439,9 +1423,10 @@ bool RpcServer::k_on_check_tx_proof(const K_COMMAND_RPC_CHECK_TX_PROOF::request&
       CORE_RPC_ERROR_CODE_WRONG_PARAM,
       "Couldn't find transaction with hash: " + req.tx_id + '.' };
   }
-  CryptoNote::TransactionPrefix txp = *static_cast<const TransactionPrefix*>(&tx);
 
-  Crypto::PublicKey R = getTransactionPublicKeyFromExtra(txp.extra);
+  CryptoNote::TransactionPrefix transaction = *static_cast<const TransactionPrefix*>(&tx);
+
+  Crypto::PublicKey R = getTransactionPublicKeyFromExtra(transaction.extra);
   if (R == NULL_PUBLIC_KEY)
   {
     throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Tx pubkey was not found" };
@@ -1451,24 +1436,41 @@ bool RpcServer::k_on_check_tx_proof(const K_COMMAND_RPC_CHECK_TX_PROOF::request&
   bool r = Crypto::check_tx_proof(txid, R, address.viewPublicKey, rA, sig);
   res.signature_valid = r;
 
-  // show what's received in tx if private view key is provided
-  if (r && !req.dest_view_private_key.empty()) {
-    Crypto::SecretKey destViewSecretKey = NULL_SECRET_KEY;
-    Crypto::Hash view_key_hash;
-    size_t size;
-    if (!Common::fromHex(req.dest_view_private_key, &view_key_hash, sizeof(view_key_hash), size) || size != sizeof(view_key_hash))
+  if (r) {
+
+    // obtain key derivation by multiplying scalar 1 to the pubkey r*A included in the signature
+    Crypto::KeyDerivation derivation;
+    if (!Crypto::generate_key_derivation(rA, I, derivation)) {
+      throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Failed to generate key derivation" };
+    }
+
+    // look for outputs
+    uint64_t received(0);
+    size_t keyIndex(0);
+    std::vector<TransactionOutput> outputs;
+    try {
+      for (const TransactionOutput& o : transaction.outputs) {
+        if (o.target.type() == typeid(KeyOutput)) {
+          const KeyOutput out_key = boost::get<KeyOutput>(o.target);
+          Crypto::PublicKey pubkey;
+          derive_public_key(derivation, keyIndex, address.spendPublicKey, pubkey);
+          if (pubkey == out_key.key) {
+            received += o.amount;
+            outputs.push_back(o);
+          }
+        }
+        ++keyIndex;
+      }
+    }
+    catch (...)
     {
-      throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Failed to parse private view key" };
+      throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Unknown error" };
     }
-    destViewSecretKey = *(struct Crypto::SecretKey *) &view_key_hash;
+    res.received_amount = received;
+    res.outputs = outputs;
 
-    std::vector<uint32_t> out;
-    uint64_t amount;
-
-    if (!CryptoNote::findOutputsToAccount(txp, address, destViewSecretKey, out, amount)) {
-      throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Could not find outputs to given address" };
-    }
-    res.received_amount = amount;
+    TransactionDetails transactionDetails = m_core.getTransactionDetails(txid);
+    res.confirmations = m_protocol.getObservedHeight() - transactionDetails.blockIndex;
   }
   else {
     res.received_amount = 0;
@@ -1479,9 +1481,6 @@ bool RpcServer::k_on_check_tx_proof(const K_COMMAND_RPC_CHECK_TX_PROOF::request&
 }
 
 bool RpcServer::k_on_check_reserve_proof(const K_COMMAND_RPC_CHECK_RESERVE_PROOF::request& req, K_COMMAND_RPC_CHECK_RESERVE_PROOF::response& res) {
-
-  static const Crypto::SecretKey I = { { 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } };
-
   // parse address
   CryptoNote::AccountPublicAddress address;
   if (!m_core.getCurrency().parseAccountAddressString(req.address, address)) {

@@ -29,6 +29,7 @@
 #include "Common/ObserverManager.h"
 #include "Logging/LoggerRef.h"
 #include "INode.h"
+#include "Rpc/CoreRpcServerCommandsDefinitions.h"
 
 namespace System {
   class ContextGroup;
@@ -73,6 +74,7 @@ public:
   virtual void getTransactionHashesByPaymentId(const Crypto::Hash& paymentId, std::vector<Crypto::Hash>& transactionHashes, const Callback& callback) override;
 
   virtual BlockHeaderInfo getLastLocalBlockHeaderInfo() const override;
+  virtual void getFeeAddress() override;
 
   virtual void relayTransaction(const CryptoNote::Transaction& transaction, const Callback& callback) override;
   virtual void getRandomOutsByAmounts(std::vector<uint64_t>&& amounts, uint16_t outsCount, std::vector<COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::outs_for_amount>& result, const Callback& callback) override;
@@ -84,8 +86,12 @@ public:
   virtual void getMultisignatureOutputByGlobalIndex(uint64_t amount, uint32_t gindex, MultisignatureOutput& out, const Callback& callback) override;
   virtual void getBlocks(const std::vector<uint32_t>& blockHeights, std::vector<std::vector<BlockDetails>>& blocks, const Callback& callback) override;
   virtual void getBlocks(const std::vector<Crypto::Hash>& blockHashes, std::vector<BlockDetails>& blocks, const Callback& callback) override;
+  virtual void getBlock(const uint32_t blockHeight, BlockDetails &block, const Callback& callback) override;
   virtual void getTransactions(const std::vector<Crypto::Hash>& transactionHashes, std::vector<TransactionDetails>& transactions, const Callback& callback) override;
+  virtual void getTransactionsByPaymentId(const Crypto::Hash& paymentId, std::vector<TransactionDetails>& transactions, const Callback& callback) override;
   virtual void isSynchronized(bool& syncStatus, const Callback& callback) override;
+
+  virtual std::string feeAddress() const override;
 
   unsigned int rpcTimeout() const { return m_rpcTimeout; }
   void rpcTimeout(unsigned int val) { m_rpcTimeout = val; }
@@ -168,5 +174,6 @@ private:
   Crypto::Hash nullHash = CryptoNote::NULL_HASH;
 
   bool m_connected;
+  std::string m_fee_address;
 };
 }
