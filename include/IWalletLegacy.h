@@ -32,6 +32,7 @@
 #include "crypto/crypto.h"
 #include "CryptoNoteCore/CryptoNoteBasic.h"
 #include "ITransfersContainer.h"
+#include "Rpc/CoreRpcServerCommandsDefinitions.h"
 
 namespace CryptoNote {
 
@@ -142,11 +143,15 @@ public:
   virtual bool getSeed(std::string& electrum_words) = 0;
 
   virtual Crypto::SecretKey getTxKey(Crypto::Hash& txid) = 0;
-  virtual bool getTxProof(Crypto::Hash& txid, CryptoNote::AccountPublicAddress& address, std::string& tx_key, std::string& sig_str) = 0;
+  virtual bool get_tx_key(Crypto::Hash& txid, Crypto::SecretKey& txSecretKey) = 0;
+  virtual bool getTxProof(Crypto::Hash& txid, CryptoNote::AccountPublicAddress& address, Crypto::SecretKey& tx_key, std::string& sig_str) = 0;
   virtual bool checkTxProof(Crypto::Hash& txid, CryptoNote::AccountPublicAddress& address, std::string& sig_str) = 0;
+  virtual std::string getReserveProof(const uint64_t &reserve, const std::string &message) = 0;
 
   virtual std::string sign_message(const std::string &data) = 0;
   virtual bool verify_message(const std::string &data, const CryptoNote::AccountPublicAddress &address, const std::string &signature) = 0;
+
+  virtual bool isTrackingWallet() = 0;
 };
 
 }

@@ -131,6 +131,8 @@ public:
   virtual uint64_t getMinimalFeeForHeight(uint32_t height) override;
   virtual uint64_t getMinimalFee() override;
 
+  bool isKeyImageSpent(const Crypto::KeyImage& key_im);
+
 private:
   const Currency& currency;
   System::Dispatcher& dispatcher;

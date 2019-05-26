@@ -907,6 +907,7 @@ struct COMMAND_RPC_GET_BLOCK_DETAILS_BY_HEIGHT {
   };
 };
 
+//-----------------------------------------------
 struct COMMAND_RPC_GEN_PAYMENT_ID {
   typedef EMPTY_STRUCT request;
   
@@ -1002,6 +1003,7 @@ struct K_COMMAND_RPC_CHECK_TX_PROOF {
   };
 };
 
+//-----------------------------------------------
 struct COMMAND_RPC_VALIDATE_ADDRESS {
   struct request {
     std::string address;
@@ -1024,6 +1026,88 @@ struct COMMAND_RPC_VALIDATE_ADDRESS {
       KV_MEMBER(spendPublicKey)
       KV_MEMBER(viewPublicKey)
       KV_MEMBER(status)
+    }
+  };
+};
+
+//-----------------------------------------------
+struct COMMAND_RPC_VERIFY_MESSAGE {
+  struct request {
+    std::string message;
+    std::string address;
+    std::string signature;
+
+    void serialize(ISerializer &s) {
+      KV_MEMBER(message)
+      KV_MEMBER(address)
+      KV_MEMBER(signature)
+    }
+  };
+
+  struct response {
+    bool sig_valid;
+    std::string status;
+
+    void serialize(ISerializer &s) {
+      KV_MEMBER(sig_valid)
+      KV_MEMBER(status)
+    }
+  };
+};
+
+//-----------------------------------------------
+struct reserve_proof_entry
+{
+	Crypto::Hash txid;
+	uint64_t index_in_tx;
+	Crypto::PublicKey shared_secret;
+	Crypto::KeyImage key_image;
+	Crypto::Signature shared_secret_sig;
+	Crypto::Signature key_image_sig;
+
+	void serialize(ISerializer& s)
+	{
+		KV_MEMBER(txid)
+		KV_MEMBER(index_in_tx)
+		KV_MEMBER(shared_secret)
+		KV_MEMBER(key_image)
+		KV_MEMBER(shared_secret_sig)
+		KV_MEMBER(key_image_sig)
+	}
+};
+
+struct reserve_proof {
+	std::vector<reserve_proof_entry> proofs;
+	Crypto::Signature signature;
+
+	void serialize(ISerializer &s) {
+		KV_MEMBER(proofs)
+		KV_MEMBER(signature)
+	}
+};
+
+struct K_COMMAND_RPC_CHECK_RESERVE_PROOF {
+  struct request {
+    std::string address;
+    std::string message;
+    std::string signature;
+
+    void serialize(ISerializer &s) {
+      KV_MEMBER(address)
+      KV_MEMBER(message)
+      KV_MEMBER(signature)
+    }
+  };
+
+  struct response {
+    bool good;
+    uint64_t total;
+    uint64_t spent;
+
+    void serialize(ISerializer &s) {
+      KV_MEMBER(good)
+      KV_MEMBER(total)
+      KV_MEMBER(spent)
     }
   };
 };

@@ -115,8 +115,12 @@ public:
   virtual bool verify_message(const std::string &message, const CryptoNote::AccountPublicAddress &address, const std::string &signature) override;
 
   virtual Crypto::SecretKey getTxKey(Crypto::Hash& txid) override;
-  virtual bool getTxProof(Crypto::Hash& txid, CryptoNote::AccountPublicAddress& address, std::string& tx_key, std::string& sig_str) override;
+  virtual bool get_tx_key(Crypto::Hash& txid, Crypto::SecretKey& txSecretKey) override;
+  virtual bool getTxProof(Crypto::Hash& txid, CryptoNote::AccountPublicAddress& address, Crypto::SecretKey& tx_key, std::string& sig_str) override;
   virtual bool checkTxProof(Crypto::Hash& txid, CryptoNote::AccountPublicAddress& address, std::string& sig_str) override;
+  virtual std::string getReserveProof(const uint64_t &reserve, const std::string &message) override;
+
+  virtual bool isTrackingWallet();
 
 private:
 

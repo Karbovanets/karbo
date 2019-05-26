@@ -2630,6 +2630,11 @@ uint64_t Core::get_current_blockchain_height() const {
   return mainChainStorage->getBlockCount();
 }
 
+bool Core::isKeyImageSpent(const Crypto::KeyImage& key_im) {
+  auto mainChain = chainsLeaves[0];
+  return mainChain->checkIfSpent(key_im);
+}
+
 std::time_t Core::getStartTime() const {
   return start_time;
 }

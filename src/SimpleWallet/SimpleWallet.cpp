@@ -690,13 +690,16 @@ simple_wallet::simple_wallet(System::Dispatcher& dispatcher, const CryptoNote::C
   m_consoleHandler.setHandler("show_seed", boost::bind(&simple_wallet::seed, this, _1), "Get wallet recovery phrase (deterministic seed)");
   m_consoleHandler.setHandler("payment_id", boost::bind(&simple_wallet::payment_id, this, _1), "Generate random Payment ID");
   m_consoleHandler.setHandler("password", boost::bind(&simple_wallet::change_password, this, _1), "Change password");
-  m_consoleHandler.setHandler("sign", boost::bind(&simple_wallet::sign, this, _1), "Sign the contents of a file");
-  m_consoleHandler.setHandler("verify", boost::bind(&simple_wallet::verify, this, _1), "Verify a signature on the contents of a file");
   m_consoleHandler.setHandler("estimate_fusion", boost::bind(&simple_wallet::estimate_fusion, this, _1), "Show the number of outputs available for optimization for a given <threshold>");
   m_consoleHandler.setHandler("optimize", boost::bind(&simple_wallet::optimize, this, _1), "Optimize wallet (fuse small outputs into fewer larger ones) - optimize <threshold> <mixin>");
   m_consoleHandler.setHandler("get_tx_key", boost::bind(&simple_wallet::get_tx_key, this, _1), "Get secret transaction key for a given <txid>");
   m_consoleHandler.setHandler("get_tx_proof", boost::bind(&simple_wallet::get_tx_proof, this, _1), "Generate a signature to prove payment to <address> in <txid>");
   m_consoleHandler.setHandler("check_tx_proof", boost::bind(&simple_wallet::check_tx_proof, this, _1), "Check tx proof for payment going to <address> in <txid>");
+  m_consoleHandler.setHandler("get_tx_proof", boost::bind(&simple_wallet::get_tx_proof, this, _1), "Generate a signature to prove payment: <txid> <address> [<txkey>]");
+  m_consoleHandler.setHandler("get_reserve_proof", boost::bind(&simple_wallet::get_reserve_proof, this, _1), "all|<amount> [<message>] - Generate a signature proving that you own at least <amount>, optionally with a challenge string <message>.\n"
+	  "If 'all' is specified, you prove the entire accounts' balance.\n");
+  m_consoleHandler.setHandler("sign_message", boost::bind(&simple_wallet::sign_message, this, _1), "Sign the message");
+  m_consoleHandler.setHandler("verify_message", boost::bind(&simple_wallet::verify_message, this, _1), "Verify a signature of the message");
   m_consoleHandler.setHandler("help", boost::bind(&simple_wallet::help, this, _1), "Show this help");
   m_consoleHandler.setHandler("exit", boost::bind(&simple_wallet::exit, this, _1), "Close wallet");
 }
@@ -726,14 +729,12 @@ bool simple_wallet::set_log(const std::vector<std::string> &args)
 	m_logManager.setMaxLevel(static_cast<Logging::Level>(l));
 	return true;
 }
-
 //----------------------------------------------------------------------------------------------------
 
 bool simple_wallet::payment_id(const std::vector<std::string> &args) {
   success_msg_writer() << "Payment ID: " << Crypto::rand<Crypto::Hash>();
   return true;
 }
-
 //----------------------------------------------------------------------------------------------------
 
 bool simple_wallet::get_tx_key(const std::vector<std::string> &args) {
@@ -759,13 +760,12 @@ bool simple_wallet::get_tx_key(const std::vector<std::string> &args) {
 		return true;
 	}
 }
-
 //----------------------------------------------------------------------------------------------------
 
 bool simple_wallet::get_tx_proof(const std::vector<std::string> &args)
 {
   if(args.size() != 2 && args.size() != 3) {
-    fail_msg_writer() << "Usage: get_tx_proof <txid> <dest_address> [<tx_key>]";
+    fail_msg_writer() << "Usage: get_tx_proof <txid> <dest_address> [<txkey>]";
     return true;
   }
 
@@ -785,42 +785,37 @@ bool simple_wallet::get_tx_proof(const std::vector<std::string> &args)
 
   std::string sig_str;
   Crypto::SecretKey tx_key, tx_key2;
+  bool r = m_wallet->get_tx_key(txid, tx_key);
 
   if (args.size() == 3) {
     Crypto::Hash tx_key_hash;
     size_t size;
-    if (!Common::fromHex(args[2], &tx_key_hash, sizeof(tx_key_hash), size) || size != sizeof(tx_key_hash))
-    {
+    if (!Common::fromHex(args[2], &tx_key_hash, sizeof(tx_key_hash), size) || size != sizeof(tx_key_hash)) {
       fail_msg_writer() << "failed to parse tx_key";
       return true;
     }
-	tx_key2 = *(struct Crypto::SecretKey *) &tx_key_hash;
-  }
-
-  tx_key = m_wallet->getTxKey(txid);
-  if (tx_key != NULL_SECRET_KEY)
-  {
-    if (args.size() == 3 && tx_key != tx_key2)
-    {
-      fail_msg_writer() << "Tx secret key was found for the given txid, but you've also provided another tx secret key which doesn't match the found one.";
-      return true;
+    tx_key2 = *(struct Crypto::SecretKey *) &tx_key_hash;
+  
+    if (r) {
+      if (args.size() == 3 && tx_key != tx_key2) {
+        fail_msg_writer() << "Tx secret key was found for the given txid, but you've also provided another tx secret key which doesn't match the found one.";
+        return true;
+      }
     }
+	tx_key = tx_key2;
   } else {
-    if (args.size() == 3) {
-      tx_key = tx_key2;
-    } else {
+    if (!r) {
       fail_msg_writer() << "Tx secret key wasn't found in the wallet file. Provide it as the optional third parameter if you have it elsewhere.";
       return true;
     }
   }
-
-  if (m_wallet->getTxProof(txid, address, Common::podToHex(tx_key), sig_str)) {
+ 
+  if (m_wallet->getTxProof(txid, address, tx_key, sig_str)) {
     success_msg_writer() << "Signature: " << sig_str << std::endl;
   }
 
   return true;
 }
-
 //----------------------------------------------------------------------------------------------------
 
 bool simple_wallet::check_tx_proof(const std::vector<std::string> &args) {
@@ -859,7 +854,55 @@ bool simple_wallet::check_tx_proof(const std::vector<std::string> &args) {
 
   return true;
 }
+//----------------------------------------------------------------------------------------------------
 
+bool simple_wallet::get_reserve_proof(const std::vector<std::string> &args)
+{
+	if (args.size() != 1 && args.size() != 2) {
+		fail_msg_writer() << "Usage: get_reserve_proof (all|<amount>) [<message>]";
+		return true;
+	}
+
+	if (m_trackingWallet) {
+		fail_msg_writer() << "This is tracking wallet. The reserve proof can be generated only by a full wallet.";
+		return true;
+	}
+
+	uint64_t reserve = 0;
+	if (args[0] != "all") {
+		if (!m_currency.parseAmount(args[0], reserve)) {
+			fail_msg_writer() << "amount is wrong: " << args[0];
+			return true;
+		}
+	} else {
+		reserve = m_wallet->actualBalance();
+	}
+
+	try {
+		const std::string sig_str = m_wallet->getReserveProof(reserve, args.size() == 2 ? args[1] : "");
+		
+		//logger(INFO, BRIGHT_WHITE) << "\n\n" << sig_str << "\n\n" << std::endl;
+
+		const std::string filename = "reserve_proof.txt";
+		boost::system::error_code ec;
+		if (boost::filesystem::exists(filename, ec)) {
+			boost::filesystem::remove(filename, ec);
+		}
+
+		std::ofstream proofFile(filename, std::ios::out | std::ios::trunc | std::ios::binary);
+		if (!proofFile.good()) {
+			return false;
+		}
+		proofFile << sig_str;
+
+		success_msg_writer() << "signature file saved to: " << filename;
+
+	} catch (const std::exception &e) {
+		fail_msg_writer() << e.what();
+	}
+
+	return true;
+}
 //----------------------------------------------------------------------------------------------------
 
 bool simple_wallet::init(const boost::program_options::variables_map& vm)
@@ -2333,7 +2376,7 @@ bool simple_wallet::print_address(const std::vector<std::string> &args/* = std::
   return true;
 }
 //----------------------------------------------------------------------------------------------------
-bool simple_wallet::sign(const std::vector<std::string> &args) {
+bool simple_wallet::sign_message(const std::vector<std::string> &args) {
   if (args.size() != 1) {
     fail_msg_writer() << "usage: sign \"message to sign\" (use quotes if case of spaces)";
     return true;
@@ -2348,7 +2391,7 @@ bool simple_wallet::sign(const std::vector<std::string> &args) {
   return true;
 }
 //----------------------------------------------------------------------------------------------------
-bool simple_wallet::verify(const std::vector<std::string> &args) {
+bool simple_wallet::verify_message(const std::vector<std::string> &args) {
   if (args.size() != 3) {
     fail_msg_writer() << "usage: verify \"message to verify\" <address> <signature>";
     return true;

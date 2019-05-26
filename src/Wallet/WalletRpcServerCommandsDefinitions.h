@@ -373,6 +373,148 @@ using CryptoNote::ISerializer;
     };
   };
 
+  /*Command: sign/verify message */
+  struct COMMAND_RPC_SIGN_MESSAGE
+  {
+    struct request
+    {
+      std::string message;
+
+      void serialize(ISerializer& s)
+      {
+        KV_MEMBER(message);
+      }
+    };
+
+    struct response
+    {
+      std::string signature;
+
+      void serialize(ISerializer& s)
+      {
+        KV_MEMBER(signature);
+      }
+    };
+  };
+
+  struct COMMAND_RPC_VERIFY_MESSAGE
+  {
+    struct request
+    {
+      std::string message;
+      std::string address;
+      std::string signature;
+
+      void serialize(ISerializer& s)
+      {
+        KV_MEMBER(message);
+        KV_MEMBER(address);
+        KV_MEMBER(signature);
+      }
+    };
+
+    struct response
+    {
+      bool good;
+
+      void serialize(ISerializer& s)
+      {
+        KV_MEMBER(good);
+      }
+    };
+  };
+
+  struct COMMAND_RPC_CHANGE_PASSWORD
+  {
+    struct request
+    {
+      std::string old_password;
+      std::string new_password;
+
+      void serialize(ISerializer& s)
+      {
+        KV_MEMBER(old_password);
+        KV_MEMBER(new_password);
+      }
+    };
+
+    struct response
+    {
+      bool password_changed;
+
+      void serialize(ISerializer& s)
+      {
+        KV_MEMBER(password_changed);
+      }
+    };
+  };
+
+  struct COMMAND_RPC_GET_OUTPUTS
+  {
+    typedef CryptoNote::EMPTY_STRUCT request;
+
+    struct response
+    {
+      size_t unlocked_outputs_count;
+
+      void serialize(ISerializer& s) {
+        KV_MEMBER(unlocked_outputs_count)
+      }
+    };
+  };
+
+	struct COMMAND_RPC_GET_TX_PROOF
+	{
+		struct request
+		{
+			std::string tx_hash;
+			std::string dest_address;
+			std::string tx_key;
+
+			void serialize(ISerializer& s)
+			{
+				KV_MEMBER(tx_hash);
+				KV_MEMBER(dest_address);
+				KV_MEMBER(tx_key);
+			}
+		};
+
+		struct response
+		{
+			std::string signature;
+
+			void serialize(ISerializer& s)
+			{
+				KV_MEMBER(signature);
+			}
+		};
+	};
+
+	struct COMMAND_RPC_GET_BALANCE_PROOF
+	{
+		struct request
+		{
+			uint64_t amount = 0;
+			std::string message;
+
+			void serialize(ISerializer& s)
+			{
+				KV_MEMBER(amount);
+				KV_MEMBER(message);
+			}
+		};
+
+		struct response
+		{
+			std::string signature;
+
+			void serialize(ISerializer& s)
+			{
+				KV_MEMBER(signature);
+			}
+		};
+	};
+
 	/* Fusion transactions */
 
 	struct COMMAND_RPC_ESTIMATE_FUSION
