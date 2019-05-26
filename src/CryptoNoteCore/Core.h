@@ -125,7 +125,7 @@ public:
   virtual std::vector<Crypto::Hash> getTransactionHashesByPaymentId(const Crypto::Hash& paymentId) const override;
   virtual bool getTransactionsByPaymentId(const Crypto::Hash& paymentId, std::vector<Transaction>& transactions) override;
 
-  virtual uint64_t get_current_blockchain_height() const;
+  virtual uint32_t get_current_blockchain_height() const;
   uint8_t getBlockMajorVersionForHeight(uint32_t height) const;
   virtual bool getMixin(const Transaction& transaction, uint64_t& mixin) override;
 

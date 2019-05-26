@@ -1075,8 +1075,8 @@ bool Core::isTransactionValidForPool(const CachedTransaction& cachedTransaction,
     return false;
   }
 
-  bool isFusion = fee == 0 && currency.isFusionTransaction(cachedTransaction.getTransaction(), cachedTransaction.getTransactionBinaryArray().size());
-  if (!isFusion && fee < /*currency.minimumFee()*/ CryptoNote::parameters::MINIMUM_FEE) {
+  bool isFusion = fee == 0 && currency.isFusionTransaction(cachedTransaction.getTransaction(), cachedTransaction.getTransactionBinaryArray().size(), getTopBlockIndex());
+  if (!isFusion && fee < CryptoNote::parameters::MINIMUM_FEE) {
     logger(Logging::WARNING) << "Transaction " << cachedTransaction.getTransactionHash()
       << " is not valid. Reason: fee is too small and it's not a fusion transaction";
     return false;
@@ -1608,6 +1608,13 @@ std::error_code Core::validateSemantic(const Transaction& transaction, uint64_t&
 
   assert(transaction.signatures.size() == transaction.inputs.size());
   fee = summaryInputAmount - summaryOutputAmount;
+
+  CachedTransaction cachedTransaction(std::move(transaction));
+  bool isFusion = fee == 0 && currency.isFusionTransaction(transaction, cachedTransaction.getTransactionBinaryArray().size(), blockIndex);
+  if (!isFusion && fee < CryptoNote::parameters::MINIMUM_FEE) {
+    return error::TransactionValidationError::INVALID_FEE;
+  }
+
   return error::TransactionValidationError::VALIDATION_SUCCESS;
 }
 
@@ -2626,7 +2633,7 @@ void Core::updateBlockMedianSize() {
   blockMedianSize = std::max(Common::medianValue(lastBlockSizes), static_cast<uint64_t>(nextBlockGrantedFullRewardZone));
 }
 
-uint64_t Core::get_current_blockchain_height() const {
+uint32_t Core::get_current_blockchain_height() const {
   return mainChainStorage->getBlockCount();
 }
 

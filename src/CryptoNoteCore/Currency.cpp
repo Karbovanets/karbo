@@ -291,37 +291,48 @@ bool Currency::constructMinerTx(uint8_t blockMajorVersion, uint32_t height, size
   return true;
 }
 
-bool Currency::isFusionTransaction(const std::vector<uint64_t>& inputsAmounts, const std::vector<uint64_t>& outputsAmounts, size_t size) const {
-  if (size > fusionTxMaxSize()) {
+bool Currency::isFusionTransaction(const std::vector<uint64_t>& inputsAmounts, const std::vector<uint64_t>& outputsAmounts, size_t size, uint32_t height) const
+{
+  if (height <= CryptoNote::parameters::UPGRADE_HEIGHT_V3 ? size > CryptoNote::parameters::CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_CURRENT * 30 / 100 : size > fusionTxMaxSize()) {
+    logger(ERROR) << "Fusion transaction verification failed: size exceeded max allowed size.";
     return false;
   }
 
   if (inputsAmounts.size() < fusionTxMinInputCount()) {
+    logger(ERROR) << "Fusion transaction verification failed: inputs count is less than minimum.";
     return false;
   }
 
   if (inputsAmounts.size() < outputsAmounts.size() * fusionTxMinInOutCountRatio()) {
+    logger(ERROR) << "Fusion transaction verification failed: inputs to outputs count ratio is less than minimum.";
     return false;
   }
 
   uint64_t inputAmount = 0;
-  for (auto amount: inputsAmounts) {
-    if (amount < defaultDustThreshold()) {
-      return false;
-    }
-
+  for (auto amount : inputsAmounts) {
+    if (height < CryptoNote::parameters::UPGRADE_HEIGHT_V4)
+      if (amount < defaultDustThreshold()) {
+        logger(ERROR) << "Fusion transaction verification failed: amount " << amount << " is less than dust threshold.";
+        return false;
+      }
     inputAmount += amount;
   }
 
   std::vector<uint64_t> expectedOutputsAmounts;
   expectedOutputsAmounts.reserve(outputsAmounts.size());
-  decomposeAmount(inputAmount, defaultDustThreshold(), expectedOutputsAmounts);
+  decomposeAmount(inputAmount, height < CryptoNote::parameters::UPGRADE_HEIGHT_V4 ? defaultDustThreshold() : UINT64_C(0), expectedOutputsAmounts);
   std::sort(expectedOutputsAmounts.begin(), expectedOutputsAmounts.end());
 
-  return expectedOutputsAmounts == outputsAmounts;
+  bool decompose = expectedOutputsAmounts == outputsAmounts;
+  if (!decompose) {
+    logger(ERROR) << "Fusion transaction verification failed: decomposed output amounts do not match expected.";
+    return false;
+  }
+
+  return true;
 }
 
-bool Currency::isFusionTransaction(const Transaction& transaction, size_t size) const {
+bool Currency::isFusionTransaction(const Transaction& transaction, size_t size, uint32_t height) const {
   assert(getObjectBinarySize(transaction) == size);
 
   std::vector<uint64_t> outputsAmounts;
@@ -330,31 +341,31 @@ bool Currency::isFusionTransaction(const Transaction& transaction, size_t size) 
     outputsAmounts.push_back(output.amount);
   }
 
-  return isFusionTransaction(getInputsAmounts(transaction), outputsAmounts, size);
+  return isFusionTransaction(getInputsAmounts(transaction), outputsAmounts, size, height);
 }
 
-bool Currency::isFusionTransaction(const Transaction& transaction) const {
-  return isFusionTransaction(transaction, getObjectBinarySize(transaction));
+bool Currency::isFusionTransaction(const Transaction& transaction, uint32_t height) const {
+  return isFusionTransaction(transaction, getObjectBinarySize(transaction), height);
 }
 
-bool Currency::isAmountApplicableInFusionTransactionInput(uint64_t amount, uint64_t threshold) const {
+bool Currency::isAmountApplicableInFusionTransactionInput(uint64_t amount, uint64_t threshold, uint32_t height) const {
   uint8_t ignore;
-  return isAmountApplicableInFusionTransactionInput(amount, threshold, ignore);
+  return isAmountApplicableInFusionTransactionInput(amount, threshold, ignore, height);
 }
 
-bool Currency::isAmountApplicableInFusionTransactionInput(uint64_t amount, uint64_t threshold, uint8_t& amountPowerOfTen) const {
+bool Currency::isAmountApplicableInFusionTransactionInput(uint64_t amount, uint64_t threshold, uint8_t& amountPowerOfTen, uint32_t height) const {
   if (amount >= threshold) {
     return false;
   }
 
-  if (amount < defaultDustThreshold()) {
+  if (height < CryptoNote::parameters::UPGRADE_HEIGHT_V4 && amount < defaultDustThreshold()) {
     return false;
   }
 
   auto it = std::lower_bound(PRETTY_AMOUNTS.begin(), PRETTY_AMOUNTS.end(), amount);
   if (it == PRETTY_AMOUNTS.end() || amount != *it) {
     return false;
-  } 
+  }
 
   amountPowerOfTen = static_cast<uint8_t>(std::distance(PRETTY_AMOUNTS.begin(), it) / 9);
   return true;

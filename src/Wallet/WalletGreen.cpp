@@ -1218,7 +1218,7 @@ std::string WalletGreen::addWallet(const Crypto::PublicKey& spendPublicKey, cons
   }
 }
 
-CryptoNote::BlockDetails WalletGreen::getBlock(const uint64_t blockHeight)
+CryptoNote::BlockDetails WalletGreen::getBlock(const uint32_t blockHeight)
 {
 	CryptoNote::BlockDetails block;
 
@@ -1259,7 +1259,7 @@ uint64_t WalletGreen::scanHeightToTimestamp(const uint64_t scanHeight)
 	}
 
 	/* Get the amount of seconds since the blockchain launched */
-	uint64_t secondsSinceLaunch = scanHeight *
+	double secondsSinceLaunch = scanHeight *
 		CryptoNote::parameters::DIFFICULTY_TARGET;
 
 	/* Add a bit of a buffer in case of difficulty weirdness, blocks coming
@@ -3529,7 +3529,7 @@ bool WalletGreen::isFusionTransaction(const WalletTransaction& walletTx) const {
   if (outputsSum != inputsSum || outputsSum != txInfo.totalAmountOut || inputsSum != txInfo.totalAmountIn) {
     return false;
   } else {
-    return m_currency.isFusionTransaction(inputsAmounts, outputsAmounts, 0); //size = 0 here because can't get real size of tx in wallet.
+    return m_currency.isFusionTransaction(inputsAmounts, outputsAmounts, 0, txInfo.blockHeight); //size = 0 here because can't get real size of tx in wallet.
   }
 }
 
