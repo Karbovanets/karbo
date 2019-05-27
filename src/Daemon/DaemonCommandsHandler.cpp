@@ -130,7 +130,7 @@ bool DaemonCommandsHandler::status(const std::vector<std::string>& args) {
   uint64_t difficulty = m_core.getDifficultyForNextBlock();
   size_t tx_pool_size = m_core.getPoolTransactionCount();
   size_t alt_blocks_count = m_core.getAlternativeBlockCount();
-  uint32_t last_known_block_index = std::max(static_cast<uint32_t>(1), protocolQuery.getObservedHeight());
+  uint32_t last_known_block_index = std::max(static_cast<uint32_t>(1), protocolQuery.getObservedHeight() - 1);
   size_t total_conn = m_srv.get_connections_count();
   size_t rpc_conn = m_prpc_server->getConnectionsCount();
   size_t outgoing_connections_count = m_srv.get_outgoing_connections_count();

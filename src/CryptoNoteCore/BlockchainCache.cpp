@@ -1,4 +1,6 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2018-2019, The TurtleCoin Developers
+// Copyright (c) 2018-2019, The Karbo Developers
 //
 // This file is part of Bytecoin.
 //
@@ -820,6 +822,18 @@ bool BlockchainCache::isTransactionSpendTimeUnlocked(uint64_t unlockTime, uint32
   if (unlockTime < currency.maxBlockHeight()) {
     // interpret as block index
     return blockIndex + currency.lockedTxAllowedDeltaBlocks() >= unlockTime;
+  }
+
+  if (blockIndex >= CryptoNote::parameters::UPGRADE_HEIGHT_V5)
+  {
+    // Get the last block timestamp
+    const std::vector<uint64_t> lastBlockTimestamps = getLastTimestamps(1);
+
+    // Pop the last timestamp off the vector
+    const uint64_t lastBlockTimestamp = lastBlockTimestamps.at(0);
+
+    // Compare our delta seconds plus our last time stamp against the unlock time
+    return lastBlockTimestamp + currency.lockedTxAllowedDeltaSeconds() >= unlockTime;
   }
 
   // interpret as time
