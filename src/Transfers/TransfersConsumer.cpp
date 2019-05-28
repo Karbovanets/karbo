@@ -1,7 +1,7 @@
-// Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2018, The Karbo Developers
-// Copyright (c) 2018, The BBSCoin Developers
-//
+// Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers. 
+// Copyright (c) 2018 BBSCoin developers
+// Copyright (c) 2018-2019, The Karbo Developers
+// 
 // This file is part of Bytecoin.
 //
 // Bytecoin is free software: you can redistribute it and/or modify
@@ -30,11 +30,11 @@
 
 #include "IWallet.h"
 #include "INode.h"
-#include <future>
 
 using namespace Crypto;
 using namespace Logging;
 using namespace Common;
+
 
 std::unordered_set<Crypto::Hash> transactions_hash_seen;
 std::unordered_set<Crypto::PublicKey> public_keys_seen;
@@ -46,15 +46,15 @@ using namespace CryptoNote;
 
 class MarkTransactionConfirmedException : public std::exception {
 public:
-    MarkTransactionConfirmedException(const Crypto::Hash& txHash) {
-    }
+  MarkTransactionConfirmedException(const Crypto::Hash& txHash) {
+  }
 
-    const Hash& getTxHash() const {
-        return m_txHash;
-    }
+  const Hash& getTxHash() const {
+    return m_txHash;
+  }
 
 private:
-    Crypto::Hash m_txHash;
+  Crypto::Hash m_txHash;
 };
 
 void checkOutputKey(
@@ -83,7 +83,7 @@ void findMyOutputs(
   auto txPublicKey = tx.getTransactionPublicKey();
   KeyDerivation derivation;
 
-  if (!generate_key_derivation( txPublicKey, viewSecretKey, derivation)) {
+  if (!generate_key_derivation(txPublicKey, viewSecretKey, derivation)) {
     return;
   }
 
@@ -146,7 +146,6 @@ ITransfersSubscription& TransfersConsumer::addSubscription(const AccountSubscrip
     res.reset(new TransfersSubscription(m_currency, m_logger.getLogger(), subscription));
     m_spendKeys.insert(subscription.keys.address.spendPublicKey);
 
-    //updateSyncStart();
     if (m_subscriptions.size() == 1) {
       m_syncStart = res->getSyncStart();
     }
@@ -194,7 +193,7 @@ void TransfersConsumer::initTransactionPool(const std::unordered_set<Crypto::Has
 void TransfersConsumer::updateSyncStart() {
   SynchronizationStart start;
 
-  start.height =   std::numeric_limits<uint64_t>::max();
+  start.height = std::numeric_limits<uint64_t>::max();
   start.timestamp = std::numeric_limits<uint64_t>::max();
 
   for (const auto& kv : m_subscriptions) {
@@ -244,7 +243,7 @@ uint32_t TransfersConsumer::onNewBlocks(const CompleteBlock* blocks, uint32_t st
   std::atomic<size_t> emptyBlockCount(0);
 
   auto pushingThread = std::async(std::launch::async, [&] {
-    for( uint32_t i = 0; i < count && !stopProcessing; ++i) {
+    for (uint32_t i = 0; i < count && !stopProcessing; ++i) {
       const auto& block = blocks[i].block;
 
       if (!block.is_initialized()) {
@@ -342,11 +341,11 @@ uint32_t TransfersConsumer::onNewBlocks(const CompleteBlock* blocks, uint32_t st
       if (tx.isLastTransactionInBlock) {
         ++processedBlockCount;
         m_logger(TRACE) << "Processed block " << processedBlockCount << " of " << count << ", last processed block index " << tx.blockInfo.height <<
-            ", hash " << blocks[processedBlockCount - 1].blockHash;
+          ", hash " << blocks[processedBlockCount - 1].blockHash;
 
         auto newHeight = startHeight + processedBlockCount - 1;
         forEachSubscription([newHeight](TransfersSubscription& sub) {
-            sub.advanceHeight(newHeight);
+          sub.advanceHeight(newHeight);
         });
       }
     }
@@ -367,10 +366,10 @@ uint32_t TransfersConsumer::onNewBlocks(const CompleteBlock* blocks, uint32_t st
   if (processedBlockCount < count) {
     uint32_t detachIndex = startHeight + processedBlockCount;
     m_logger(ERROR, BRIGHT_RED) << "Not all block transactions are processed, fully processed block count: " << processedBlockCount << " of " << count <<
-        ", last processed block hash " << (processedBlockCount > 0 ? blocks[processedBlockCount - 1].blockHash : NULL_HASH) <<
-        ", detach block index " << detachIndex << " to remove partially processed block";
+      ", last processed block hash " << (processedBlockCount > 0 ? blocks[processedBlockCount - 1].blockHash : NULL_HASH) <<
+      ", detach block index " << detachIndex << " to remove partially processed block";
     forEachSubscription([detachIndex](TransfersSubscription& sub) {
-        sub.onBlockchainDetach(detachIndex);
+      sub.onBlockchainDetach(detachIndex);
     });
   }
 
@@ -379,7 +378,7 @@ uint32_t TransfersConsumer::onNewBlocks(const CompleteBlock* blocks, uint32_t st
 
 std::error_code TransfersConsumer::onPoolUpdated(const std::vector<std::unique_ptr<ITransactionReader>>& addedTransactions, const std::vector<Hash>& deletedTransactions) {
   TransactionBlockInfo unconfirmedBlockInfo;
-  unconfirmedBlockInfo.timestamp = 0; 
+  unconfirmedBlockInfo.timestamp = 0;
   unconfirmedBlockInfo.height = WALLET_UNCONFIRMED_TRANSACTION_HEIGHT;
 
   std::error_code processingError;
@@ -394,7 +393,7 @@ std::error_code TransfersConsumer::onPoolUpdated(const std::vector<std::unique_p
       return processingError;
     }
   }
-  
+
   for (auto& deletedTxHash : deletedTransactions) {
     m_poolTxs.erase(deletedTxHash);
 
@@ -431,10 +430,10 @@ void TransfersConsumer::removeUnconfirmedTransaction(const Crypto::Hash& transac
 }
 
 void TransfersConsumer::addPublicKeysSeen(const Crypto::Hash& transactionHash, const Crypto::PublicKey& outputKey) {
-     std::lock_guard<std::mutex> lk(seen_mutex);
-     transactions_hash_seen.insert(transactionHash);
-     public_keys_seen.insert(outputKey);
- }
+  std::lock_guard<std::mutex> lk(seen_mutex);
+  transactions_hash_seen.insert(transactionHash);
+  public_keys_seen.insert(outputKey);
+}
 
 std::error_code createTransfers(
   const AccountKeys& account,
@@ -446,11 +445,12 @@ std::error_code createTransfers(
   Logging::LoggerRef& m_logger) {
 
   auto txPubKey = tx.getTransactionPublicKey();
+  auto txHash = tx.getTransactionHash();
   std::vector<PublicKey> temp_keys;
   std::lock_guard<std::mutex> lk(seen_mutex);
 
   for (auto idx : outputs) {
-    bool isDuplicate = false;
+
     if (idx >= tx.getOutputCount()) {
       return std::make_error_code(std::errc::argument_out_of_domain);
     }
@@ -485,13 +485,19 @@ std::error_code createTransfers(
         info.keyImage);
 
       assert(out.key == reinterpret_cast<const PublicKey&>(in_ephemeral.publicKey));
-      if (transactions_hash_seen.find(tx.getTransactionHash()) == transactions_hash_seen.end()){
-          if (public_keys_seen.find(out.key) != public_keys_seen.end()){
-              m_logger(WARNING, BRIGHT_RED) << "Duplicate public key found : " << Common::podToHex(tx.getTransactionHash());
-              isDuplicate = true;
-          } else {
-              temp_keys.push_back(out.key);
-          }
+
+      std::unordered_set<Crypto::Hash>::iterator it = transactions_hash_seen.find(txHash);
+      if (it == transactions_hash_seen.end()) {
+        std::unordered_set<Crypto::PublicKey>::iterator key_it = public_keys_seen.find(out.key);
+        if (key_it != public_keys_seen.end()) {
+          throw std::runtime_error("duplicate transaction output key is found");
+          return std::error_code();
+        }
+        if (std::find(temp_keys.begin(), temp_keys.end(), out.key) != temp_keys.end()) {
+          throw std::runtime_error("the same output key is present more than once");
+          return std::error_code();
+        }
+        temp_keys.push_back(out.key);
       }
       info.amount = amount;
       info.outputKey = out.key;
@@ -501,29 +507,47 @@ std::error_code createTransfers(
       MultisignatureOutput out;
       tx.getOutput(idx, out, amount);
 
+      for (const auto& key : out.keys) {
+        std::unordered_set<Crypto::Hash>::iterator it = transactions_hash_seen.find(txHash);
+        if (it == transactions_hash_seen.end()) {
+          std::unordered_set<Crypto::PublicKey>::iterator key_it = public_keys_seen.find(key);
+          if (key_it != public_keys_seen.end()) {
+            throw std::runtime_error("duplicate multisignature output key is found");
+            return std::error_code();
+          }
+          if (std::find(temp_keys.begin(), temp_keys.end(), key) != temp_keys.end()) {
+            throw std::runtime_error("the same multisignature output key is present more than once");
+            return std::error_code();
+          }
+          temp_keys.push_back(key);
+        }
+      }
       info.amount = amount;
       info.requiredSignatures = out.requiredSignatureCount;
     }
-
-    if (!isDuplicate)
-    {
-        transfers.push_back(info);
-    }
+    transfers.push_back(info);
   }
+
   transactions_hash_seen.insert(tx.getTransactionHash());
-  std::copy(temp_keys.begin(), temp_keys.end(), std::inserter(public_keys_seen, public_keys_seen.end()));
+  for (std::vector<PublicKey>::iterator it = temp_keys.begin(); it != temp_keys.end(); it++) {
+    public_keys_seen.insert(*it);
+  }
+
   return std::error_code();
 }
 
 std::error_code TransfersConsumer::preprocessOutputs(const TransactionBlockInfo& blockInfo, const ITransactionReader& tx, PreprocessInfo& info) {
   std::unordered_map<PublicKey, std::vector<uint32_t>> outputs;
-  try { findMyOutputs(tx, m_viewSecret, m_spendKeys, outputs); }
-  catch (const std::exception& e) {
-      m_logger(WARNING, BRIGHT_RED) << "Failed to process transaction: " << e.what() << ", transaction hash " << Common::podToHex(tx.getTransactionHash());
-      return std::error_code();
+  try {
+    findMyOutputs(tx, m_viewSecret, m_spendKeys, outputs);
   }
-  if (outputs.empty()){
-      return std::error_code();
+  catch (const std::exception& e) {
+    m_logger(ERROR, BRIGHT_RED) << "Failed to process transaction: " << e.what() << ", transaction hash " << Common::podToHex(tx.getTransactionHash());
+    return std::error_code();
+  }
+
+  if (outputs.empty()) {
+    return std::error_code();
   }
 
   std::error_code errorCode;
@@ -539,9 +563,15 @@ std::error_code TransfersConsumer::preprocessOutputs(const TransactionBlockInfo&
     auto it = m_subscriptions.find(kv.first);
     if (it != m_subscriptions.end()) {
       auto& transfers = info.outputs[kv.first];
-      errorCode = createTransfers(it->second->getKeys(), blockInfo, tx, kv.second, info.globalIdxs, transfers, m_logger);
-      if (errorCode) {
-        return errorCode;
+      try {
+        errorCode = createTransfers(it->second->getKeys(), blockInfo, tx, kv.second, info.globalIdxs, transfers, m_logger);
+        if (errorCode) {
+          return errorCode;
+        }
+      }
+      catch (const std::exception& e) {
+        m_logger(ERROR, BRIGHT_RED) << "Failed to process transaction: " << e.what() << ", transaction hash " << Common::podToHex(tx.getTransactionHash());
+        return std::error_code();
       }
     }
   }
@@ -601,8 +631,8 @@ void TransfersConsumer::processOutputs(const TransactionBlockInfo& blockInfo, Tr
         sub.markTransactionConfirmed(blockInfo, tx.getTransactionHash(), globalIdxs);
         updated = true;
       } catch (...) {
-          m_logger(ERROR, BRIGHT_RED) << "markTransactionConfirmed failed, throw MarkTransactionConfirmedException";
-          throw MarkTransactionConfirmedException(tx.getTransactionHash());
+        m_logger(ERROR, BRIGHT_RED) << "markTransactionConfirmed failed, throw MarkTransactionConfirmedException";
+        throw MarkTransactionConfirmedException(tx.getTransactionHash());
       }
     } else {
       assert(subscribtionTxInfo.blockHeight == blockInfo.height);
@@ -617,7 +647,7 @@ std::error_code TransfersConsumer::getGlobalIndices(const Hash& transactionHash,
   std::promise<std::error_code> prom;
   std::future<std::error_code> f = prom.get_future();
 
-  INode::Callback cb = [&prom](std::error_code ec) { 
+  INode::Callback cb = [&prom](std::error_code ec) {
     std::promise<std::error_code> p(std::move(prom));
     p.set_value(ec);
   };

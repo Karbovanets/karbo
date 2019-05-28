@@ -1474,7 +1474,7 @@ std::string print_peerlist_to_string(const std::list<PeerlistEntry>& pl) {
       // connection stopped
       logger(DEBUGGING) << ctx << "writeHandler() is interrupted";
     } catch (std::exception& e) {
-      logger(WARNING) << ctx << "error during write: " << e.what();
+      logger(DEBUGGING) << ctx << "error during write: " << e.what();
       safeInterrupt(ctx); // stop connection on write error
     }
 

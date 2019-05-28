@@ -2555,12 +2555,75 @@ bool Core::getTransactionsByPaymentId(const Crypto::Hash& paymentId, std::vector
 	return true;
 }
 
+Difficulty Core::getAvgDifficulty(uint32_t height, uint32_t window) const {
+  IBlockchainCache* mainChain = chainsLeaves[0];
+
+  if (height == window) {
+    return mainChain->getCurrentCumulativeDifficulty(height) / height;
+  }
+
+  uint32_t offset;
+  offset = height - std::min<uint32_t>(height, std::min<uint32_t>(mainChain->getTopBlockIndex(), window));
+  if (offset == 0) {
+    ++offset;
+  }
+  Difficulty cumulDiffForPeriod = mainChain->getCurrentCumulativeDifficulty(height) - mainChain->getCurrentCumulativeDifficulty(offset);
+
+  return cumulDiffForPeriod / std::min<uint32_t>(mainChain->getTopBlockIndex(), window);
+}
+
 uint64_t Core::getMinimalFee() {
   return getMinimalFeeForHeight(get_current_blockchain_height() - 1);
 }
 
 uint64_t Core::getMinimalFeeForHeight(uint32_t height) {
-  return CryptoNote::parameters::MAXIMUM_FEE;
+  IBlockchainCache* mainChain = chainsLeaves[0];
+  uint32_t currentIndex = mainChain->getTopBlockIndex();
+
+  if (height < 3 || currentIndex <= 1) {
+    return 0;
+  }
+
+  if (height > currentIndex) {
+    height = currentIndex;
+  }
+
+  uint32_t window = std::min(height, std::min<uint32_t>(currentIndex, static_cast<uint32_t>(CryptoNote::parameters::EXPECTED_NUMBER_OF_BLOCKS_PER_DAY)));
+  if (window == 0) {
+    ++window;
+  }
+
+  uint32_t offset = height - window;
+  if (offset == 0) {
+    ++offset;
+  }
+
+  // calculate average difficulty for ~last month
+  uint64_t avgDifficultyCurrent = getAvgDifficulty(height, window * 7 * 4);
+
+  // historical reference moving average difficulty
+  uint64_t avgDifficultyHistorical = getAvgDifficulty(height, height);
+
+  /*
+  * Total reward with transaction fees is used as the level of usage metric
+  * to take into account transaction volume and cost of space in blockchain.
+  */
+
+  // calculate average reward for ~last day
+  std::vector<uint64_t> rewards;
+  rewards.reserve(window);
+  for (; offset < height; offset++) {
+    auto rawBlock = mainChain->getBlockByIndex(offset);
+    auto blockTemplate = extractBlockTemplate(rawBlock);
+    rewards.push_back(get_outs_money_amount(blockTemplate.baseTransaction));
+  }
+  uint64_t avgRewardCurrent = std::accumulate(rewards.begin(), rewards.end(), 0ULL) / rewards.size();
+  rewards.shrink_to_fit();
+
+  // historical reference moving average reward
+  uint64_t avgRewardHistorical = mainChain->getAlreadyGeneratedCoins(height) / height;
+
+  return currency.getMinimalFee(avgDifficultyCurrent, avgRewardCurrent, avgDifficultyHistorical, avgRewardHistorical, height);
 }
 
 void Core::throwIfNotInitialized() const {

@@ -73,6 +73,7 @@ public:
 
   virtual Difficulty getBlockDifficulty(uint32_t blockIndex) const = 0;
   virtual Difficulty getDifficultyForNextBlock() const = 0;
+  virtual Difficulty getAvgDifficulty(uint32_t height, uint32_t window) const = 0;
 
   virtual std::error_code addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlock) = 0;
   virtual std::error_code addBlock(RawBlock&& rawBlock) = 0;
