@@ -151,6 +151,7 @@ bool DaemonCommandsHandler::status(const std::vector<std::string>& args) {
     << "network hashrate: " << get_mining_speed(hashrate) << ", difficulty: " << difficulty << ", "
     << "block v. " << (int)majorVersion << ", "
     << alt_blocks_count << " alt. block(s), "
+    << tx_pool_size << " transaction(s) in mempool, "
     << outgoing_connections_count << " out. + " << incoming_connections_count << " inc. connections, "
     << rpc_conn << " rpc connections, "
     << "peers: " << white_peerlist_size << " white / " << grey_peerlist_size << " grey, "
