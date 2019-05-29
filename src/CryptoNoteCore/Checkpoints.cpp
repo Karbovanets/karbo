@@ -87,11 +87,12 @@ bool Checkpoints::checkBlock(uint32_t index, const Crypto::Hash &h) const {
 //---------------------------------------------------------------------------
 bool Checkpoints::isAlternativeBlockAllowed(uint32_t  blockchainSize,
                                             uint32_t  blockIndex) const {
-  if (blockchainSize == 0) {
+  if (blockIndex == 0) {
     return false;
   }
 
-  if (blockIndex < blockchainSize - CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW
+  if (blockIndex < blockchainSize - CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1
+    && blockchainSize > CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1
     && !isInCheckpointZone(blockIndex)) {
     logger(Logging::DEBUGGING, Logging::BRIGHT_WHITE)
       << "An attempt of too deep reorganization: "
@@ -154,6 +155,8 @@ bool Checkpoints::loadCheckpointsFromDns()
 {
   std::string domain("checkpoints.karbo.org");
   std::vector<std::string>records;
+
+  logger(Logging::INFO) << "Fetching DNS checkpoint records from " << domain;
 
   if (!Common::fetch_dns_txt(domain, records)) {
     logger(Logging::INFO) << "Failed to lookup DNS checkpoint records from " << domain;

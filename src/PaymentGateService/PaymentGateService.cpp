@@ -205,13 +205,18 @@ void PaymentGateService::runInProcess(Logging::LoggerRef& log) {
   }
 
   CryptoNote::Currency currency = currencyBuilder.currency();
+  CryptoNote::Checkpoints checkpoints(logger);
+  for (const auto& cp : CryptoNote::CHECKPOINTS) {
+    checkpoints.addCheckpoint(cp.index, cp.blockId);
+  }
+  checkpoints.loadCheckpointsFromDns();
 
   log(Logging::INFO) << "initializing core";
 
   CryptoNote::Core core(
     currency,
     logger,
-    CryptoNote::Checkpoints(logger),
+    std::move(checkpoints),
     *dispatcher,
     std::unique_ptr<CryptoNote::IBlockchainCacheFactory>(new CryptoNote::DatabaseBlockchainCacheFactory(database, log.getLogger())),
     CryptoNote::createSwappedMainChainStorage(dbConfig.getDataDir(), currency));
@@ -220,12 +225,7 @@ void PaymentGateService::runInProcess(Logging::LoggerRef& log) {
 
   CryptoNote::CryptoNoteProtocolHandler protocol(currency, *dispatcher, core, nullptr, logger);
   CryptoNote::NodeServer p2pNode(*dispatcher, protocol, logger);
-  CryptoNote::Checkpoints checkpoints(logger);
-  for (const auto& cp : CryptoNote::CHECKPOINTS) {
-    checkpoints.addCheckpoint(cp.index, cp.blockId);
-  }
-  checkpoints.loadCheckpointsFromDns();
-
+  
   protocol.set_p2p_endpoint(&p2pNode);
 
   log(Logging::INFO) << "initializing p2pNode";

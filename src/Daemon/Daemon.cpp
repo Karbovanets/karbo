@@ -250,7 +250,7 @@ int main(int argc, char* argv[])
 
     bool disable_checkpoints = command_line::get_arg(vm, arg_disable_checkpoints);
     if (!disable_checkpoints && !testnet_mode) {
-      CryptoNote::Checkpoints checkpoints(logManager);
+      logger(INFO) << "Loading checkpoints...";
       for (const auto& cp : CryptoNote::CHECKPOINTS) {
         checkpoints.addCheckpoint(cp.index, cp.blockId);
       }
