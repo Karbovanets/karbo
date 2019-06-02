@@ -1063,8 +1063,8 @@ bool Core::isTransactionValidForPool(const CachedTransaction& cachedTransaction,
   }
 
   bool isFusion = fee == 0 && currency.isFusionTransaction(cachedTransaction.getTransaction(), cachedTransaction.getTransactionBinaryArray().size(), getTopBlockIndex());
-  if (!isFusion && (getBlockMajorVersionForHeight(getTopBlockIndex()) < BLOCK_MAJOR_VERSION_4 ? fee < currency.minimumFee() :
-    fee < (getMinimalFee() - (getMinimalFee() * 20 / 100)))) {
+  if (!isFusion && (getTopBlockIndex() < CryptoNote::parameters::UPGRADE_HEIGHT_V4 ? (fee < currency.minimumFee()) :
+    (fee < (getMinimalFee() - (getMinimalFee() * 20 / 100))))) {
     logger(Logging::WARNING) << "Transaction " << cachedTransaction.getTransactionHash()
       << " is not valid. Reason: fee is too small and it's not a fusion transaction";
     return false;
@@ -1599,8 +1599,8 @@ std::error_code Core::validateSemantic(const Transaction& transaction, uint64_t&
 
   CachedTransaction cachedTransaction(std::move(transaction));
   bool isFusion = fee == 0 && currency.isFusionTransaction(transaction, cachedTransaction.getTransactionBinaryArray().size(), blockIndex);
-  if (!isFusion && (getBlockMajorVersionForHeight(getTopBlockIndex()) < BLOCK_MAJOR_VERSION_4 ? fee < currency.minimumFee() :
-    fee < (getMinimalFeeForHeight(blockIndex) - (getMinimalFeeForHeight(blockIndex) * 20 / 100)))) {
+  if (!isFusion && (blockIndex < CryptoNote::parameters::UPGRADE_HEIGHT_V4 ? (fee < currency.minimumFee()) :
+    (fee < (getMinimalFeeForHeight(blockIndex) - (getMinimalFeeForHeight(blockIndex) * 20 / 100))))) {
     return error::TransactionValidationError::INVALID_FEE;
   }
 
