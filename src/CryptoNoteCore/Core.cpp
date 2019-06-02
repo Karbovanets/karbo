@@ -528,24 +528,11 @@ Difficulty Core::getBlockDifficulty(uint32_t blockIndex) const {
   return difficulties[0];
 }
 
-// TODO: just use mainChain->getDifficultyForNextBlock() ?
 Difficulty Core::getDifficultyForNextBlock() const {
   throwIfNotInitialized();
   IBlockchainCache* mainChain = chainsLeaves[0];
 
-  uint32_t topBlockIndex = mainChain->getTopBlockIndex();
-
-
-  uint8_t nextBlockMajorVersion = getBlockMajorVersionForHeight(topBlockIndex);
-
-  size_t blocksCount = std::min(static_cast<size_t>(topBlockIndex), currency.difficultyBlocksCountByBlockVersion(nextBlockMajorVersion));
-
-  auto timestamps = mainChain->getLastTimestamps(blocksCount);
-  auto difficulties = mainChain->getLastCumulativeDifficulties(blocksCount);
-
-
-  return currency.nextDifficulty(nextBlockMajorVersion, topBlockIndex, timestamps, difficulties);
-
+  return mainChain->getDifficultyForNextBlock();
 }
 
 std::vector<Crypto::Hash> Core::findBlockchainSupplement(const std::vector<Crypto::Hash>& remoteBlockIds,
@@ -702,7 +689,7 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
 
         cache->pushBlock(cachedBlock, transactions, validatorState, cumulativeBlockSize, emissionChange, currentDifficulty, std::move(rawBlock));
 		
-		//actualizePoolTransactions();
+        //actualizePoolTransactions();
         updateBlockMedianSize();
         actualizePoolTransactionsLite(validatorState);
 
@@ -714,7 +701,7 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
 
         notifyObservers(makeDelTransactionMessage(std::move(hashes), Messages::DeleteTransaction::Reason::InBlock));
       } else {
-		bool allowReorg = true;
+        bool allowReorg = true;
         
         cache->pushBlock(cachedBlock, transactions, validatorState, cumulativeBlockSize, emissionChange, currentDifficulty, std::move(rawBlock));
         logger(Logging::WARNING) << "Block " << cachedBlock.getBlockHash() << " added to alternative chain. Index: " << (previousBlockIndex + 1);
@@ -793,7 +780,7 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
 
             logger(Logging::WARNING) << "Switching to alternative chain! New top block hash: " << cachedBlock.getBlockHash() << ", index: " << (previousBlockIndex + 1)
               << ", previous top block hash: " << chainsLeaves[endpointIndex]->getTopBlockHash() << ", index: " << chainsLeaves[endpointIndex]->getTopBlockIndex();
-		  }
+          }
         }
       }
     } else {
@@ -1076,7 +1063,8 @@ bool Core::isTransactionValidForPool(const CachedTransaction& cachedTransaction,
   }
 
   bool isFusion = fee == 0 && currency.isFusionTransaction(cachedTransaction.getTransaction(), cachedTransaction.getTransactionBinaryArray().size(), getTopBlockIndex());
-  if (!isFusion && fee < CryptoNote::parameters::MINIMUM_FEE) {
+  if (!isFusion && (getBlockMajorVersionForHeight(getTopBlockIndex()) < BLOCK_MAJOR_VERSION_4 ? fee < currency.minimumFee() :
+    fee < (getMinimalFee() - (getMinimalFee() * 20 / 100)))) {
     logger(Logging::WARNING) << "Transaction " << cachedTransaction.getTransactionHash()
       << " is not valid. Reason: fee is too small and it's not a fusion transaction";
     return false;
@@ -1611,7 +1599,8 @@ std::error_code Core::validateSemantic(const Transaction& transaction, uint64_t&
 
   CachedTransaction cachedTransaction(std::move(transaction));
   bool isFusion = fee == 0 && currency.isFusionTransaction(transaction, cachedTransaction.getTransactionBinaryArray().size(), blockIndex);
-  if (!isFusion && fee < CryptoNote::parameters::MINIMUM_FEE) {
+  if (!isFusion && (getBlockMajorVersionForHeight(getTopBlockIndex()) < BLOCK_MAJOR_VERSION_4 ? fee < currency.minimumFee() :
+    fee < (getMinimalFeeForHeight(blockIndex) - (getMinimalFeeForHeight(blockIndex) * 20 / 100)))) {
     return error::TransactionValidationError::INVALID_FEE;
   }
 
@@ -2556,20 +2545,17 @@ bool Core::getTransactionsByPaymentId(const Crypto::Hash& paymentId, std::vector
 }
 
 Difficulty Core::getAvgDifficulty(uint32_t height, uint32_t window) const {
+  throwIfNotInitialized();
+  assert(height <= getTopBlockIndex());
+
   IBlockchainCache* mainChain = chainsLeaves[0];
 
   if (height == window) {
     return mainChain->getCurrentCumulativeDifficulty(height) / height;
   }
 
-  uint32_t offset;
-  offset = height - std::min<uint32_t>(height, std::min<uint32_t>(mainChain->getTopBlockIndex(), window));
-  if (offset == 0) {
-    ++offset;
-  }
-  Difficulty cumulDiffForPeriod = mainChain->getCurrentCumulativeDifficulty(height) - mainChain->getCurrentCumulativeDifficulty(offset);
-
-  return cumulDiffForPeriod / std::min<uint32_t>(mainChain->getTopBlockIndex(), window);
+  std::vector<uint64_t> cumulDiffs = mainChain->getLastCumulativeDifficulties(window);
+  return (cumulDiffs.back() - cumulDiffs.front()) / window;
 }
 
 uint64_t Core::getMinimalFee() {
@@ -2599,10 +2585,11 @@ uint64_t Core::getMinimalFeeForHeight(uint32_t height) {
   }
 
   // calculate average difficulty for ~last month
-  uint64_t avgDifficultyCurrent = getAvgDifficulty(height, window * 7 * 4);
+  std::vector<uint64_t> cumulDiffs = mainChain->getLastCumulativeDifficulties(window * 7 * 4 + 1); // Off-by-one bug in Karbo1 so we have to add here + 1 to get same value?
+  uint64_t avgDifficultyCurrent = (cumulDiffs.back() - cumulDiffs.front()) / (window * 7 * 4);
 
   // historical reference moving average difficulty
-  uint64_t avgDifficultyHistorical = getAvgDifficulty(height, height);
+  uint64_t avgDifficultyHistorical = mainChain->getCurrentCumulativeDifficulty(height) / height;
 
   /*
   * Total reward with transaction fees is used as the level of usage metric
@@ -2613,8 +2600,7 @@ uint64_t Core::getMinimalFeeForHeight(uint32_t height) {
   std::vector<uint64_t> rewards;
   rewards.reserve(window);
   for (; offset < height; offset++) {
-    auto rawBlock = mainChain->getBlockByIndex(offset);
-    auto blockTemplate = extractBlockTemplate(rawBlock);
+    auto blockTemplate = getBlockByIndex(offset);
     rewards.push_back(get_outs_money_amount(blockTemplate.baseTransaction));
   }
   uint64_t avgRewardCurrent = std::accumulate(rewards.begin(), rewards.end(), 0ULL) / rewards.size();

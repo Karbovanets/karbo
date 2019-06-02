@@ -79,6 +79,7 @@ namespace
     "network id is changed. Use it with --data-dir flag. The wallet must be launched with --testnet flag.", false};
   const command_line::arg_descriptor<std::string> arg_load_checkpoints = { "load-checkpoints", "<filename> Load checkpoints from csv file.", "" };
   const command_line::arg_descriptor<bool>        arg_disable_checkpoints = { "without-checkpoints", "Synchronize without checkpoints" };
+  const command_line::arg_descriptor<std::string> arg_rollback = { "rollback", "Rollback blockchain to <height>" };
 }
 
 bool command_line_preprocessor(const boost::program_options::variables_map& vm, LoggerRef& logger);
@@ -141,6 +142,7 @@ int main(int argc, char* argv[])
     command_line::add_arg(desc_cmd_sett, arg_print_genesis_tx);
     command_line::add_arg(desc_cmd_sett, arg_load_checkpoints);
     command_line::add_arg(desc_cmd_sett, arg_disable_checkpoints);
+    command_line::add_arg(desc_cmd_sett, arg_rollback);
     command_line::add_arg(desc_cmd_sett, arg_set_contact);
 
     RpcServerConfig::initOptions(desc_cmd_sett);
@@ -306,6 +308,26 @@ int main(int argc, char* argv[])
     }
 
     System::Dispatcher dispatcher;
+
+    std::unique_ptr<IMainChainStorage> mainChainStorage;
+    mainChainStorage = createSwappedMainChainStorage(data_dir_path.string(), currency);
+
+    if (command_line::has_arg(vm, arg_rollback)) {
+      std::string rollback_str = command_line::get_arg(vm, arg_rollback);
+      if (!rollback_str.empty()) {
+        uint32_t _index = 0;
+        if (!Common::fromString(rollback_str, _index)) {
+          std::cout << "wrong block index parameter" << ENDL;
+          return false;
+        }
+        logger(INFO, BRIGHT_YELLOW) << "Rollback blockchain to height " << _index;
+        while (mainChainStorage->getBlockCount() >= _index)
+        {
+          mainChainStorage->popBlock();
+        }
+      }
+    }
+
     logger(INFO) << "Initializing core...";
     CryptoNote::Core ccore(
       currency,
@@ -313,7 +335,7 @@ int main(int argc, char* argv[])
       std::move(checkpoints),
       dispatcher,
       std::unique_ptr<IBlockchainCacheFactory>(new DatabaseBlockchainCacheFactory(database, logger.getLogger())),
-      createSwappedMainChainStorage(data_dir_path.string(), currency));
+      std::move(mainChainStorage));
 
     ccore.load();
     logger(INFO) << "Core initialized OK";
