@@ -106,7 +106,7 @@ target_link_libraries(PaymentGateService PaymentGate JsonRpcServer Wallet NodeRp
 else()
 target_link_libraries(PaymentGateService PaymentGate JsonRpcServer Wallet NodeRpcProxy Transfers P2P CryptoNoteCore Crypto Rpc Http Serialization System Logging Common InProcessNode upnpc-static BlockchainExplorer rocksdblib ${Boost_LIBRARIES})
 endif()
-target_link_libraries(Miner CryptoNoteCore Rpc Serialization System Http Logging Common Crypto ${Boost_LIBRARIES})
+target_link_libraries(Miner Crypto CryptoNoteCore Rpc Serialization System Http Logging Common ${Boost_LIBRARIES})
 target_link_libraries(GreenWallet Mnemonics Wallet NodeRpcProxy Transfers Rpc Http CryptoNoteCore System Logging Common ${Boost_LIBRARIES} Serialization Crypto)
 
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux" OR APPLE)
@@ -141,3 +141,4 @@ set_property(TARGET SimpleWallet PROPERTY OUTPUT_NAME "simplewallet")
 set_property(TARGET PaymentGateService PROPERTY OUTPUT_NAME "walletd")
 set_property(TARGET Miner PROPERTY OUTPUT_NAME "miner")
 set_property(TARGET GreenWallet PROPERTY OUTPUT_NAME "greenwallet")
+
