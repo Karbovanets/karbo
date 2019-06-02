@@ -1,29 +1,27 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2014-2018, The Monero Project
+// Copyright (c) 2019, The Karbo Developers
 //
-// This file is part of Bytecoin.
-//
-// Bytecoin is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// Bytecoin is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with Bytecoin.  If not, see <http://www.gnu.org/licenses/>.
+// Please see the included LICENSE file for more information.
 
 #include "Miner.h"
 
 #include <functional>
+#include <mutex>
+#include "Common/StringTools.h"
 
 #include "crypto/crypto.h"
+#include "crypto/hash.h"
 #include "CryptoNoteCore/CachedBlock.h"
+#include "CryptoNoteCore/CheckDifficulty.h"
 #include "CryptoNoteCore/CryptoNoteFormatUtils.h"
 
 #include <System/InterruptedException.h>
+
+#include "CryptoNoteCore/CachedBlock.h"
+#include <Common/Varint.h>
+#include <config/CryptoNoteConfig.h>
+#include "CryptoNoteCore/CryptoNoteTools.h"
 
 namespace CryptoNote {
 
@@ -83,6 +81,7 @@ void Miner::runWorkers(BlockMiningParameters blockMiningParameters, size_t threa
       m_workers.emplace_back(std::unique_ptr<System::RemoteContext<void>> (
         new System::RemoteContext<void>(m_dispatcher, std::bind(&Miner::workerFunc, this, blockMiningParameters.blockTemplate, blockMiningParameters.difficulty, static_cast<uint32_t>(threadCount))))
       );
+	  m_logger(Logging::INFO) << "Thread " << i << " started at nonce: " << blockMiningParameters.blockTemplate.nonce;
 
       blockMiningParameters.blockTemplate.nonce++;
     }
@@ -97,32 +96,69 @@ void Miner::runWorkers(BlockMiningParameters blockMiningParameters, size_t threa
   m_miningStopped.set();
 }
 
-void Miner::workerFunc(const BlockTemplate& blockTemplate, Difficulty difficulty, uint32_t nonceStep) {
-  try {
-    BlockTemplate block = blockTemplate;
-    Crypto::cn_context cryptoContext;
+void Miner::workerFunc(const BlockTemplate& blockTemplate, uint64_t difficulty, uint32_t nonceStep) {
+	uint64_t* dataset_64;
+	try {
+		BlockTemplate block = blockTemplate;
+		CachedBlock cachedBlock(block);
+		if(block.majorVersion < BLOCK_MAJOR_VERSION_6){
+			while (m_state == MiningState::MINING_IN_PROGRESS) {
+				CachedBlock cachedBlock(block);
+				Crypto::Hash hash = cachedBlock.getBlockLongHash();
+				if (check_hash(hash, difficulty)) {
+					m_logger(Logging::INFO) << "Found block for difficulty " << difficulty;
 
-    while (m_state == MiningState::MINING_IN_PROGRESS) {
-      CachedBlock cachedBlock(block);
-      Crypto::Hash hash = cachedBlock.getBlockLongHash(cryptoContext);
-      if (check_hash(hash, difficulty)) {
-        m_logger(Logging::INFO) << "Found block for difficulty " << difficulty;
+					if (!setStateBlockFound()) {
+						  m_logger(Logging::DEBUGGING) << "block is already found or mining stopped";
+						  return;
+					}
 
-        if (!setStateBlockFound()) {
-          m_logger(Logging::DEBUGGING) << "block is already found or mining stopped";
-          return;
-        }
+					m_block = block;
+					return;
+				}
 
-        m_block = block;
-        return;
-      }
+				incrementHashCount();
+				block.nonce += nonceStep;
+			}
+		} else{
+			uint32_t height = cachedBlock.getBlockIndex();
+			dataset_64      = (uint64_t*)calloc(536870912,8);
+			if(!dataset_64) exit(1);
+			m_logger(Logging::INFO) << "Initialising dataset";
+			Crypto::dataset_height(height, dataset_64);
+			m_logger(Logging::INFO) << "Finished one-time initialisation";
+			m_logger(Logging::INFO) << "Started mining on dataset";
+			Crypto::Hash hash;
+			while (m_state == MiningState::MINING_IN_PROGRESS) {
+				CachedBlock cachedBlock(block);
+				const auto& rawHashingBlock = cachedBlock.getParentBlockHashingBinaryArray(true);
+				squash_full(rawHashingBlock.data(), rawHashingBlock.size(), hash, dataset_64);
+				if (check_hash(hash, difficulty)) {
+					free(dataset_64);
+					m_logger(Logging::INFO) << "Found block for difficulty " << difficulty;
 
-      block.nonce += nonceStep;
-    }
-  } catch (std::exception& e) {
-    m_logger(Logging::ERROR) << "Miner got error: " << e.what();
-    m_state = MiningState::MINING_STOPPED;
-  }
+					if (!setStateBlockFound()) {
+						m_logger(Logging::DEBUGGING) << "block is already found or mining stopped";
+						return;
+					}
+
+					m_block = block;
+					return;
+				}
+
+				incrementHashCount();
+				block.nonce += nonceStep;
+			}
+		}
+	} catch (std::exception& e) {
+		m_logger(Logging::ERROR) << "Miner got error: " << e.what();
+		m_state = MiningState::MINING_STOPPED;
+		try{			
+			free(dataset_64);
+		} catch(std::exception& e) {
+			;
+		}	
+	}
 }
 
 bool Miner::setStateBlockFound() {
@@ -147,6 +183,16 @@ bool Miner::setStateBlockFound() {
         return false;
     }
   }
+}
+
+void Miner::incrementHashCount() {
+  std::lock_guard<std::mutex> guard(m_hashes_mutex);
+  m_hash_count++;
+}
+
+uint64_t Miner::getHashCount() {
+  std::lock_guard<std::mutex> guard(m_hashes_mutex);
+  return m_hash_count;
 }
 
 } //namespace CryptoNote
