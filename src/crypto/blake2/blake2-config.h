@@ -1,5 +1,3 @@
-#if defined(HAVE_SSE2)
-
 /*
    BLAKE2 reference source code package - optimized C implementations
 
@@ -72,5 +70,3 @@
 #endif
 
 #endif
-
-#endif // defined(HAVE_SSE2)
