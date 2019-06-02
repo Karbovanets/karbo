@@ -257,6 +257,42 @@ void WalletRpcOrder::serialize(CryptoNote::ISerializer& serializer) {
   }
 }
 
+void GetTransactionSecretKey::Request::serialize(CryptoNote::ISerializer& serializer) {
+  if (!serializer(transactionHash, "transactionHash")) {
+    throw RequestSerializationError();
+  }
+}
+
+void GetTransactionSecretKey::Response::serialize(CryptoNote::ISerializer& serializer) {
+  serializer(transactionSecretKey, "transactionSecretKey");
+}
+
+void GetTransactionProof::Request::serialize(CryptoNote::ISerializer& serializer) {
+  if (!serializer(transactionHash, "transactionHash")) {
+    throw RequestSerializationError();
+  }
+  if (!serializer(destinationAddress, "destinationAddress")) {
+    throw RequestSerializationError();
+  }
+  serializer(transactionSecretKey, "transactionSecretKey");
+}
+
+void GetTransactionProof::Response::serialize(CryptoNote::ISerializer& serializer) {
+  serializer(transactionProof, "transactionProof");
+}
+
+void GetReserveProof::Request::serialize(CryptoNote::ISerializer& serializer) {
+  if (!serializer(address, "address")) {
+    throw RequestSerializationError();
+  }
+  serializer(amount, "amount");
+  serializer(message, "message");
+}
+
+void GetReserveProof::Response::serialize(CryptoNote::ISerializer& serializer) {
+  serializer(reserveProof, "reserveProof");
+}
+
 void SendTransaction::Request::serialize(CryptoNote::ISerializer& serializer) {
   serializer(sourceAddresses, "addresses");
 
