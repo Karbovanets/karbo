@@ -4,24 +4,18 @@
 //
 // Please see the included LICENSE file for more information.
 
+#include "crypto/crypto.h"
+#include "crypto/hash.h"
 #include "Miner.h"
 
 #include <functional>
-#include <mutex>
-#include "Common/StringTools.h"
 
 #include "crypto/crypto.h"
-#include "crypto/hash.h"
 #include "CryptoNoteCore/CachedBlock.h"
-#include "CryptoNoteCore/CheckDifficulty.h"
 #include "CryptoNoteCore/CryptoNoteFormatUtils.h"
+#include "CryptoNoteConfig.h"
 
 #include <System/InterruptedException.h>
-
-#include "CryptoNoteCore/CachedBlock.h"
-#include <Common/Varint.h>
-#include <config/CryptoNoteConfig.h>
-#include "CryptoNoteCore/CryptoNoteTools.h"
 
 namespace CryptoNote {
 
@@ -100,11 +94,12 @@ void Miner::workerFunc(const BlockTemplate& blockTemplate, uint64_t difficulty, 
 	uint64_t* dataset_64;
 	try {
 		BlockTemplate block = blockTemplate;
+   		Crypto::cn_context cryptoContext;
 		CachedBlock cachedBlock(block);
 		if(block.majorVersion < BLOCK_MAJOR_VERSION_6){
 			while (m_state == MiningState::MINING_IN_PROGRESS) {
 				CachedBlock cachedBlock(block);
-				Crypto::Hash hash = cachedBlock.getBlockLongHash();
+				Crypto::Hash hash = cachedBlock.getBlockLongHash(cryptoContext);
 				if (check_hash(hash, difficulty)) {
 					m_logger(Logging::INFO) << "Found block for difficulty " << difficulty;
 
@@ -112,12 +107,9 @@ void Miner::workerFunc(const BlockTemplate& blockTemplate, uint64_t difficulty, 
 						  m_logger(Logging::DEBUGGING) << "block is already found or mining stopped";
 						  return;
 					}
-
 					m_block = block;
 					return;
 				}
-
-				incrementHashCount();
 				block.nonce += nonceStep;
 			}
 		} else{
@@ -141,12 +133,9 @@ void Miner::workerFunc(const BlockTemplate& blockTemplate, uint64_t difficulty, 
 						m_logger(Logging::DEBUGGING) << "block is already found or mining stopped";
 						return;
 					}
-
 					m_block = block;
 					return;
 				}
-
-				incrementHashCount();
 				block.nonce += nonceStep;
 			}
 		}
@@ -183,16 +172,6 @@ bool Miner::setStateBlockFound() {
         return false;
     }
   }
-}
-
-void Miner::incrementHashCount() {
-  std::lock_guard<std::mutex> guard(m_hashes_mutex);
-  m_hash_count++;
-}
-
-uint64_t Miner::getHashCount() {
-  std::lock_guard<std::mutex> guard(m_hashes_mutex);
-  return m_hash_count;
 }
 
 } //namespace CryptoNote
