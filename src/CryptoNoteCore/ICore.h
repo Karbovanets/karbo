@@ -116,5 +116,12 @@ public:
   virtual uint64_t getMinimalFeeForHeight(uint32_t height) = 0;
   virtual uint64_t getMinimalFee() = 0;
   virtual bool getMixin(const Transaction& transaction, uint64_t& mixin) = 0;
+
+  virtual size_t getPoolTransactionCount() const = 0;
+  virtual size_t getBlockchainTransactionCount() const = 0;
+  virtual size_t getAlternativeBlockCount() const = 0;
+  virtual uint64_t getTotalGeneratedAmount() const = 0;
+  virtual uint32_t get_current_blockchain_height() const = 0;
+
 };
 }
