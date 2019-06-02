@@ -1,5 +1,3 @@
-#if defined(HAVE_SSE2)
-
 /*
    BLAKE2 reference source code package - optimized C implementations
 
@@ -157,5 +155,3 @@
   UNDIAGONALIZE(row1l,row2l,row3l,row4l,row1h,row2h,row3h,row4h);
 
 #endif
-
-#endif // defined(HAVE_SSE2)
