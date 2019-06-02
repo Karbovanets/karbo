@@ -1015,7 +1015,8 @@ std::string WalletLegacy::getReserveProof(const uint64_t &reserve, const std::st
 		auto txPubKey = td.transactionPublicKey;
 
 		for (int i = 0; i < 2; ++i)	{
-			proof.shared_secret = reinterpret_cast<const PublicKey&>(Crypto::scalarmultKey(*reinterpret_cast<const Crypto::KeyImage*>(&txPubKey), *reinterpret_cast<const Crypto::KeyImage*>(&viewSecretKey)));
+			Crypto::KeyImage sk = Crypto::scalarmultKey(*reinterpret_cast<const Crypto::KeyImage*>(&txPubKey), *reinterpret_cast<const Crypto::KeyImage*>(&viewSecretKey));
+            proof.shared_secret = *reinterpret_cast<const Crypto::PublicKey *>(&sk);
 			Crypto::KeyDerivation derivation;
 			if (!Crypto::generate_key_derivation(proof.shared_secret, viewSecretKey, derivation)) {
 				throw std::runtime_error("Failed to generate key derivation");
