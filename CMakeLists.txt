@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.6)
-project(Karbo)
+project(TKarbo)
 
 # Required for finding Threads on ARM
 enable_language(C)

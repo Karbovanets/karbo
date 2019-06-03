@@ -135,10 +135,10 @@ add_dependencies(GreenWallet version)
 
 set_property(TARGET ConnectivityTool PROPERTY OUTPUT_NAME "connectivity_tool")
 
-set_property(TARGET Daemon PROPERTY OUTPUT_NAME "karbowanecd")
+set_property(TARGET Daemon PROPERTY OUTPUT_NAME "tkarbod")
 
-set_property(TARGET SimpleWallet PROPERTY OUTPUT_NAME "simplewallet")
-set_property(TARGET PaymentGateService PROPERTY OUTPUT_NAME "walletd")
-set_property(TARGET Miner PROPERTY OUTPUT_NAME "miner")
-set_property(TARGET GreenWallet PROPERTY OUTPUT_NAME "greenwallet")
+set_property(TARGET SimpleWallet PROPERTY OUTPUT_NAME "twallet")
+set_property(TARGET PaymentGateService PROPERTY OUTPUT_NAME "twalletd")
+set_property(TARGET Miner PROPERTY OUTPUT_NAME "tminer")
+set_property(TARGET GreenWallet PROPERTY OUTPUT_NAME "tgreenwallet")
 
