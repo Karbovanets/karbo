@@ -103,12 +103,13 @@ void MinerManager::start() {
   }
 
   startBlockchainMonitoring();
-  startMining(params);
+	uint64_t* dataset_64 = NULL;
+  startMining(params, dataset_64);
 
-  eventLoop();
+  eventLoop(dataset_64);
 }
 
-void MinerManager::eventLoop() {
+void MinerManager::eventLoop(uint64_t* dataset_64) {
   size_t blocksMined = 0;
 
   for (;;) {
@@ -133,7 +134,7 @@ void MinerManager::eventLoop() {
         adjustBlockTemplate(params.blockTemplate);
 
         startBlockchainMonitoring();
-        startMining(params);
+        startMining(params, dataset_64);
         break;
       }
 
@@ -145,7 +146,7 @@ void MinerManager::eventLoop() {
         adjustBlockTemplate(params.blockTemplate);
 
         startBlockchainMonitoring();
-        startMining(params);
+        startMining(params, dataset_64);
         break;
       }
 
@@ -173,10 +174,10 @@ void MinerManager::pushEvent(MinerEvent&& event) {
   m_eventOccurred.set();
 }
 
-void MinerManager::startMining(const CryptoNote::BlockMiningParameters& params) {
-  m_contextGroup.spawn([this, params] () {
+void MinerManager::startMining(const CryptoNote::BlockMiningParameters& params, uint64_t* dataset_64) {
+  m_contextGroup.spawn([this, params, dataset_64] () {
     try {
-      m_minedBlock = m_miner.mine(params, m_config.threadCount);
+      m_minedBlock = m_miner.mine(params, m_config.threadCount, dataset_64);
       pushEvent(BlockMinedEvent());
     } catch (System::InterruptedException&) {
     } catch (std::exception& e) {

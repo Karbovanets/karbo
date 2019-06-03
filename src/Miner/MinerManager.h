@@ -57,11 +57,11 @@ private:
 
   uint64_t m_lastBlockTimestamp;
 
-  void eventLoop();
+  void eventLoop(uint64_t* dataset_64);
   MinerEvent waitEvent();
   void pushEvent(MinerEvent&& event);
 
-  void startMining(const CryptoNote::BlockMiningParameters& params);
+  void startMining(const CryptoNote::BlockMiningParameters& params, uint64_t* dataset_64);
   void stopMining();
 
   void startBlockchainMonitoring();
