@@ -9,7 +9,7 @@
 #define CACHE_ROUNDS    1                 // number of rounds in cache production
 #define EPOCH_LENGTH    360               // blocks per epoch (24h)
 #define DATASET_PARENTS 256               // number of hashes before calculating dataset entry
-#define ACCESSES        4096
+#define ACCESSES        256
 // Assuming 4 blocks per minute, an epoch estimates 15 minutes
 
 
