@@ -1063,8 +1063,8 @@ bool Core::isTransactionValidForPool(const CachedTransaction& cachedTransaction,
   }
 
   bool isFusion = fee == 0 && currency.isFusionTransaction(cachedTransaction.getTransaction(), cachedTransaction.getTransactionBinaryArray().size(), getTopBlockIndex());
-  if (!isFusion && (getBlockMajorVersionForHeight(getTopBlockIndex()) < BLOCK_MAJOR_VERSION_4 ? fee < currency.minimumFee() :
-    fee < (getMinimalFee() - (getMinimalFee() * 20 / 100)))) {
+  if (!isFusion && (getTopBlockIndex() < CryptoNote::parameters::UPGRADE_HEIGHT_V4 ? (fee < currency.minimumFee()) :
+    (fee < (getMinimalFee() - (getMinimalFee() * 20 / 100))))) {
     logger(Logging::WARNING) << "Transaction " << cachedTransaction.getTransactionHash()
       << " is not valid. Reason: fee is too small and it's not a fusion transaction";
     return false;
@@ -1599,8 +1599,8 @@ std::error_code Core::validateSemantic(const Transaction& transaction, uint64_t&
 
   CachedTransaction cachedTransaction(std::move(transaction));
   bool isFusion = fee == 0 && currency.isFusionTransaction(transaction, cachedTransaction.getTransactionBinaryArray().size(), blockIndex);
-  if (!isFusion && (getBlockMajorVersionForHeight(getTopBlockIndex()) < BLOCK_MAJOR_VERSION_4 ? fee < currency.minimumFee() :
-    fee < (getMinimalFeeForHeight(blockIndex) - (getMinimalFeeForHeight(blockIndex) * 20 / 100)))) {
+  if (!isFusion && (blockIndex < CryptoNote::parameters::UPGRADE_HEIGHT_V4 ? (fee < currency.minimumFee()) :
+    (fee < (getMinimalFeeForHeight(blockIndex) - (getMinimalFeeForHeight(blockIndex) * 20 / 100))))) {
     return error::TransactionValidationError::INVALID_FEE;
   }
 
@@ -2563,7 +2563,53 @@ uint64_t Core::getMinimalFee() {
 }
 
 uint64_t Core::getMinimalFeeForHeight(uint32_t height) {
+  IBlockchainCache* mainChain = chainsLeaves[0];
+  uint32_t currentIndex = mainChain->getTopBlockIndex();
+
+  if (height < 3 || currentIndex <= 1) {
     return 0;
+  }
+
+  if (height > currentIndex) {
+    height = currentIndex;
+  }
+
+  uint32_t window = std::min(height, std::min<uint32_t>(currentIndex, static_cast<uint32_t>(CryptoNote::parameters::EXPECTED_NUMBER_OF_BLOCKS_PER_DAY)));
+  if (window == 0) {
+    ++window;
+  }
+
+  uint32_t offset = height - window;
+  if (offset == 0) {
+    ++offset;
+  }
+
+  // calculate average difficulty for ~last month
+  std::vector<uint64_t> cumulDiffs = mainChain->getLastCumulativeDifficulties(window * 7 * 4 + 1); // Off-by-one bug in Karbo1 so we have to add here + 1 to get same value?
+  uint64_t avgDifficultyCurrent = (cumulDiffs.back() - cumulDiffs.front()) / (window * 7 * 4);
+
+  // historical reference moving average difficulty
+  uint64_t avgDifficultyHistorical = mainChain->getCurrentCumulativeDifficulty(height) / height;
+
+  /*
+  * Total reward with transaction fees is used as the level of usage metric
+  * to take into account transaction volume and cost of space in blockchain.
+  */
+
+  // calculate average reward for ~last day
+  std::vector<uint64_t> rewards;
+  rewards.reserve(window);
+  for (; offset < height; offset++) {
+    auto blockTemplate = getBlockByIndex(offset);
+    rewards.push_back(get_outs_money_amount(blockTemplate.baseTransaction));
+  }
+  uint64_t avgRewardCurrent = std::accumulate(rewards.begin(), rewards.end(), 0ULL) / rewards.size();
+  rewards.shrink_to_fit();
+
+  // historical reference moving average reward
+  uint64_t avgRewardHistorical = mainChain->getAlreadyGeneratedCoins(height) / height;
+
+  return currency.getMinimalFee(avgDifficultyCurrent, avgRewardCurrent, avgDifficultyHistorical, avgRewardHistorical, height);
 }
 
 void Core::throwIfNotInitialized() const {
