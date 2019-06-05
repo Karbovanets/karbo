@@ -95,7 +95,7 @@ void Miner::runWorkers(BlockMiningParameters blockMiningParameters, size_t threa
 void Miner::workerFunc(const BlockTemplate& blockTemplate, uint64_t difficulty, uint32_t nonceStep, uint64_t* dataset_64) {
 	try {
 		BlockTemplate block = blockTemplate;
-   		Crypto::cn_context cryptoContext;
+   	Crypto::cn_context cryptoContext;
 		CachedBlock cachedBlock(block);
 		if(block.majorVersion < BLOCK_MAJOR_VERSION_6){
 			while (m_state == MiningState::MINING_IN_PROGRESS) {
@@ -117,7 +117,7 @@ void Miner::workerFunc(const BlockTemplate& blockTemplate, uint64_t difficulty, 
 			uint32_t height = cachedBlock.getBlockIndex();
 			if(!dataset_64) dataset_64 = (uint64_t*)calloc(536870912,8);
 			if(!dataset_64) exit(1);
-			if(!dataset_64[0] || height%EPOCH == 0){
+			if(dataset_64[0] == 0 || height%EPOCH == 0){
 				m_logger(Logging::INFO) << "Initialising dataset";
 				Crypto::dataset_height(height, dataset_64);
 				m_logger(Logging::INFO) << "Finished one-time initialisation";
