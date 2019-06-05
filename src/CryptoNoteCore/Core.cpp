@@ -314,10 +314,12 @@ BlockTemplate Core::getBlockByHash(const Crypto::Hash& blockHash) const {
   assert(!chainsLeaves.empty());
 
   throwIfNotInitialized();
-  IBlockchainCache* segment =
-      findMainChainSegmentContainingBlock(blockHash); // TODO should it be requested from the main chain?
+  IBlockchainCache* segment = findMainChainSegmentContainingBlock(blockHash);
   if (segment == nullptr) {
-    throw std::runtime_error("Requested hash wasn't found in main blockchain");
+    segment = findAlternativeSegmentContainingBlock(blockHash);
+    if (segment == nullptr) {
+      throw std::runtime_error("Requested hash wasn't found");
+    }
   }
 
   uint32_t blockIndex = segment->getBlockIndex(blockHash);
