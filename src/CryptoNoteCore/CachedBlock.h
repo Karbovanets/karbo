@@ -35,6 +35,7 @@ public:
   const Crypto::Hash& getTransactionTreeHash() const;
   const Crypto::Hash& getBlockHash() const;
   const Crypto::Hash& getBlockLongHash(Crypto::cn_context& cryptoContext) const;
+  const Crypto::Hash& getBlockSquashHash(Crypto::cn_context& cryptoContext, uint64_t* dataset_64) const;
   const Crypto::Hash& getAuxiliaryBlockHeaderHash() const;
   const BinaryArray& getBlockHashingBinaryArray() const;
   const BinaryArray& getParentBlockBinaryArray(bool headerOnly) const;

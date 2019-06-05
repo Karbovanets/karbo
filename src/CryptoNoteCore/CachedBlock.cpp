@@ -77,6 +77,15 @@ const Crypto::Hash& CachedBlock::getBlockLongHash(cn_context& cryptoContext) con
   }
   return blockLongHash.get();
 }
+const Crypto::Hash& CachedBlock::getBlockSquashHash(cn_context& cryptoContext, uint64_t* dataset_64) const {
+  if (!blockLongHash.is_initialized()) {
+				Crypto::Hash hash;
+        const auto& rawHashingBlock = getBlockHashingBinaryArray();
+        blockLongHash = Hash();
+	squash_full(rawHashingBlock.data(), rawHashingBlock.size(), hash, dataset_64);
+  }
+  return blockLongHash.get();
+}
 
 const Crypto::Hash& CachedBlock::getAuxiliaryBlockHeaderHash() const {
   if (!auxiliaryBlockHeaderHash.is_initialized()) {

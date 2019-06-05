@@ -126,8 +126,7 @@ void Miner::workerFunc(const BlockTemplate& blockTemplate, uint64_t difficulty, 
 			Crypto::Hash hash;
 			while (m_state == MiningState::MINING_IN_PROGRESS) {
 				CachedBlock cachedBlock(block);
-				const auto& rawHashingBlock = cachedBlock.getParentBlockHashingBinaryArray(true);
-				squash_full(rawHashingBlock.data(), rawHashingBlock.size(), hash, dataset_64);
+				hash = cachedBlock.getBlockSquashHash(cryptoContext, dataset_64);
 				if (check_hash(hash, difficulty)) {
 					free(dataset_64);
 					m_logger(Logging::INFO) << "Found block for difficulty " << difficulty;
