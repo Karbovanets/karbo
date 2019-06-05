@@ -594,8 +594,8 @@ Difficulty Currency::nextDifficultyV2(std::vector<uint64_t> timestamps,
 	uint64_t nextDiffZ = low / timeSpan;
 
 	// minimum limit
-	if (!isTestnet() && nextDiffZ < 100000) {
-		nextDiffZ = 100000;
+	if (!isTestnet() && nextDiffZ < 100) {
+		nextDiffZ = 100;
 	}
 
 	return nextDiffZ;
@@ -657,8 +657,8 @@ Difficulty Currency::nextDifficultyV3(std::vector<uint64_t> timestamps,
 	next_difficulty = static_cast<uint64_t>(nextDifficulty);
 
 	// minimum limit
-	if (!isTestnet() && next_difficulty < 100000) {
-		next_difficulty = 100000;
+	if (!isTestnet() && next_difficulty < 100) {
+		next_difficulty = 100;
 	}
 
 	return next_difficulty;
@@ -720,8 +720,8 @@ Difficulty Currency::nextDifficultyV4(uint32_t height, uint8_t blockMajorVersion
 	}
 
 	// minimum limit
-	if (!isTestnet() && next_D < 100000) {
-		next_D = 100000;
+	if (!isTestnet() && next_D < 100) {
+		next_D = 100;
 	}
 
 	return next_D;
@@ -743,7 +743,7 @@ Difficulty Currency::nextDifficultyV5(uint32_t height, uint8_t blockMajorVersion
 
 	// Hard code D if there are not at least N+1 BLOCKS after fork (or genesis)
 	// This helps a lot in preventing a very common problem in CN forks from conflicting difficulties.
-	uint64_t difficulty_guess = !isTestnet() ? 1000000000 : 10000;
+	uint64_t difficulty_guess = 100;
 	if (height >= upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) && height < upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) + N) { return difficulty_guess; }
 
 	uint64_t L(0), next_D, i, this_timestamp(0), previous_timestamp(0), avg_D;
@@ -773,8 +773,8 @@ Difficulty Currency::nextDifficultyV5(uint32_t height, uint8_t blockMajorVersion
 	}
 
 	// minimum limit
-	if (!isTestnet() && next_D < 1000000) {
-		next_D = 1000000;
+	if (!isTestnet() && next_D < 100) {
+		next_D = 100;
 	}
 
 	return next_D;
