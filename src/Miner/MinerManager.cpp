@@ -104,6 +104,7 @@ void MinerManager::start() {
 
   startBlockchainMonitoring();
 	uint64_t* dataset_64 = NULL;
+	if(params.blockTemplate.majorVersion >= BLOCK_MAJOR_VERSION_6) dataset_64 = (uint64_t*)calloc(536870912,8);
   startMining(params, dataset_64);
 
   eventLoop(dataset_64);

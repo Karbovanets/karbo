@@ -115,7 +115,6 @@ void Miner::workerFunc(const BlockTemplate& blockTemplate, uint64_t difficulty, 
 			}
 		} else{
 			uint32_t height = cachedBlock.getBlockIndex();
-			if(!dataset_64) dataset_64 = (uint64_t*)calloc(536870912,8);
 			if(!dataset_64) exit(1);
 			if(dataset_64[0] == 0 || height%EPOCH == 0){
 				m_logger(Logging::INFO) << "Initialising dataset";
@@ -128,7 +127,6 @@ void Miner::workerFunc(const BlockTemplate& blockTemplate, uint64_t difficulty, 
 				CachedBlock cachedBlock(block);
 				hash = cachedBlock.getBlockSquashHash(cryptoContext, dataset_64);
 				if (check_hash(hash, difficulty)) {
-					free(dataset_64);
 					m_logger(Logging::INFO) << "Found block for difficulty " << difficulty;
 
 					if (!setStateBlockFound()) {
