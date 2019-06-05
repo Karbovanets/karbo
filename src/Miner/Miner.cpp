@@ -75,7 +75,7 @@ void Miner::runWorkers(BlockMiningParameters blockMiningParameters, size_t threa
 
     for (size_t i = 0; i < threadCount; ++i) {
       m_workers.emplace_back(std::unique_ptr<System::RemoteContext<void>>(
-        new System::RemoteContext<void>(m_dispatcher, std::bind(&Miner::workerFunc, this, blockMiningParameters.blockTemplate, blockMiningParameters.difficulty, static_cast<uint32_t>(threadCount),  dataset_64)))
+        new System::RemoteContext<void>(m_dispatcher, std::bind(&Miner::workerFunc, this, blockMiningParameters.blockTemplate, blockMiningParameters.difficulty, static_cast<uint32_t>(threadCount),  dataset_64, (uint8_t)i)))
       );
 	  m_logger(Logging::INFO) << "Thread " << i << " started at nonce: " << blockMiningParameters.blockTemplate.nonce;
 
@@ -92,7 +92,7 @@ void Miner::runWorkers(BlockMiningParameters blockMiningParameters, size_t threa
   m_miningStopped.set();
 }
 
-void Miner::workerFunc(const BlockTemplate& blockTemplate, uint64_t difficulty, uint32_t nonceStep, uint64_t* dataset_64) {
+void Miner::workerFunc(const BlockTemplate& blockTemplate, uint64_t difficulty, uint32_t nonceStep, uint64_t* dataset_64, uint8_t threadNumber) {
 	try {
 		BlockTemplate block = blockTemplate;
    	Crypto::cn_context cryptoContext;
@@ -116,12 +116,17 @@ void Miner::workerFunc(const BlockTemplate& blockTemplate, uint64_t difficulty, 
 		} else{
 			uint32_t height = cachedBlock.getBlockIndex();
 			if(!dataset_64) exit(1);
-			if(dataset_64[0] == 0 || height%EPOCH == 0){
+			uint32_t progress = 536870912/nonceStep;
+			uint32_t end = progress*(threadNumber+1);
+			progress *= threadNumber;
+			if(dataset_64[progress] || height%EPOCH == 0){
 				m_logger(Logging::INFO) << "Initialising dataset";
-				Crypto::dataset_height(height, dataset_64);
-				m_logger(Logging::INFO) << "Finished one-time initialisation";
+				Crypto::dataset_height(height, dataset_64, progress, end);
+				m_logger(Logging::INFO) << "Finished one-time initialisation on thread " << threadNumber;
+				m_logger(Logging::INFO) << "Waiting for other threads to complete calculation";
+				while(dataset_64[536870912] == 0);
 			}
-			m_logger(Logging::INFO) << "Started mining on dataset";
+			m_logger(Logging::INFO) << "Thread " << threadNumber << " started mining on dataset";
 			Crypto::Hash hash;
 			while (m_state == MiningState::MINING_IN_PROGRESS) {
 				CachedBlock cachedBlock(block);

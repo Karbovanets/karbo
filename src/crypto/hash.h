@@ -79,8 +79,8 @@ namespace Crypto {
   inline void squash_full(const void* data, size_t length, Hash &hash, uint64_t* dataset){
     squash_full_api(data, (uint32_t)length, reinterpret_cast<uint8_t*>(&hash), dataset);
   }
-  inline void dataset_height(uint32_t height, uint64_t* dataset){
-    dataset_from_height(height, dataset);
+  inline void dataset_height(uint32_t height, uint64_t* dataset, uint32_t start, uint32_t end){
+    dataset_from_height(height, dataset, start, end);
   }
 
 }
