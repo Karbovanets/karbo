@@ -219,6 +219,7 @@ Core::Core(const Currency& currency, Logging::ILogger& logger, Checkpoints&& che
   upgradeManager->addMajorBlockVersion(BLOCK_MAJOR_VERSION_3, currency.upgradeHeight(BLOCK_MAJOR_VERSION_3));
   upgradeManager->addMajorBlockVersion(BLOCK_MAJOR_VERSION_4, currency.upgradeHeight(BLOCK_MAJOR_VERSION_4));
   upgradeManager->addMajorBlockVersion(BLOCK_MAJOR_VERSION_5, currency.upgradeHeight(BLOCK_MAJOR_VERSION_5));
+  upgradeManager->addMajorBlockVersion(BLOCK_MAJOR_VERSION_6, currency.upgradeHeight(BLOCK_MAJOR_VERSION_6));
 
   transactionPool = std::unique_ptr<ITransactionPoolCleanWrapper>(new TransactionPoolCleanWrapper(
     std::unique_ptr<ITransactionPool>(new TransactionPool(logger)),
@@ -1162,8 +1163,10 @@ bool Core::getBlockTemplate(BlockTemplate& b, const AccountPublicAddress& adr, c
     }
   } else if (b.majorVersion == BLOCK_MAJOR_VERSION_4) {
     b.minorVersion = currency.upgradeHeight(BLOCK_MAJOR_VERSION_4) == IUpgradeDetector::UNDEF_HEIGHT ? BLOCK_MINOR_VERSION_1 : BLOCK_MINOR_VERSION_0;
-  } else if (b.majorVersion >= BLOCK_MAJOR_VERSION_5) {
+  } else if (b.majorVersion == BLOCK_MAJOR_VERSION_5) {
     b.minorVersion = currency.upgradeHeight(BLOCK_MAJOR_VERSION_5) == IUpgradeDetector::UNDEF_HEIGHT ? BLOCK_MINOR_VERSION_1 : BLOCK_MINOR_VERSION_0;
+  }else if (b.majorVersion >= BLOCK_MAJOR_VERSION_6) {
+    b.minorVersion = currency.upgradeHeight(BLOCK_MAJOR_VERSION_6) == IUpgradeDetector::UNDEF_HEIGHT ? BLOCK_MINOR_VERSION_1 : BLOCK_MINOR_VERSION_0;
   }
 
   b.previousBlockHash = getTopBlockHash();
