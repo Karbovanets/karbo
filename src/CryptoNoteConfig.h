@@ -101,12 +101,12 @@ const size_t   FUSION_TX_MIN_IN_OUT_COUNT_RATIO              = 4;
 
 const uint32_t KEY_IMAGE_CHECKING_BLOCK_INDEX                = 0;
 
-const uint32_t UPGRADE_HEIGHT_V2                             = 2;
-const uint32_t UPGRADE_HEIGHT_V3                             = 4;
-const uint32_t UPGRADE_HEIGHT_V4                             = 6;
-const uint32_t UPGRADE_HEIGHT_LWMA3                          = 8;
-const uint32_t UPGRADE_HEIGHT_V5                             = 10;
-const uint32_t UPGRADE_HEIGHT_V6                             = 12;
+const uint32_t UPGRADE_HEIGHT_V2                             = 25;
+const uint32_t UPGRADE_HEIGHT_V3                             = 50;
+const uint32_t UPGRADE_HEIGHT_V4                             = 75;
+const uint32_t UPGRADE_HEIGHT_LWMA3                          = 100;
+const uint32_t UPGRADE_HEIGHT_V5                             = 125;
+const uint32_t UPGRADE_HEIGHT_V6                             = 150;
 
 const unsigned UPGRADE_VOTING_THRESHOLD                      = 90;               // percent
 const uint32_t UPGRADE_VOTING_WINDOW                         = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;  // blocks
