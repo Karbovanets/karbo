@@ -196,7 +196,7 @@ bool RpcServer::processJsonRpcRequest(const HttpRequest& request, HttpResponse& 
     jsonResponse.setId(jsonRequest.getId()); // copy id
 
     static std::unordered_map<std::string, RpcServer::RpcHandler<JsonMemberMethod>> jsonRpcHandlers = {
-      { "on_getblockhash", { makeMemberMethod(&RpcServer::on_getblockhash), false } },
+      { "getblockhash", { makeMemberMethod(&RpcServer::on_getblockhash), false } },
       { "getblocktemplate", { makeMemberMethod(&RpcServer::on_getblocktemplate), false } },
       { "getcurrencyid", { makeMemberMethod(&RpcServer::on_get_currency_id), true } },
       { "submitblock", { makeMemberMethod(&RpcServer::on_submitblock), false } },
@@ -724,7 +724,7 @@ bool RpcServer::on_get_peer_list(const COMMAND_RPC_GET_PEER_LIST::request& req, 
 }
 
 bool RpcServer::on_get_payment_id(const COMMAND_RPC_GEN_PAYMENT_ID::request& req, COMMAND_RPC_GEN_PAYMENT_ID::response& res) {
-  res.payment_id = Common::podToHex(Crypto::rand<Crypto::Hash>());
+  res = Common::podToHex(Crypto::rand<Crypto::Hash>());
   return true;
 }
 
@@ -1005,11 +1005,12 @@ bool RpcServer::on_getblockcount(const COMMAND_RPC_GETBLOCKCOUNT::request& req, 
 }
 
 bool RpcServer::on_getblockhash(const COMMAND_RPC_GETBLOCKHASH::request& req, COMMAND_RPC_GETBLOCKHASH::response& res) {
-  if (req.size() != 1) {
-    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Wrong parameters, expected height" };
-  }
+  //if (req.size() != 1) {
+  //  throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Wrong parameters, expected height" };
+  //}
 
-  uint32_t h = static_cast<uint32_t>(req[0]);
+  //uint32_t h = static_cast<uint32_t>(req[0]);
+  uint32_t h = static_cast<uint32_t>(req.height);
   Crypto::Hash blockId = m_core.getBlockHashByIndex(h);
   if (blockId == NULL_HASH) {
     throw JsonRpc::JsonRpcError{ 
@@ -1018,7 +1019,7 @@ bool RpcServer::on_getblockhash(const COMMAND_RPC_GETBLOCKHASH::request& req, CO
     };
   }
 
-  res = Common::podToHex(blockId);
+  res.block_hash = Common::podToHex(blockId);
   return true;
 }
 

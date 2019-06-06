@@ -265,16 +265,16 @@ Crypto::Hash MinerManager::requestBlockHashAtHeight(const std::string& daemonHos
     HttpClient client(m_dispatcher, daemonHost, daemonPort);
 
     COMMAND_RPC_GETBLOCKHASH::request request;
-    request.emplace_back(static_cast<uint64_t>(height));
+    request.height = height;
 
     COMMAND_RPC_GETBLOCKHASH::response response;
 
     System::EventLock lk(m_httpEvent);
-    JsonRpc::invokeJsonRpcCommand(client, "on_getblockhash", request, response);
+    JsonRpc::invokeJsonRpcCommand(client, "getblockhash", request, response);
 
     Crypto::Hash blockId = NULL_HASH;
     
-    if (!Common::podFromHex(response, blockId)) {
+    if (!Common::podFromHex(response.block_hash, blockId)) {
       throw std::runtime_error("Couldn't parse block hash");
     }
 
