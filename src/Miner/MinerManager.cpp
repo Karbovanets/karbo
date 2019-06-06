@@ -27,6 +27,7 @@
 #include "CryptoNoteCore/CryptoNoteTools.h"
 #include "CryptoNoteCore/CryptoNoteFormatUtils.h"
 #include "CryptoNoteCore/TransactionExtra.h"
+#include "Serialization/SerializationOverloads.h"
 #include "Rpc/HttpClient.h"
 #include "Rpc/CoreRpcServerCommandsDefinitions.h"
 #include "Rpc/JsonRpc.h"
@@ -259,6 +260,31 @@ BlockMiningParameters MinerManager::requestMiningParameters(System::Dispatcher& 
   }
 }
 
+Crypto::Hash MinerManager::requestBlockHashAtHeight(const std::string& daemonHost, uint16_t daemonPort, uint32_t& height) {
+  try {
+    HttpClient client(m_dispatcher, daemonHost, daemonPort);
+
+    COMMAND_RPC_GETBLOCKHASH::request request;
+    request.emplace_back(static_cast<uint64_t>(height));
+
+    COMMAND_RPC_GETBLOCKHASH::response response;
+
+    System::EventLock lk(m_httpEvent);
+    JsonRpc::invokeJsonRpcCommand(client, "on_getblockhash", request, response);
+
+    Crypto::Hash blockId = NULL_HASH;
+    
+    if (!Common::podFromHex(response, blockId)) {
+      throw std::runtime_error("Couldn't parse block hash");
+    }
+
+    return blockId;
+  }
+  catch (std::exception& e) {
+    m_logger(Logging::WARNING) << "Couldn't get block hash: " << e.what();
+    throw;
+  }
+}
 
 void MinerManager::adjustBlockTemplate(CryptoNote::BlockTemplate& blockTemplate) const {
   adjustMergeMiningTag(blockTemplate);
