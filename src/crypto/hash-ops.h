@@ -67,7 +67,7 @@ void cn_fast_hash(const void *data, size_t length, char *hash);
 
 void cn_slow_hash(const void *data, size_t length, char *hash);
 
-void dataset_from_height(uint32_t height, uint64_t* dataset, uint32_t start, uint32_t end);
+void dataset_from_height(uint32_t height, uint64_t* dataset);
 void squash_light_api(const void* data, uint32_t length, uint8_t* hash_out, uint32_t height);
 void squash_full_api(const void* data, uint32_t length, uint8_t* hash_out, uint64_t* dataset);
 

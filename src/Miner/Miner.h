@@ -60,7 +60,7 @@ private:
   Logging::LoggerRef m_logger;
 
   void runWorkers(BlockMiningParameters blockMiningParameters, size_t threadCount, uint64_t* dataset_64);
-  void workerFunc(const BlockTemplate& blockTemplate, Difficulty difficulty, uint32_t nonceStep, uint64_t* dataset_64, uint8_t threadNumber);
+  void workerFunc(const BlockTemplate& blockTemplate, Difficulty difficulty, uint32_t nonceStep, uint64_t* dataset_64);
   bool setStateBlockFound();
 };
 

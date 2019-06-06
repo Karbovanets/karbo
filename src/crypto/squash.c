@@ -662,8 +662,8 @@ void make_cache(uint8_t* scratchpad, uint8_t* cache){
 	}
 }
 
-void calc_dataset(uint8_t* cache, uint64_t* out, uint32_t start, uint32_t end){
-	for(uint64_t i=start;i<end;i+=4){ // (1<<32)>>3
+void calc_dataset(uint8_t* cache, uint64_t* out){
+	for(uint64_t i=0;i<536870912;i+=4){ // (1<<32)>>3
 		calc_dataset_item(cache, i, &out[i]);
 	}
 }
@@ -698,12 +698,12 @@ void cache_from_height(uint32_t height, uint8_t* cache){
 
 //      ]===[ API Functions ]====[
 
-void dataset_from_height(uint32_t height, uint64_t* dataset, uint32_t start, uint32_t end){
+void dataset_from_height(uint32_t height, uint64_t* dataset){
 	uint64_t* cache_64    = (uint64_t*)calloc(8388608,8);
 	uint8_t*  cache       = (uint8_t*)cache_64;
 	if(!cache_64) error_exit(1);
 	cache_from_height(height, cache);
-	calc_dataset(cache, dataset, start, end);
+	calc_dataset(cache, dataset);
 	free(cache);
 }
 
