@@ -39,7 +39,7 @@ receivedata(int socket,
             char * data, int length,
             int timeout, unsigned int * scope_id)
 {
-#if MINIUPNPC_GET_SRC_ADDR
+#ifdef MINIUPNPC_GET_SRC_ADDR
 #ifdef DEBUG
 	/* to shut up valgrind about uninit value */
 	struct sockaddr_storage src_addr = {0};
@@ -84,7 +84,7 @@ receivedata(int socket,
         return 0;
     }
 #endif
-#if MINIUPNPC_GET_SRC_ADDR
+#ifdef MINIUPNPC_GET_SRC_ADDR
 	n = recvfrom(socket, data, length, 0,
 	             (struct sockaddr *)&src_addr, &src_addr_len);
 #else
@@ -93,7 +93,7 @@ receivedata(int socket,
 	if(n<0) {
 		PRINT_SOCKET_ERROR("recv");
 	}
-#if MINIUPNPC_GET_SRC_ADDR
+#ifdef MINIUPNPC_GET_SRC_ADDR
 	if (src_addr.ss_family == AF_INET6) {
 		const struct sockaddr_in6 * src_addr6 = (struct sockaddr_in6 *)&src_addr;
 #ifdef DEBUG

@@ -372,8 +372,23 @@ struct COMMAND_RPC_GETBLOCKCOUNT {
 };
 
 struct COMMAND_RPC_GETBLOCKHASH {
-  typedef std::vector<uint64_t> request;
-  typedef std::string response;
+  //typedef std::vector<uint64_t> request;
+  struct request {
+    uint32_t height;
+
+    void serialize(ISerializer &s) {
+      KV_MEMBER(height)
+    }
+  };
+
+  //typedef std::string response;
+  struct response {
+    std::string block_hash;
+
+    void serialize(ISerializer &s) {
+      KV_MEMBER(block_hash)
+    }
+  };
 };
 
 struct COMMAND_RPC_GETBLOCKTEMPLATE {
@@ -910,14 +925,15 @@ struct COMMAND_RPC_GET_TRANSACTION_DETAILS_BY_HASH {
 //-----------------------------------------------
 struct COMMAND_RPC_GEN_PAYMENT_ID {
   typedef EMPTY_STRUCT request;
-  
-  struct response {
+  typedef std::string response;
+
+  /*struct response {
 	  std::string payment_id;
 
 	  void serialize(ISerializer &s) {
 		  KV_MEMBER(payment_id)
 	  }
-  };
+  };*/
 };
 
 //-----------------------------------------------
