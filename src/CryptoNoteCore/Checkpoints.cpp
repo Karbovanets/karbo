@@ -20,6 +20,7 @@
 #include <cstdlib>
 #include <stdio.h>
 #include <stdlib.h>
+#include <fstream>
 #include <iostream>
 #include <cstring>
 #include <string>
@@ -27,7 +28,6 @@
 #include <sstream>
 #include <vector>
 #include <iterator>
-#include <fstream>
 
 #include "../CryptoNoteConfig.h"
 #include "Checkpoints.h"
@@ -169,7 +169,7 @@ bool Checkpoints::loadCheckpointsFromDns()
 
     size_t del = record.find_first_of(':');
     std::string height_str = record.substr(0, del), hash_str = record.substr(del + 1, 64);
-    ss = std::stringstream(height_str);
+    ss.str(height_str);
     ss >> height;
     char c;
     if (del == std::string::npos) continue;
