@@ -7,14 +7,20 @@
 #include "crypto/crypto.h"
 #include "crypto/hash.h"
 #include "Miner.h"
+#include "MinerManager.h"
 
 #include <functional>
 
 #include "crypto/crypto.h"
+#include "Common/StringTools.h"
 #include "CryptoNoteCore/CachedBlock.h"
 #include "CryptoNoteCore/CryptoNoteFormatUtils.h"
 #include "CryptoNoteConfig.h"
+#include "Rpc/HttpClient.h"
+#include "Rpc/CoreRpcServerCommandsDefinitions.h"
+#include "Rpc/JsonRpc.h"
 
+#include <System/EventLock.h>
 #include <System/InterruptedException.h>
 
 #define EPOCH 360 // 24 hours
@@ -25,7 +31,9 @@ Miner::Miner(System::Dispatcher& dispatcher, Logging::ILogger& logger) :
   m_dispatcher(dispatcher),
   m_miningStopped(dispatcher),
   m_state(MiningState::MINING_STOPPED),
-  m_logger(logger, "Miner") {
+  m_logger(logger, "Miner"),
+  m_httpEvent(dispatcher) {
+  m_httpEvent.set();
 }
 
 Miner::~Miner() {
@@ -148,6 +156,33 @@ void Miner::workerFunc(const BlockTemplate& blockTemplate, uint64_t difficulty, 
 			;
 		}	
 	}
+}
+
+
+Crypto::Hash Miner::requestBlockHashAtHeight(const std::string& daemonHost, uint16_t daemonPort, uint32_t& height) {
+  try {
+    HttpClient client(m_dispatcher, daemonHost, daemonPort);
+
+    COMMAND_RPC_GETBLOCKHASH::request request;
+    request.height = height;
+
+    COMMAND_RPC_GETBLOCKHASH::response response;
+
+    System::EventLock lk(m_httpEvent);
+    JsonRpc::invokeJsonRpcCommand(client, "getblockhash", request, response);
+
+    Crypto::Hash blockId = NULL_HASH;
+
+    if (!Common::podFromHex(response.block_hash, blockId)) {
+      throw std::runtime_error("Couldn't parse block hash");
+    }
+
+    return blockId;
+  }
+  catch (std::exception& e) {
+    m_logger(Logging::WARNING) << "Couldn't get block hash: " << e.what();
+    throw;
+  }
 }
 
 bool Miner::setStateBlockFound() {

@@ -69,7 +69,6 @@ private:
 
   bool submitBlock(const CryptoNote::BlockTemplate& minedBlock, const std::string& daemonHost, uint16_t daemonPort);
   CryptoNote::BlockMiningParameters requestMiningParameters(System::Dispatcher& dispatcher, const std::string& daemonHost, uint16_t daemonPort, const std::string& miningAddress);
-  Crypto::Hash requestBlockHashAtHeight(const std::string& daemonHost, uint16_t daemonPort, uint32_t& height);
 
   void adjustBlockTemplate(CryptoNote::BlockTemplate& blockTemplate) const;
 };

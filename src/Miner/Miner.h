@@ -20,6 +20,7 @@
 #include <atomic>
 #include <thread>
 
+#include <System/ContextGroup.h>
 #include <System/Dispatcher.h>
 #include <System/Event.h>
 #include <System/RemoteContext.h>
@@ -49,6 +50,7 @@ public:
 private:
   System::Dispatcher& m_dispatcher;
   System::Event m_miningStopped;
+  System::Event m_httpEvent;
 
   enum class MiningState : uint8_t { MINING_STOPPED, BLOCK_FOUND, MINING_IN_PROGRESS};
   std::atomic<MiningState> m_state;
@@ -62,6 +64,7 @@ private:
   void runWorkers(BlockMiningParameters blockMiningParameters, size_t threadCount, uint64_t* dataset_64);
   void workerFunc(const BlockTemplate& blockTemplate, Difficulty difficulty, uint32_t nonceStep, uint64_t* dataset_64);
   bool setStateBlockFound();
+   Crypto::Hash requestBlockHashAtHeight(const std::string& daemonHost, uint16_t daemonPort, uint32_t& height);
 };
 
 } //namespace CryptoNote
