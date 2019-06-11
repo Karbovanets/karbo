@@ -715,7 +715,8 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
           // https://medium.com/@karbo.org/prevent-transaction-cancellation-in-51-attack-79ba03d191f0
           // Compare transactions in proposed alt chain vs current main chain
           // and reject if some transaction is missing in the alt chain
-          std::vector<Crypto::Hash> mainChainTxHashes = mainChainCache->getTransactionHashes();
+          std::vector<Crypto::Hash> mainChainTxHashes = preallocateVector<Crypto::Hash>(mainChainCache->getTransactionCount());
+          mainChainTxHashes = mainChainCache->getTransactionHashes();
           for (const auto& mainChainTxHash : mainChainTxHashes) {
             if (!cache->hasTransaction(mainChainTxHash)) {
               logger(Logging::ERROR) << "Attempting to switch to an alternate chain, but it lacks transaction " 
