@@ -28,6 +28,8 @@
 #include "CryptoNote.h"
 #include "CryptoNoteCore/Difficulty.h"
 
+#include "MiningConfig.h"
+
 #include "Logging/LoggerRef.h"
 
 namespace CryptoNote {
@@ -39,7 +41,7 @@ struct BlockMiningParameters {
 
 class Miner {
 public:
-  Miner(System::Dispatcher& dispatcher, Logging::ILogger& logger);
+   Miner(System::Dispatcher& dispatcher, Logging::ILogger& logger, const CryptoNote::MiningConfig& config);
   ~Miner();
 
   BlockTemplate mine(const BlockMiningParameters& blockMiningParameters, size_t threadCount, uint64_t* dataset_64);
@@ -51,6 +53,7 @@ private:
   System::Dispatcher& m_dispatcher;
   System::Event m_miningStopped;
   System::Event m_httpEvent;
+  CryptoNote::MiningConfig m_config;
 
   enum class MiningState : uint8_t { MINING_STOPPED, BLOCK_FOUND, MINING_IN_PROGRESS};
   std::atomic<MiningState> m_state;

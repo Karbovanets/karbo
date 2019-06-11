@@ -27,12 +27,13 @@
 
 namespace CryptoNote {
 
-Miner::Miner(System::Dispatcher& dispatcher, Logging::ILogger& logger) :
+ Miner::Miner(System::Dispatcher& dispatcher, Logging::ILogger& logger, const CryptoNote::MiningConfig& config) :
   m_dispatcher(dispatcher),
   m_miningStopped(dispatcher),
   m_state(MiningState::MINING_STOPPED),
   m_logger(logger, "Miner"),
-  m_httpEvent(dispatcher) {
+  m_httpEvent(dispatcher),
+  m_config(config) {
   m_httpEvent.set();
 }
 

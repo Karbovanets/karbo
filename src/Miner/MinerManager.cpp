@@ -71,7 +71,7 @@ MinerManager::MinerManager(System::Dispatcher& dispatcher, const CryptoNote::Min
   m_logger(logger, "MinerManager"),
   m_contextGroup(dispatcher),
   m_config(config),
-  m_miner(dispatcher, logger),
+  m_miner(dispatcher, logger, config),
   m_blockchainMonitor(dispatcher, m_config.daemonHost, m_config.daemonPort, m_config.scanPeriod, logger),
   m_eventOccurred(dispatcher),
   m_httpEvent(dispatcher),
