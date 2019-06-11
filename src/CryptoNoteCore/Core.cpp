@@ -721,6 +721,7 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
               logger(Logging::ERROR) << "Attempting to switch to an alternate chain, but it lacks transaction " 
                                      << Common::podToHex(mainChainTxHash) 
                                      << " from main chain, rejected";
+              allowReorg = false;
             }
           }
 
