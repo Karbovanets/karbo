@@ -710,7 +710,19 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
 
         if (cache->getCurrentCumulativeDifficulty() > mainChainCache->getCurrentCumulativeDifficulty()) {
           int64_t reorgSize = cache->getTopBlockIndex() - cache->getStartBlockIndex() + 1;
-          
+
+          // Transactions comparizon check
+          // https://medium.com/@karbo.org/prevent-transaction-cancellation-in-51-attack-79ba03d191f0
+          // Compare transactions in proposed alt chain vs current main chain
+          // and reject if some transaction is missing in the alt chain
+          std::vector<Crypto::Hash> mainChainTxHashes = mainChainCache->getTransactionHashes();
+          for (const auto& mainChainTxHash : mainChainTxHashes) {
+            if (!cache->hasTransaction(mainChainTxHash)) {
+              logger(Logging::ERROR) << "Attempting to switch to an alternate chain, but it lacks transaction " 
+                                     << Common::podToHex(mainChainTxHash) 
+                                     << " from main chain, rejected";
+            }
+          }
 
           // Poisson check, courtesy of Ryo Project and fireice_uk for this version
           // https://github.com/ryo-currency/ryo-writeups/blob/master/poisson-writeup.md
