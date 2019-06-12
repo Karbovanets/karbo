@@ -711,7 +711,7 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
         if (cache->getCurrentCumulativeDifficulty() > mainChainCache->getCurrentCumulativeDifficulty()) {
           int64_t reorgSize = cache->getTopBlockIndex() - cache->getStartBlockIndex() + 1;
 
-          // Transactions comparizon check
+          // Transactions comparison check
           // https://medium.com/@karbo.org/prevent-transaction-cancellation-in-51-attack-79ba03d191f0
           // Compare transactions in proposed alt chain vs current main chain
           // and reject if some transaction is missing in the alt chain
@@ -725,6 +725,8 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
               allowReorg = false;
             }
           }
+          mainChainTxHashes.clear();
+          mainChainTxHashes.shrink_to_fit();
 
           // Poisson check, courtesy of Ryo Project and fireice_uk for this version
           // https://github.com/ryo-currency/ryo-writeups/blob/master/poisson-writeup.md
