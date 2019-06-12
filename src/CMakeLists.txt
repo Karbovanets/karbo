@@ -109,7 +109,7 @@ endif()
 target_link_libraries(Miner CryptoNoteCore Rpc Serialization System Http Logging Common Crypto ${Boost_LIBRARIES})
 target_link_libraries(GreenWallet Mnemonics Wallet NodeRpcProxy Transfers Rpc Http CryptoNoteCore System Logging Common ${Boost_LIBRARIES} Serialization Crypto)
 
-if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux" OR APPLE)
+if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux" OR APPLE AND NOT ANDROID)
   target_link_libraries(SimpleWallet -lresolv)
   target_link_libraries(Daemon -lresolv)
   target_link_libraries(PaymentGateService -lresolv)
