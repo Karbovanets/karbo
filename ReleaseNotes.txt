@@ -3,6 +3,7 @@ Release notes 2.1.2
 - Updated RocksDB to release 5.15.10
 - Limit reorganization depth by mined money unlock window
 - Poisson check during deep reorganization
+- Transactions comparison check during reorganization
 - Burning bug and other bugs fixed
 - Added GreenWallet (CLI wallet based on WalletGreen library)
 - Various changes for compatibility with Karbo 
