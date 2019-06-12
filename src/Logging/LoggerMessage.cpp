@@ -42,7 +42,7 @@ LoggerMessage::LoggerMessage(ILogger& logger, const std::string& category, Level
 	, m_bGotText(false)
 {}
 
-#ifndef __linux__
+#if !defined(__linux__) || defined(__ANDROID__)
 LoggerMessage::LoggerMessage(LoggerMessage&& other)
 	: std::ostream(std::move(other))
 	, std::streambuf(std::move(other))
