@@ -20,6 +20,7 @@
 #include <cstdio>
 
 #include <boost/filesystem.hpp>
+#include <boost/algorithm/string/replace.hpp>
 
 #include "CryptoNoteConfig.h"
 
