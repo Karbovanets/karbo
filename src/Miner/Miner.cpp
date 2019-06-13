@@ -123,13 +123,10 @@ void Miner::workerFunc(const BlockTemplate& blockTemplate, uint64_t difficulty, 
 				block.nonce += nonceStep;
 			}
 		} else{
-			uint32_t height = cachedBlock.getBlockIndex();
 			if(!dataset_64) exit(1);
-			if(dataset_64[0] == 0 || height%EPOCH == 0){
-				m_logger(Logging::INFO) << "Initialising dataset";
-				Crypto::dataset_height(height, dataset_64);
-				m_logger(Logging::INFO) << "Finished one-time initialisation";
-			}
+			m_logger(Logging::INFO) << "Initialising dataset";
+			Crypto::dataset_seed((uint8_t*)&block.previousBlockHash, dataset_64);
+			m_logger(Logging::INFO) << "Finished one-time initialisation";
 			m_logger(Logging::INFO) << "Started mining on dataset";
 			Crypto::Hash hash;
 			while (m_state == MiningState::MINING_IN_PROGRESS) {
