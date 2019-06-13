@@ -23,8 +23,6 @@
 #include <System/EventLock.h>
 #include <System/InterruptedException.h>
 
-#define EPOCH 360 // 24 hours
-
 namespace CryptoNote {
 
  Miner::Miner(System::Dispatcher& dispatcher, Logging::ILogger& logger, const CryptoNote::MiningConfig& config) :
