@@ -12,8 +12,8 @@
 #define HASH_BYTES      32                 // hash length in bytes
 #define CACHE_ROUNDS    1                  // number of rounds in cache production
 #define EPOCH_LENGTH    1                  // blocks per epoch
-#define DATASET_PARENTS 16                 // number of hashes before calculating dataset entry
-#define ACCESSES        64
+#define DATASET_PARENTS 4                  // number of hashes before calculating dataset entry
+#define ACCESS_ROUNDS   64
 // Assuming 4 blocks per second, an epoch estimates 15 minutes
 
 
@@ -457,12 +457,10 @@ void squash_3_full(uint8_t* data, uint64_t* dataset, uint8_t* out){
 	uint64_t  key_1[2]        = {0};
 	uint64_t  divr_0          = 0;
 	uint64_t  divr_1          = 0;
-	uint64_t  crc_64[4]       = {0};
+	uint64_t  crc_64[8]       = {0};
 	uint32_t* crc_32          = (uint32_t*)crc_64;
 	uint16_t* crc_16          = (uint16_t*)crc_64;
-	uint32_t* crc_32_s_0      = (uint32_t*)&crc_16[9];
-	uint32_t* crc_32_s_1      = (uint32_t*)&crc_16[11];
-	uint32_t* crc_32_s_2      = (uint32_t*)&crc_16[13];
+	uint64_t* crc_64_s        = (uint64_t*)&crc_16[9];
 	uint32_t* data_32         = (uint32_t*)data;
 	uint64_t* data_64         = (uint64_t*)data;
 	uint16_t* out_16          = (uint16_t*)out;
@@ -471,22 +469,55 @@ void squash_3_full(uint8_t* data, uint64_t* dataset, uint8_t* out){
 	crc32p(&data_32[1], &crc_32[1]);
 	crc32p(&data_32[2], &crc_32[2]);
 	crc32p(&data_32[3], &crc_32[3]);
-	crc_32[4] = *((uint32_t*)&dataset[*crc_32&0x1ffffffc]);
-	crc_32[5] = *((uint32_t*)&dataset[crc_32[1]&0x1ffffffc]);
-	crc_32[6] = *((uint32_t*)&dataset[crc_32[2]&0x1ffffffc]);
-	crc_32[7] = *((uint32_t*)&dataset[crc_32[3]&0x1ffffffc]);
-	crc32i(crc_32_s_0);
-	crc32i(crc_32_s_1);
-	crc32i(crc_32_s_2);
-	for(uint16_t i=1;i<ACCESSES;i++){
+	crc_32[4]  = *((uint32_t*)&dataset[*crc_32&0x1ffffffc]);
+	crc_32[5]  = *((uint32_t*)&dataset[crc_32[1]&0x1ffffffc]);
+	crc_32[6]  = *((uint32_t*)&dataset[crc_32[2]&0x1ffffffc]);
+	crc_32[7]  = *((uint32_t*)&dataset[crc_32[3]&0x1ffffffc]);
+	crc_32[8]  = *((uint32_t*)&dataset[crc_32[4]&0x1ffffffc]);
+	crc_32[9]  = *((uint32_t*)&dataset[crc_32[5]&0x1ffffffc]);
+	crc_32[10] = *((uint32_t*)&dataset[crc_32[6]&0x1ffffffc]);
+	crc_32[11] = *((uint32_t*)&dataset[crc_32[7]&0x1ffffffc]);
+	crc_32[12] = *((uint32_t*)&dataset[crc_32[8]&0x1ffffffc]);
+	crc_32[13] = *((uint32_t*)&dataset[crc_32[9]&0x1ffffffc]);
+	crc_32[14] = *((uint32_t*)&dataset[crc_32[10]&0x1ffffffc]);
+	crc_32[15] = *((uint32_t*)&dataset[crc_32[11]&0x1ffffffc]);
+	*crc_64_s ^= *crc_64;
+	crc_64_s[1] ^= *crc_64;
+	crc_64_s[2] ^= *crc_64;
+	for(uint16_t i=1;i<ACCESS_ROUNDS;i++){
 		for(uint8_t j=0;j<8;j++){
 			crc_32[4] = ((uint32_t*)&dataset[crc_32[4]&0x1ffffffc])[j];
 			crc_32[5] = ((uint32_t*)&dataset[crc_32[5]&0x1ffffffc])[j];
 			crc_32[6] = ((uint32_t*)&dataset[crc_32[6]&0x1ffffffc])[j];
 			crc_32[7] = ((uint32_t*)&dataset[crc_32[7]&0x1ffffffc])[j];
-			crc32i(crc_32_s_0);
-			crc32i(crc_32_s_1);
-			crc32i(crc_32_s_2);
+			crc_32[8] = ((uint32_t*)&dataset[crc_32[8]&0x1ffffffc])[j];
+			crc_32[9] = ((uint32_t*)&dataset[crc_32[9]&0x1ffffffc])[j];
+			crc_32[10] = ((uint32_t*)&dataset[crc_32[10]&0x1ffffffc])[j];
+			crc_32[11] = ((uint32_t*)&dataset[crc_32[11]&0x1ffffffc])[j];
+			crc_32[12] = ((uint32_t*)&dataset[crc_32[12]&0x1ffffffc])[j];
+			crc_32[13] = ((uint32_t*)&dataset[crc_32[13]&0x1ffffffc])[j];
+			crc_32[14] = ((uint32_t*)&dataset[crc_32[14]&0x1ffffffc])[j];
+			crc_32[15] = ((uint32_t*)&dataset[crc_32[15]&0x1ffffffc])[j];
+			*crc_64_s   += crc_64_s[1] / crc_64_s[2];
+			crc_64[1]   += *crc_64_s;
+			crc_64_s[1] += *crc_64_s;
+			crc_64_s[2] += *crc_64_s;
+			crc_32[4] = ((uint32_t*)&dataset[crc_32[4]&0x1ffffffc])[j];
+			crc_32[5] = ((uint32_t*)&dataset[crc_32[5]&0x1ffffffc])[j];
+			crc_32[6] = ((uint32_t*)&dataset[crc_32[6]&0x1ffffffc])[j];
+			crc_32[7] = ((uint32_t*)&dataset[crc_32[7]&0x1ffffffc])[j];
+			crc_32[8] = ((uint32_t*)&dataset[crc_32[8]&0x1ffffffc])[j];
+			crc_32[9] = ((uint32_t*)&dataset[crc_32[9]&0x1ffffffc])[j];
+			crc_32[10] = ((uint32_t*)&dataset[crc_32[10]&0x1ffffffc])[j];
+			crc_32[11] = ((uint32_t*)&dataset[crc_32[11]&0x1ffffffc])[j];
+			crc_32[12] = ((uint32_t*)&dataset[crc_32[12]&0x1ffffffc])[j];
+			crc_32[13] = ((uint32_t*)&dataset[crc_32[13]&0x1ffffffc])[j];
+			crc_32[14] = ((uint32_t*)&dataset[crc_32[14]&0x1ffffffc])[j];
+			crc_32[15] = ((uint32_t*)&dataset[crc_32[15]&0x1ffffffc])[j];
+			*crc_64_s   += crc_64_s[2] / crc_64_s[1];
+			*crc_64     += *crc_64_s;
+			crc_64_s[1] += *crc_64_s;
+			crc_64_s[2] += *crc_64_s;
 		}
 	}
 	reverse(crc_32);
@@ -524,12 +555,10 @@ void squash_3_light(uint8_t* data, uint8_t* cache, uint8_t* out){
 	uint64_t  key_1[2]        = {0};
 	uint64_t  divr_0          = 0;
 	uint64_t  divr_1          = 0;
-	uint64_t  crc_64[4]       = {0};
+	uint64_t  crc_64[8]       = {0};
 	uint32_t* crc_32          = (uint32_t*)crc_64;
 	uint16_t* crc_16          = (uint16_t*)crc_64;
-	uint32_t* crc_32_s_0      = (uint32_t*)&crc_16[9];
-	uint32_t* crc_32_s_1      = (uint32_t*)&crc_16[11];
-	uint32_t* crc_32_s_2      = (uint32_t*)&crc_16[13];
+	uint64_t* crc_64_s        = (uint64_t*)&crc_16[9];
 	uint32_t* data_32         = (uint32_t*)data;
 	uint64_t* data_64         = (uint64_t*)data;
 	uint16_t* out_16          = (uint16_t*)out;
@@ -548,10 +577,26 @@ void squash_3_light(uint8_t* data, uint8_t* cache, uint8_t* out){
 	crc_32[6] = *dataset_item_32;
 	calc_dataset_item(cache, (crc_32[3]&0x1ffffffc), dataset_item);
 	crc_32[7] = *dataset_item_32;
-	crc32i(crc_32_s_0);
-	crc32i(crc_32_s_1);
-	crc32i(crc_32_s_2);
-	for(uint16_t i=1;i<ACCESSES;i++){
+	calc_dataset_item(cache, (crc_32[4]&0x1ffffffc), dataset_item);
+	crc_32[8] = *dataset_item_32;
+	calc_dataset_item(cache, (crc_32[5]&0x1ffffffc), dataset_item);
+	crc_32[9] = *dataset_item_32;
+	calc_dataset_item(cache, (crc_32[6]&0x1ffffffc), dataset_item);
+	crc_32[10] = *dataset_item_32;
+	calc_dataset_item(cache, (crc_32[7]&0x1ffffffc), dataset_item);
+	crc_32[11] = *dataset_item_32;
+	calc_dataset_item(cache, (crc_32[8]&0x1ffffffc), dataset_item);
+	crc_32[12] = *dataset_item_32;
+	calc_dataset_item(cache, (crc_32[9]&0x1ffffffc), dataset_item);
+	crc_32[13] = *dataset_item_32;
+	calc_dataset_item(cache, (crc_32[10]&0x1ffffffc), dataset_item);
+	crc_32[14] = *dataset_item_32;
+	calc_dataset_item(cache, (crc_32[11]&0x1ffffffc), dataset_item);
+	crc_32[15] = *dataset_item_32;
+	*crc_64_s ^= *crc_64;
+	crc_64_s[1] ^= *crc_64;
+	crc_64_s[2] ^= *crc_64;
+	for(uint16_t i=1;i<ACCESS_ROUNDS;i++){
 		for(uint8_t j=0;j<8;j++){
 			calc_dataset_item(cache, (crc_32[4]&0x1ffffffc), dataset_item);
 			crc_32[4] = dataset_item_32[j];
@@ -561,9 +606,54 @@ void squash_3_light(uint8_t* data, uint8_t* cache, uint8_t* out){
 			crc_32[6] = dataset_item_32[j];
 			calc_dataset_item(cache, (crc_32[7]&0x1ffffffc), dataset_item);
 			crc_32[7] = dataset_item_32[j];
-			crc32i(crc_32_s_0);
-			crc32i(crc_32_s_1);
-			crc32i(crc_32_s_2);
+			calc_dataset_item(cache, (crc_32[8]&0x1ffffffc), dataset_item);
+			crc_32[8] = dataset_item_32[j];
+			calc_dataset_item(cache, (crc_32[9]&0x1ffffffc), dataset_item);
+			crc_32[9] = dataset_item_32[j];
+			calc_dataset_item(cache, (crc_32[10]&0x1ffffffc), dataset_item);
+			crc_32[10] = dataset_item_32[j];
+			calc_dataset_item(cache, (crc_32[11]&0x1ffffffc), dataset_item);
+			crc_32[11] = dataset_item_32[j];
+			calc_dataset_item(cache, (crc_32[12]&0x1ffffffc), dataset_item);
+			crc_32[12] = dataset_item_32[j];
+			calc_dataset_item(cache, (crc_32[13]&0x1ffffffc), dataset_item);
+			crc_32[13] = dataset_item_32[j];
+			calc_dataset_item(cache, (crc_32[14]&0x1ffffffc), dataset_item);
+			crc_32[14] = dataset_item_32[j];
+			calc_dataset_item(cache, (crc_32[15]&0x1ffffffc), dataset_item);
+			crc_32[15] = dataset_item_32[j];
+			*crc_64_s   += crc_64_s[1] / crc_64_s[2];
+			crc_64[1]   += *crc_64_s;
+			crc_64_s[1] += *crc_64_s;
+			crc_64_s[2] += *crc_64_s;
+			calc_dataset_item(cache, (crc_32[4]&0x1ffffffc), dataset_item);
+			crc_32[4] = dataset_item_32[j];
+			calc_dataset_item(cache, (crc_32[5]&0x1ffffffc), dataset_item);
+			crc_32[5] = dataset_item_32[j];
+			calc_dataset_item(cache, (crc_32[6]&0x1ffffffc), dataset_item);
+			crc_32[6] = dataset_item_32[j];
+			calc_dataset_item(cache, (crc_32[7]&0x1ffffffc), dataset_item);
+			crc_32[7] = dataset_item_32[j];
+			calc_dataset_item(cache, (crc_32[8]&0x1ffffffc), dataset_item);
+			crc_32[8] = dataset_item_32[j];
+			calc_dataset_item(cache, (crc_32[9]&0x1ffffffc), dataset_item);
+			crc_32[9] = dataset_item_32[j];
+			calc_dataset_item(cache, (crc_32[10]&0x1ffffffc), dataset_item);
+			crc_32[10] = dataset_item_32[j];
+			calc_dataset_item(cache, (crc_32[11]&0x1ffffffc), dataset_item);
+			crc_32[11] = dataset_item_32[j];
+			calc_dataset_item(cache, (crc_32[12]&0x1ffffffc), dataset_item);
+			crc_32[12] = dataset_item_32[j];
+			calc_dataset_item(cache, (crc_32[13]&0x1ffffffc), dataset_item);
+			crc_32[13] = dataset_item_32[j];
+			calc_dataset_item(cache, (crc_32[14]&0x1ffffffc), dataset_item);
+			crc_32[14] = dataset_item_32[j];
+			calc_dataset_item(cache, (crc_32[15]&0x1ffffffc), dataset_item);
+			crc_32[15] = dataset_item_32[j];
+			*crc_64_s   += crc_64_s[2] / crc_64_s[1];
+			*crc_64     += *crc_64_s;
+			crc_64_s[1] += *crc_64_s;
+			crc_64_s[2] += *crc_64_s;
 		}
 	}
 	reverse(crc_32);
