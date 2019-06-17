@@ -504,13 +504,9 @@ std::string print_peerlist_to_string(const std::list<PeerlistEntry>& pl) {
   bool NodeServer::run() {
     logger(INFO) << "Starting node_server";
 
-    logger(INFO) << "acceptLoop";
     m_workingContextGroup.spawn(std::bind(&NodeServer::acceptLoop, this));
-    logger(INFO) << "onIdle";
     m_workingContextGroup.spawn(std::bind(&NodeServer::onIdle, this));
-    logger(INFO) << "timedSyncLoop";
     m_workingContextGroup.spawn(std::bind(&NodeServer::timedSyncLoop, this));
-    logger(INFO) << "timeoutLoop";
     m_workingContextGroup.spawn(std::bind(&NodeServer::timeoutLoop, this));
 
     m_stopEvent.wait();
