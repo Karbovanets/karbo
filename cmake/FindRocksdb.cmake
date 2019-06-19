@@ -17,6 +17,8 @@
 # along with Karbo.  If not, see <http://www.gnu.org/licenses/>.
 
 
+cmake_minimum_required(VERSION 2.8.12)
+
 if (UNIX)
   set(ROCKSDB_LIB_NAME_STATIC "librocksdb.a")
   set(ROCKSDB_LIB_NAME_SHARED "librocksdb.so")
@@ -34,7 +36,6 @@ else()
 endif()
 
 if (ROCKSDB_INCLUDE_DIR AND ROCKSDB_LIBRARIES)
-  set(ROCKSDB_FOUND TRUE)
   file(STRINGS "${ROCKSDB_INCLUDE_DIR}/rocksdb/version.h" _ROCKSDB_VERSION_MAJOR_CONTENTS REGEX "#define ROCKSDB_MAJOR ")
   file(STRINGS "${ROCKSDB_INCLUDE_DIR}/rocksdb/version.h" _ROCKSDB_VERSION_MINOR_CONTENTS REGEX "#define ROCKSDB_MINOR ")
   file(STRINGS "${ROCKSDB_INCLUDE_DIR}/rocksdb/version.h" _ROCKSDB_VERSION_PATCH_CONTENTS REGEX "#define ROCKSDB_PATCH ")
@@ -54,6 +55,16 @@ if (ROCKSDB_INCLUDE_DIR AND ROCKSDB_LIBRARIES)
     set(ROCKSDB_VERSION "${_ROCKSDB_VERSION_MAJOR}.${_ROCKSDB_VERSION_MINOR}.${_ROCKSDB_VERSION_PATCH}")
   endif()
   message(STATUS "RocksDB version: ${ROCKSDB_VERSION}")
+  if (Rocksdb_FIND_VERSION)
+    if (${ROCKSDB_VERSION} VERSION_EQUAL ${Rocksdb_FIND_VERSION} OR ${ROCKSDB_VERSION} VERSION_GREATER ${Rocksdb_FIND_VERSION})
+      set(ROCKSDB_FOUND TRUE)
+    else()
+      message(WARNING "Installed version RocksDB is too old and will not be used")
+      set(ROCKSDB_FOUND FALSE)
+    endif()
+  else()
+    set(ROCKSDB_FOUND TRUE)
+  endif()
 else()
   message(STATUS "Can`t find RocksDB installed")
   set(ROCKSDB_FOUND FALSE)

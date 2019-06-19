@@ -268,7 +268,7 @@ elseif(NOT MSVC)
   set(Boost_LIBRARIES "${Boost_LIBRARIES};rt")
 endif()
 
-find_package(Rocksdb)
+find_package(Rocksdb 5.15.10)
 
 add_subdirectory(external)
 add_subdirectory(src)
