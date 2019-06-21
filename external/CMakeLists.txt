@@ -5,10 +5,11 @@ set(WITH_MD_LIBRARY OFF CACHE BOOL "Code Generation for static library")
 
 add_subdirectory(miniupnpc)
 
-if(MSVC)
+if (NOT ROCKSDB_FOUND)
+  if(MSVC)
     add_subdirectory(rocksDB EXCLUDE_FROM_ALL)
     set_property(TARGET upnpc-static rocksdb PROPERTY FOLDER "external")
-elseif(NOT MSVC)
+  elseif(NOT MSVC)
     set_property(TARGET upnpc-static PROPERTY FOLDER "external")
     add_custom_target(
        rocksdb
@@ -18,6 +19,7 @@ elseif(NOT MSVC)
     add_library(rocksdblib STATIC IMPORTED GLOBAL)
     set_target_properties(rocksdblib PROPERTIES IMPORTED_LOCATION ${PROJECT_BINARY_DIR}/rocksdb/librocksdb.a)
     add_dependencies(rocksdblib rocksdb)
+  endif()
 endif()
 
 if(MSVC)

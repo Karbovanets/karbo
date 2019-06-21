@@ -1,6 +1,11 @@
 add_definitions(-DSTATICLIB)
 
-include_directories(${CMAKE_SOURCE_DIR}/external/rocksdb/include)
+if (ROCKSDB_FOUND)
+  include_directories(${ROCKSDB_INCLUDE_DIR})
+else()
+  include_directories(${CMAKE_SOURCE_DIR}/external/rocksdb/include)
+endif()
+
 include_directories(${CMAKE_SOURCE_DIR}/external/linenoise)
 
 file(GLOB_RECURSE BlockchainExplorer BlockchainExplorer/*)
@@ -82,9 +87,14 @@ endif()
 
 if (MSVC)
   target_link_libraries(System ws2_32)
-  target_link_libraries(Daemon Rpcrt4)
-  target_link_libraries(PaymentGateService Rpcrt4)
-endif ()
+  if (ROCKSDB_FOUND)
+    target_link_libraries(Daemon Rpcrt4 Shlwapi)
+    target_link_libraries(PaymentGateService Rpcrt4 Shlwapi)
+  else()
+    target_link_libraries(Daemon Rpcrt4)
+    target_link_libraries(PaymentGateService Rpcrt4)
+  endif()
+endif()
 
 target_link_libraries(CryptoNoteCore Common Crypto Logging Serialization)
 target_link_libraries(P2P CryptoNoteCore Logging ${Boost_LIBRARIES} upnpc-static)
@@ -99,17 +109,25 @@ target_link_libraries(Miner CryptoNoteCore Rpc System Http Logging Common Crypto
 endif()
 
 target_link_libraries(ConnectivityTool CryptoNoteCore Common Logging Crypto P2P Rpc Http Serialization System ${Boost_LIBRARIES})
-if(MSVC)
-target_link_libraries(Daemon P2P Rpc Serialization System Http Logging CryptoNoteCore Crypto Common upnpc-static rocksdb ${Boost_LIBRARIES} )
+
+if (MSVC AND NOT ROCKSDB_FOUND)
+  target_link_libraries(Daemon P2P Rpc Serialization System Http Logging CryptoNoteCore Crypto Common upnpc-static rocksdb ${Boost_LIBRARIES})
+elseif(UNIX AND NOT ROCKSDB_FOUND)
+  target_link_libraries(Daemon P2P Rpc Serialization System Http Logging CryptoNoteCore Crypto Common upnpc-static rocksdblib ${Boost_LIBRARIES})
 else()
-target_link_libraries(Daemon P2P Rpc Serialization System Http Logging CryptoNoteCore Crypto Common upnpc-static rocksdblib ${Boost_LIBRARIES} )
+  target_link_libraries(Daemon P2P Rpc Serialization System Http Logging CryptoNoteCore Crypto Common upnpc-static ${ROCKSDB_LIBRARIES} ${Boost_LIBRARIES})
 endif()
+
 target_link_libraries(SimpleWallet Wallet NodeRpcProxy Transfers Rpc P2P upnpc-static Http Serialization CryptoNoteCore System Logging Common Crypto Mnemonics ${Boost_LIBRARIES})
-if(MSVC)
-target_link_libraries(PaymentGateService PaymentGate JsonRpcServer Wallet NodeRpcProxy Transfers P2P CryptoNoteCore Crypto Rpc Http Serialization System Logging Common InProcessNode upnpc-static BlockchainExplorer rocksdb ${Boost_LIBRARIES})
+
+if (MSVC AND NOT ROCKSDB_FOUND)
+  target_link_libraries(PaymentGateService PaymentGate JsonRpcServer Wallet NodeRpcProxy Transfers P2P CryptoNoteCore Crypto Rpc Http Serialization System Logging Common InProcessNode upnpc-static BlockchainExplorer rocksdb ${Boost_LIBRARIES})
+elseif (UNIX AND NOT ROCKSDB_FOUND)
+  target_link_libraries(PaymentGateService PaymentGate JsonRpcServer Wallet NodeRpcProxy Transfers P2P CryptoNoteCore Crypto Rpc Http Serialization System Logging Common InProcessNode upnpc-static BlockchainExplorer rocksdblib ${Boost_LIBRARIES})
 else()
-target_link_libraries(PaymentGateService PaymentGate JsonRpcServer Wallet NodeRpcProxy Transfers P2P CryptoNoteCore Crypto Rpc Http Serialization System Logging Common InProcessNode upnpc-static BlockchainExplorer rocksdblib ${Boost_LIBRARIES})
+  target_link_libraries(PaymentGateService PaymentGate JsonRpcServer Wallet NodeRpcProxy Transfers P2P CryptoNoteCore Crypto Rpc Http Serialization System Logging Common InProcessNode upnpc-static BlockchainExplorer ${ROCKSDB_LIBRARIES} ${Boost_LIBRARIES})
 endif()
+
 target_link_libraries(Miner CryptoNoteCore Rpc Serialization System Http Logging Common Crypto ${Boost_LIBRARIES})
 target_link_libraries(GreenWallet Mnemonics Wallet NodeRpcProxy Transfers Rpc Http CryptoNoteCore System Logging Common ${Boost_LIBRARIES} Serialization Crypto)
 
