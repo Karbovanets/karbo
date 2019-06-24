@@ -892,7 +892,7 @@ std::string print_peerlist_to_string(const std::list<PeerlistEntry>& pl) {
 
     if (start_conn_count == get_outgoing_connections_count() && start_conn_count < m_config.m_net_config.connections_count && m_seed_nodes.size())
     {
-      logger(Logging::INFO) << "Failed to connect to any peers, trying seeds";
+      logger(Logging::DEBUGGING) << "Failed to connect to any peers, trying seeds";
       if (!connect_to_seed())
         return false;
     }
