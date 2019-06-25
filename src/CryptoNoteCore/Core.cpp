@@ -2583,7 +2583,7 @@ Difficulty Core::getAvgDifficulty(uint32_t height, uint32_t window) const {
     return mainChain->getCurrentCumulativeDifficulty(height) / height;
   }
 
-  size_t offset;
+  uint32_t offset;
   offset = height - std::min<uint32_t>(height, std::min<uint32_t>(mainChain->getTopBlockIndex(), window));
   if (offset == 0) {
     ++offset;
@@ -2593,7 +2593,7 @@ Difficulty Core::getAvgDifficulty(uint32_t height, uint32_t window) const {
 }
 
 uint64_t Core::getMinimalFee() {
-  return getMinimalFeeForHeight(get_current_blockchain_height() - 1);
+  return getMinimalFeeForHeight(getTopBlockIndex());
 }
 
 uint64_t Core::getMinimalFeeForHeight(uint32_t height) {
