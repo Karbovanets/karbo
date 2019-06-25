@@ -1617,12 +1617,19 @@ std::error_code Core::validateSemantic(const Transaction& transaction, uint64_t&
 
   CachedTransaction cachedTransaction(std::move(transaction));
   bool isFusion = fee == 0 && currency.isFusionTransaction(transaction, cachedTransaction.getTransactionBinaryArray().size(), blockIndex);
-  if (!isFusion && !checkpoints.isInCheckpointZone(blockIndex) &&
-     (blockIndex < CryptoNote::parameters::UPGRADE_HEIGHT_V4 ? (fee < currency.minimumFee()) :
-     (fee < (getMinimalFeeForHeight(blockIndex) - (getMinimalFeeForHeight(blockIndex) * 20 / 100))))) {
-    return error::TransactionValidationError::INVALID_FEE;
+  if (!isFusion && !checkpoints.isInCheckpointZone(blockIndex)) {
+    if (blockIndex < CryptoNote::parameters::UPGRADE_HEIGHT_V4) {
+      if (fee < currency.minimumFee()) {
+        return error::TransactionValidationError::INVALID_FEE;
+      }
+    }
+    else {
+      uint64_t minFee = getMinimalFeeForHeight(blockIndex);
+      if (fee < (minFee - (minFee * 20 / 100))) {
+        return error::TransactionValidationError::INVALID_FEE;
+      }
+    }
   }
-
   return error::TransactionValidationError::VALIDATION_SUCCESS;
 }
 
