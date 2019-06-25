@@ -2576,16 +2576,20 @@ bool Core::getTransactionsByPaymentId(const Crypto::Hash& paymentId, std::vector
 
 Difficulty Core::getAvgDifficulty(uint32_t height, uint32_t window) const {
   throwIfNotInitialized();
-  assert(height <= getTopBlockIndex());
-
   IBlockchainCache* mainChain = chainsLeaves[0];
+  height = std::min<uint32_t>(height, getTopBlockIndex());
 
   if (height == window) {
     return mainChain->getCurrentCumulativeDifficulty(height) / height;
   }
 
-  std::vector<uint64_t> cumulDiffs = mainChain->getLastCumulativeDifficulties(window);
-  return (cumulDiffs.back() - cumulDiffs.front()) / window;
+  size_t offset;
+  offset = height - std::min<uint32_t>(height, std::min<uint32_t>(mainChain->getTopBlockIndex(), window));
+  if (offset == 0) {
+    ++offset;
+  }
+
+  return (mainChain->getCurrentCumulativeDifficulty(height) - mainChain->getCurrentCumulativeDifficulty(offset)) / std::min<uint32_t>(mainChain->getTopBlockIndex(), window);
 }
 
 uint64_t Core::getMinimalFee() {
@@ -2615,10 +2619,7 @@ uint64_t Core::getMinimalFeeForHeight(uint32_t height) {
   }
 
   // calculate average difficulty for ~last month
-  std::vector<uint64_t> cumulDiffs = mainChain->getLastCumulativeDifficulties(window * 7 * 4 + 1); // Off-by-one bug in Karbo1 so we have to add here + 1 to get same value?
-  uint64_t avgDifficultyCurrent = (cumulDiffs.back() - cumulDiffs.front()) / (window * 7 * 4);
-  cumulDiffs.clear();
-  cumulDiffs.shrink_to_fit();
+  uint64_t avgDifficultyCurrent = getAvgDifficulty(height, window * 7 * 4);
 
   // historical reference moving average difficulty
   uint64_t avgDifficultyHistorical = mainChain->getCurrentCumulativeDifficulty(height) / height;
