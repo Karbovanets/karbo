@@ -739,10 +739,10 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
             std::vector<uint64_t> main_chain = mainChainCache->getLastTimestamps(CryptoNote::parameters::POISSON_CHECK_DEPTH, cache->getStartBlockIndex() - 1, UseGenesis{false});
 
             logger(Logging::WARNING) << "Poisson check triggered by reorg size " << reorgSize;
-            for(size_t i=0; i < alt_chain.size(); i++)
-              logger(Logging::WARNING) << "DEBUG: alt_chain [" << i << "] " << alt_chain[i];
-            for(size_t i=0; i < main_chain.size(); i++)
-              logger(Logging::WARNING) << "DEBUG: main_chain [" << i << "] " << main_chain[i];
+            //for(size_t i=0; i < alt_chain.size(); i++)
+            //  logger(Logging::WARNING) << "DEBUG: alt_chain [" << i << "] " << alt_chain[i];
+            //for(size_t i=0; i < main_chain.size(); i++)
+            //  logger(Logging::WARNING) << "DEBUG: main_chain [" << i << "] " << main_chain[i];
 
             uint64_t high_timestamp = alt_chain.back();
               std::reverse(main_chain.begin(), main_chain.end());
@@ -765,17 +765,21 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
                 logger(Logging::WARNING) << "Poisson check at depth " << i << " failed! delta_t: " << (high_timestamp - low_timestamp) << " size: " << reorgSize + i + 1;
                 failed_checks++;
               }
-              else
-                logger(Logging::WARNING) << "Poisson check at depth " << i << " passed! delta_t: " << (high_timestamp - low_timestamp) << " size: " << reorgSize + i + 1;
+              //else
+              //  logger(Logging::WARNING) << "Poisson check at depth " << i << " passed! delta_t: " << (high_timestamp - low_timestamp) << " size: " << reorgSize + i + 1;
             }
 
-            logger(Logging::WARNING) << "Poisson check result " << failed_checks << " fails out of " << i;
+            logger(Logging::INFO) << "Poisson check result " << failed_checks << " fails out of " << i;
 
             if(failed_checks > i / 2)
             {
               logger(Logging::WARNING) << "Attempting to move to an alternate chain, but it failed Poisson check! " << failed_checks << " fails out of " << i << " alt_chain_size: " << reorgSize;
                allowReorg = false;
             }
+            alt_chain.clear();
+            alt_chain.shrink_to_fit();
+            main_chain.clear();
+            main_chain.shrink_to_fit();
           }
 
           if(allowReorg)
@@ -2613,6 +2617,8 @@ uint64_t Core::getMinimalFeeForHeight(uint32_t height) {
   // calculate average difficulty for ~last month
   std::vector<uint64_t> cumulDiffs = mainChain->getLastCumulativeDifficulties(window * 7 * 4 + 1); // Off-by-one bug in Karbo1 so we have to add here + 1 to get same value?
   uint64_t avgDifficultyCurrent = (cumulDiffs.back() - cumulDiffs.front()) / (window * 7 * 4);
+  cumulDiffs.clear();
+  cumulDiffs.shrink_to_fit();
 
   // historical reference moving average difficulty
   uint64_t avgDifficultyHistorical = mainChain->getCurrentCumulativeDifficulty(height) / height;
@@ -2630,6 +2636,7 @@ uint64_t Core::getMinimalFeeForHeight(uint32_t height) {
     rewards.push_back(get_outs_money_amount(blockTemplate.baseTransaction));
   }
   uint64_t avgRewardCurrent = std::accumulate(rewards.begin(), rewards.end(), 0ULL) / rewards.size();
+  rewards.clear();
   rewards.shrink_to_fit();
 
   // historical reference moving average reward
