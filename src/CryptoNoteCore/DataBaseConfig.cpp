@@ -30,10 +30,10 @@ using namespace CryptoNote;
 
 namespace {
 
-const uint64_t WRITE_BUFFER_MB_DEFAULT_SIZE = 512;
-const uint64_t READ_BUFFER_MB_DEFAULT_SIZE = 128;
-const uint32_t DEFAULT_MAX_OPEN_FILES = 256;
-const uint16_t DEFAULT_BACKGROUND_THREADS_COUNT = 4;
+const uint64_t WRITE_BUFFER_MB_DEFAULT_SIZE     = 1024; // 1 GB
+const uint64_t READ_BUFFER_MB_DEFAULT_SIZE      = 1024; // 1 GB
+const uint32_t DEFAULT_MAX_OPEN_FILES           = 500;  // 500 files
+const uint16_t DEFAULT_BACKGROUND_THREADS_COUNT = 10;   // 10 DB threads
 
 const uint64_t MEGABYTE = 1024 * 1024;
 
