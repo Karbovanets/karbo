@@ -1,6 +1,7 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2018-2019, The TurtleCoin Developers
-// Copyright (c) 2018-2019, The Karbo Developers
+// Copyright (c) 2017-2019, The Iridium developers
+// Copyright (c) 2017-2019, The Karbo Developers
 //
 // This file is part of Karbo.
 //
@@ -331,9 +332,9 @@ std::string print_peerlist_to_string(const std::list<PeerlistEntry>& pl) {
   }
 
   //----------------------------------------------------------------------------------- 
-  void NodeServer::externalRelayNotifyToAll(int command, const BinaryArray& data_buff) {
-    m_dispatcher.remoteSpawn([this, command, data_buff] {
-      relay_notify_to_all(command, data_buff, nullptr);
+  void NodeServer::externalRelayNotifyToAll(int command, const BinaryArray& data_buff, const net_connection_id* excludeConnection) {
+    m_dispatcher.remoteSpawn([this, command, data_buff, excludeConnection] {
+      relay_notify_to_all(command, data_buff, excludeConnection);
     });
   }
 
