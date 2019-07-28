@@ -90,6 +90,18 @@ else()
   add_executable(GreenWallet ${GreenWallet})
 endif()
 
+# A bit of hackery so we don't have to do the if/else/ for every target that
+# wants to use filesystem
+add_library(__filesystem INTERFACE)
+
+# Windows works out of the box
+if (APPLE)
+    target_link_libraries(__filesystem INTERFACE /usr/local/opt/llvm/lib/libc++fs.a)
+elseif (UNIX)
+    target_link_libraries(__filesystem INTERFACE stdc++fs)
+endif()
+target_link_libraries(Common __filesystem)
+
 if (MSVC)
   if (ROCKSDB_FOUND)
     target_link_libraries(Daemon Rpcrt4 Shlwapi)

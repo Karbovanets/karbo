@@ -19,6 +19,12 @@
 #pragma once
 
 #include <cstdint>
+#include <algorithm>
+#include <iterator>
+#include <Common/StringTools.h>
+#include "json.hpp"
+
+using namespace Common;
 
 namespace Crypto {
 
@@ -45,5 +51,86 @@ struct KeyImage {
 struct Signature {
   uint8_t data[64];
 };
+
+
+inline void from_json(const nlohmann::json &j, Crypto::Hash &h)
+{
+  if (!Common::podFromHex(j.get<std::string>(), h.data))
+  {
+    const auto err = nlohmann::detail::parse_error::create(
+      100, 0, "Wrong length or not hex!"
+    );
+
+    throw nlohmann::json::parse_error(err);
+  }
+}
+
+inline void to_json(nlohmann::json &j, const Crypto::PublicKey &p)
+{
+  j = Common::podToHex(p);
+}
+
+inline void from_json(const nlohmann::json &j, Crypto::PublicKey &p)
+{
+  if (!Common::podFromHex(j.get<std::string>(), p.data))
+  {
+    const auto err = nlohmann::detail::parse_error::create(
+      100, 0, "Wrong length or not hex!"
+    );
+
+    throw nlohmann::json::parse_error(err);
+  }
+}
+
+inline void to_json(nlohmann::json &j, const Crypto::SecretKey &s)
+{
+  j = Common::podToHex(s);
+}
+
+inline void from_json(const nlohmann::json &j, Crypto::SecretKey &s)
+{
+  if (!Common::podFromHex(j.get<std::string>(), s.data))
+  {
+    const auto err = nlohmann::detail::parse_error::create(
+      100, 0, "Wrong length or not hex!"
+    );
+
+    throw nlohmann::json::parse_error(err);
+  }
+}
+
+inline void to_json(nlohmann::json &j, const Crypto::KeyDerivation &k)
+{
+  j = Common::podToHex(k);
+}
+
+inline void from_json(const nlohmann::json &j, Crypto::KeyDerivation &k)
+{
+  if (!Common::podFromHex(j.get<std::string>(), k.data))
+  {
+    const auto err = nlohmann::detail::parse_error::create(
+      100, 0, "Wrong length or not hex!"
+    );
+
+    throw nlohmann::json::parse_error(err);
+  }
+}
+
+inline void to_json(nlohmann::json &j, const Crypto::KeyImage &k)
+{
+  j = Common::podToHex(k);
+}
+
+inline void from_json(const nlohmann::json &j, Crypto::KeyImage &k)
+{
+  if (!Common::podFromHex(j.get<std::string>(), k.data))
+  {
+    const auto err = nlohmann::detail::parse_error::create(
+      100, 0, "Wrong length or not hex!"
+    );
+
+    throw nlohmann::json::parse_error(err);
+  }
+}
 
 }

@@ -4,7 +4,7 @@
 
 #include "MainChainStorageSqlite.h"
 
-#include <Common/FileSystemShim.h>
+#include <boost/filesystem.hpp>
 
 #include "json.hpp"
 
@@ -213,8 +213,8 @@ namespace CryptoNote
 
     std::unique_ptr<IMainChainStorage> createSwappedMainChainStorageSqlite(const std::string &dataDir, const Currency &currency)
     {
-        fs::path blocksFilename = fs::path(dataDir) / currency.blocksFileName();
-        fs::path indexesFilename = fs::path(dataDir) / currency.blockIndexesFileName();
+        boost::filesystem::path blocksFilename = boost::filesystem::path(dataDir) / currency.blocksFileName();
+        boost::filesystem::path indexesFilename = boost::filesystem::path(dataDir) / currency.blockIndexesFileName();
 
         auto storage = std::make_unique<MainChainStorageSqlite>(blocksFilename.string() + ".sqlite3", indexesFilename.string());
 

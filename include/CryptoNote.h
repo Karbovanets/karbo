@@ -23,9 +23,9 @@
 #include <boost/variant.hpp>
 
 #include "android.h"
+#include "json.hpp"
 #include "CryptoTypes.h"
 #include <Common/StringTools.h>
-#include "json.hpp"
 
 namespace CryptoNote {
 
