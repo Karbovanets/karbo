@@ -13,37 +13,41 @@
 
 #include <GreenWallet/Types.h>
 
-void confirmPassword(std::string walletPass, std::string msg = "");
+namespace Tools {
 
-bool confirm(std::string msg);
-bool confirm(std::string msg, bool defaultReturn);
+  void confirmPassword(std::string walletPass, std::string msg = "");
 
-std::string formatAmountBasic(uint64_t amount);
-std::string formatAmount(uint64_t amount);
-std::string formatDollars(uint64_t amount);
-std::string formatCents(uint64_t amount);
+  bool confirm(std::string msg);
+  bool confirm(std::string msg, bool defaultReturn);
 
-std::string getPaymentIDFromExtra(std::string extra);
+  std::string formatAmountBasic(uint64_t amount);
+  std::string formatAmount(uint64_t amount);
+  std::string formatDollars(uint64_t amount);
+  std::string formatCents(uint64_t amount);
 
-std::string unixTimeToDate(uint64_t timestamp);
+  std::string getPaymentIDFromExtra(std::string extra);
 
-std::string createIntegratedAddress(std::string address, std::string paymentID);
+  std::string unixTimeToDate(uint64_t timestamp);
 
-bool shutdown(std::shared_ptr<WalletInfo> walletInfo, CryptoNote::INode &node,
-              bool &alreadyShuttingDown);
+  std::string createIntegratedAddress(std::string address, std::string paymentID);
 
-uint64_t getDivisor();
+  bool shutdown(std::shared_ptr<WalletInfo> walletInfo, CryptoNote::INode &node,
+    bool &alreadyShuttingDown);
 
-uint64_t getScanHeight();
+  uint64_t getDivisor();
 
-template <typename T, typename Function>
-std::vector<T> filter(std::vector<T> input, Function predicate)
-{
-	std::vector<T> result;
+  uint64_t getScanHeight();
 
-	std::copy_if(
-		input.begin(), input.end(), std::back_inserter(result), predicate
-	);
+  template <typename T, typename Function>
+  std::vector<T> filter(std::vector<T> input, Function predicate)
+  {
+    std::vector<T> result;
 
-	return result;
+    std::copy_if(
+      input.begin(), input.end(), std::back_inserter(result), predicate
+    );
+
+    return result;
+  }
+
 }
