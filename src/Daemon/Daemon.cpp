@@ -148,6 +148,7 @@ int main(int argc, char* argv[])
     command_line::add_arg(desc_cmd_sett, arg_disable_checkpoints);
     command_line::add_arg(desc_cmd_sett, arg_rollback);
     command_line::add_arg(desc_cmd_sett, arg_sqlite_cache);
+    command_line::add_arg(desc_cmd_sett, arg_rocksdb_cache);
     command_line::add_arg(desc_cmd_sett, arg_set_contact);
 
     RpcServerConfig::initOptions(desc_cmd_sett);
