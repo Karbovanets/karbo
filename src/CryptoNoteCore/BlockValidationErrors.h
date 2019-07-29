@@ -36,7 +36,8 @@ enum class BlockValidationError {
   BLOCK_REWARD_MISMATCH,
   CHECKPOINT_BLOCK_HASH_MISMATCH,
   PROOF_OF_WORK_TOO_WEAK,
-  TRANSACTION_ABSENT_IN_POOL
+  TRANSACTION_ABSENT_IN_POOL,
+  BASE_TRANSACTION_EXTRA_MM_TAG
 };
 
 // custom category:
@@ -68,6 +69,7 @@ public:
       case BlockValidationError::CHECKPOINT_BLOCK_HASH_MISMATCH: return "Checkpoint block hash mismatch";
       case BlockValidationError::PROOF_OF_WORK_TOO_WEAK: return "Proof of work is too weak";
       case BlockValidationError::TRANSACTION_ABSENT_IN_POOL: return "Block's transaction is absent in transaction pool";
+      case BlockValidationError::BASE_TRANSACTION_EXTRA_MM_TAG: return "Merge mining tag was found in miner transaction extra";
       default: return "Unknown error";
     }
   }

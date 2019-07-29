@@ -1689,6 +1689,11 @@ std::error_code Core::validateBlock(const CachedBlock& cachedBlock, IBlockchainC
     }
   }
 
+  TransactionExtraMergeMiningTag mmTag;
+  if (getMergeMiningTagFromExtra(block.baseTransaction.extra, mmTag) && block.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
+    return error::BlockValidationError::BASE_TRANSACTION_EXTRA_MM_TAG;
+  }
+
   if (block.baseTransaction.inputs.size() != 1) {
     return error::TransactionValidationError::INPUT_WRONG_COUNT;
   }
