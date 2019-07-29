@@ -30,8 +30,8 @@
 #endif
 
 #if defined(LZ4)
-#include <lz4.h>
-#include <lz4hc.h>
+#include "../../lz4/lz4.h"
+#include "../../lz4/lz4hc.h"
 #endif
 
 #if defined(ZSTD)
