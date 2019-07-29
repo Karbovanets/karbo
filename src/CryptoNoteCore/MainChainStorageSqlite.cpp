@@ -216,7 +216,8 @@ namespace CryptoNote
         boost::filesystem::path blocksFilename = boost::filesystem::path(dataDir) / currency.blocksFileName();
         boost::filesystem::path indexesFilename = boost::filesystem::path(dataDir) / currency.blockIndexesFileName();
 
-        auto storage = std::make_unique<MainChainStorageSqlite>(blocksFilename.string() + ".sqlite3", indexesFilename.string());
+        std::unique_ptr<MainChainStorageSqlite> storage(new MainChainStorageSqlite(blocksFilename.string() + ".sqlite3",
+                                                                                   indexesFilename.string()));
 
         if (storage->getBlockCount() == 0)
         {

@@ -170,7 +170,8 @@ namespace CryptoNote
         boost::filesystem::path blocksFilename = boost::filesystem::path(dataDir) / currency.blocksFileName();
         boost::filesystem::path indexesFilename = boost::filesystem::path(dataDir) / currency.blockIndexesFileName();
 
-        auto storage = std::make_unique<MainChainStorageRocksdb>(blocksFilename.string() + ".rocksdb", indexesFilename.string());
+        std::unique_ptr<MainChainStorageRocksdb> storage(new MainChainStorageRocksdb(blocksFilename.string() + ".rocksdb",
+                                                                                     indexesFilename.string()));
 
         if (storage->getBlockCount() == 0)
         {
