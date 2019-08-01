@@ -2725,6 +2725,11 @@ bool Core::isKeyImageSpent(const Crypto::KeyImage& key_im) {
   return mainChain->checkIfSpent(key_im);
 }
 
+bool Core::isKeyImageSpent(const Crypto::KeyImage& key_im, uint32_t blockIndex) {
+  auto mainChain = chainsLeaves[0];
+  return mainChain->checkIfSpent(key_im, blockIndex);
+}
+
 std::time_t Core::getStartTime() const {
   return start_time;
 }
