@@ -29,11 +29,11 @@ namespace CryptoNote
         cfOpts.compaction_style = rocksdb::kCompactionStyleLevel;
         cfOpts.compression_per_level.resize(cfOpts.num_levels);
         cfOpts.num_levels = 10;
-        cfOpts.compression = rocksdb::kLZ4Compression;
+        cfOpts.compression = rocksdb::kZSTD;
         for (int i = 0; i < cfOpts.num_levels; ++i)
         {
-            // per level compression: standar lz4
-            cfOpts.compression_per_level[i] = rocksdb::kLZ4Compression;
+            // per level compression: standard zstd
+            cfOpts.compression_per_level[i] = rocksdb::kZSTD;
         }
         rocksdb::BlockBasedTableOptions tblOpts;
         tblOpts.block_cache = rocksdb::NewLRUCache(32 * 1024 * 1024);

@@ -213,7 +213,7 @@ rocksdb::Options RocksDBWrapper::getDBOptions(const DataBaseConfig& config) {
   fOptions.compression_per_level.resize(fOptions.num_levels);
   if(!config.getCompressionEnabled())
   {
-    fOptions.compression = rocksdb::kLZ4Compression;
+    fOptions.compression = rocksdb::kZSTD;
   }
   
   for (int i = 0; i < fOptions.num_levels; ++i) {
@@ -226,7 +226,7 @@ rocksdb::Options RocksDBWrapper::getDBOptions(const DataBaseConfig& config) {
       if(i < 2) {
         fOptions.compression_per_level[i] = rocksdb::kNoCompression;
       } else {
-        fOptions.compression_per_level[i] = rocksdb::kLZ4Compression;
+        fOptions.compression_per_level[i] = rocksdb::kZSTD;
       }
     }
   }

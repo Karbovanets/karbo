@@ -5,14 +5,14 @@ set(WITH_MD_LIBRARY OFF CACHE BOOL "Code Generation for static library")
 
 add_subdirectory(miniupnpc)
 add_subdirectory(sqlite3)
-add_subdirectory(lz4)
+add_subdirectory(zstd)
 
 if (NOT ROCKSDB_FOUND)
   if(MSVC)
     add_subdirectory(rocksDB EXCLUDE_FROM_ALL)
-    set_property(TARGET upnpc-static rocksdb sqlite3 lz4 PROPERTY FOLDER "external")
+    set_property(TARGET upnpc-static rocksdb sqlite3 zstd PROPERTY FOLDER "external")
   elseif(NOT MSVC)
-    set_property(TARGET upnpc-static sqlite3 lz4 PROPERTY FOLDER "external")
+    set_property(TARGET upnpc-static sqlite3 zstd PROPERTY FOLDER "external")
     add_custom_target(
        rocksdb
        COMMAND $(MAKE) rocksdb
