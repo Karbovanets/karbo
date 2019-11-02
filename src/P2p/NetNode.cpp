@@ -967,8 +967,8 @@ std::string print_peerlist_to_string(const std::list<PeerlistEntry>& pl) {
     std::list<PeerlistEntry> peerlist_ = peerlist;
     if(!fix_time_delta(peerlist_, local_time, delta))
       return false;
-    logger(Logging::TRACE) << context << "REMOTE PEERLIST: TIME_DELTA: " << delta << ", remote peerlist size=" << peerlist_.size();
-    logger(Logging::TRACE) << context << "REMOTE PEERLIST: " <<  print_peerlist_to_string(peerlist_);
+    //logger(Logging::TRACE) << context << "REMOTE PEERLIST: TIME_DELTA: " << delta << ", remote peerlist size=" << peerlist_.size();
+    //logger(Logging::TRACE) << context << "REMOTE PEERLIST: " <<  print_peerlist_to_string(peerlist_);
     return m_peerlist.merge_peerlist(peerlist_);
   }
   //-----------------------------------------------------------------------------------
