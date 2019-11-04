@@ -178,9 +178,10 @@ bool Currency::getBlockReward(uint8_t blockMajorVersion, size_t medianSize, size
     // flat rate tail emission reward
     //baseReward = CryptoNote::parameters::TAIL_EMISSION_REWARD;
 
+    // Friedman's k-percent rule
     // inflation 2% of total coins in circulation
     const uint64_t blocksInOneYear = CryptoNote::parameters::EXPECTED_NUMBER_OF_BLOCKS_PER_DAY * 365;
-    uint64_t twoPercentOfEmission = static_cast<double>(alreadyGeneratedCoins) / 100 * 2;
+    uint64_t twoPercentOfEmission = static_cast<uint64_t>(static_cast<double>(alreadyGeneratedCoins) / 100.0 * 2.0);
     baseReward = twoPercentOfEmission / blocksInOneYear;
   }
 
@@ -197,7 +198,6 @@ bool Currency::getBlockReward(uint8_t blockMajorVersion, size_t medianSize, size
 if (cryptonoteCoinVersion() == 1) {
   penalizedFee = getPenalizedAmount(fee, medianSize, currentBlockSize);
 }
-
 
   emissionChange = penalizedBaseReward - (fee - penalizedFee);
   reward = penalizedBaseReward + penalizedFee;
