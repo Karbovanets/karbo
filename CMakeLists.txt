@@ -28,7 +28,7 @@ set(ENABLE_SYNC_FILE_RANGE_WRITE OFF CACHE STRING "Enable RocksDB SYNC_FILE_RANG
 set(ENABLE_PTHREAD_MUTEX_ADAPTIVE_NP OFF CACHE STRING "Enable RocksDB PTHREAD_MUTEX_ADAPTIVE_NP support detection? Defaults to OFF")
 set(ENABLE_MALLOC_USABLE_SIZE OFF CACHE STRING "Enable RocksDB MALLOC_USABLE_SIZE support detection? Defaults to OFF")
 set(ENABLE_SCHED_GETCPU OFF CACHE STRING "Enable RocksDB SCHED_GETCPU support detection? Defaults to OFF")
-set(WITH_LZ4 ON CACHE STRING "Enable lz4 compression")
+set(WITH_ZSTD ON CACHE BOOL "Enable zstd compression")
 
 option(WITH_LITE_WALLET "Lite wallet specific" OFF)
 
