@@ -41,7 +41,7 @@ const command_line::arg_descriptor<uint16_t>    argBackgroundThreadsCount = { "d
 const command_line::arg_descriptor<uint32_t>    argMaxOpenFiles = { "db-max-open-files", "Number of open files that can be used by the DB", DEFAULT_MAX_OPEN_FILES};
 const command_line::arg_descriptor<uint64_t>    argWriteBufferSize = { "db-write-buffer-size", "Size of data base write buffer in megabytes", WRITE_BUFFER_MB_DEFAULT_SIZE};
 const command_line::arg_descriptor<uint64_t>    argReadCacheSize = { "db-read-cache-size", "Size of data base read cache in megabytes", READ_BUFFER_MB_DEFAULT_SIZE};
-const command_line::arg_descriptor<bool>        argEnableDbCompression = { "db-enable-compression", "Enable data base compression", false};
+const command_line::arg_descriptor<bool>        argEnableDbCompression = { "db-enable-compression", "Enable data base compression", true};
 
 } //namespace
 
