@@ -786,17 +786,16 @@ bool RpcServer::onGetBocksList(const COMMAND_RPC_GET_BLOCKS_LIST::request& req, 
         CORE_RPC_ERROR_CODE_INTERNAL_ERROR,
         "Internal error: can't get block by height. Height = " + std::to_string(i) + '.' };
     }
-    BlockTemplate blk = m_core.getBlockByHash(block_hash);
-    BlockDetails blkDetails = m_core.getBlockDetails(block_hash);
+    BlockDetailsShort b = m_core.getBlockDetailsLite(block_hash);
 
     block_short_response block_short;
-    block_short.cumul_size = blkDetails.blockSize;
-    block_short.timestamp = blk.timestamp;
-    block_short.height = i;
-    block_short.hash = Common::podToHex(block_hash);
-    block_short.tx_count = blk.transactionHashes.size() + 1;
-    block_short.difficulty = m_core.getBlockDifficulty(static_cast<uint32_t>(i));
-    //block_short.min_tx_fee = m_core.getMinimalFeeForHeight(i);
+    block_short.cumul_size = b.blockSize;
+    block_short.timestamp = b.timestamp;
+    block_short.height = b.index;
+    block_short.hash = Common::podToHex(b.hash);
+    block_short.tx_count = b.transactionsCount;
+    block_short.difficulty = b.difficulty;
+    //block_short.min_tx_fee = m_core.getMinimalFeeForHeight(i); // TODO: speed up this
     block_short.min_tx_fee = CryptoNote::parameters::MINIMUM_FEE_V2;
 
     res.blocks.push_back(block_short);

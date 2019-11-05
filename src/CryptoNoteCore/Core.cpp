@@ -2350,6 +2350,44 @@ BlockDetails Core::getBlockDetails(const Crypto::Hash& blockHash) const {
   return blockDetails;
 }
 
+BlockDetailsShort Core::getBlockDetailsLite(const uint32_t blockHeight) const {
+  throwIfNotInitialized();
+
+  IBlockchainCache* segment = findSegmentContainingBlock(blockHeight);
+  if (segment == nullptr) {
+    throw std::runtime_error("Requested block height wasn't found in blockchain.");
+  }
+
+  return getBlockDetailsLite(segment->getBlockHash(blockHeight));
+}
+
+BlockDetailsShort Core::getBlockDetailsLite(const Crypto::Hash& blockHash) const {
+  throwIfNotInitialized();
+
+  IBlockchainCache* segment = findSegmentContainingBlock(blockHash);
+  if (segment == nullptr) {
+    throw std::runtime_error("Requested hash wasn't found in blockchain.");
+  }
+
+  uint32_t blockIndex = segment->getBlockIndex(blockHash);
+  BlockTemplate blockTemplate = restoreBlockTemplate(segment, blockIndex);
+
+  BlockDetailsShort blockDetails;
+  blockDetails.timestamp = blockTemplate.timestamp;
+  blockDetails.index = blockIndex;
+  blockDetails.hash = blockHash;
+  blockDetails.difficulty = getBlockDifficulty(blockIndex);
+  std::vector<uint64_t> sizes = segment->getLastBlocksSizes(1, blockDetails.index, addGenesisBlock);
+  assert(sizes.size() == 1);
+  uint64_t blockBlobSize = getObjectBinarySize(blockTemplate);
+  uint64_t coinbaseTransactionSize = getObjectBinarySize(blockTemplate.baseTransaction);
+  blockDetails.blockSize = blockBlobSize + sizes.front() - coinbaseTransactionSize;
+  blockDetails.transactionsCount = blockTemplate.transactionHashes.size() + 1;
+
+  return blockDetails;
+}
+
+
 TransactionDetails Core::getTransactionDetails(const Crypto::Hash& transactionHash) const {
   throwIfNotInitialized();
 

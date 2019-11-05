@@ -120,7 +120,9 @@ public:
   virtual void load() override;
 
   virtual BlockDetails getBlockDetails(const Crypto::Hash& blockHash) const override;
-  BlockDetails getBlockDetails(const uint32_t blockHeight) const;
+  virtual BlockDetails getBlockDetails(const uint32_t blockHeight) const override;
+  virtual BlockDetailsShort getBlockDetailsLite(const Crypto::Hash& blockHash) const override;
+  virtual BlockDetailsShort getBlockDetailsLite(uint32_t blockIndex) const override;
   virtual TransactionDetails getTransactionDetails(const Crypto::Hash& transactionHash) const override;
   virtual std::vector<Crypto::Hash> getAlternativeBlockHashesByIndex(uint32_t blockIndex) const override;
   virtual std::vector<Crypto::Hash> getBlockHashesByTimestamps(uint64_t timestampBegin, size_t secondsCount) const override;

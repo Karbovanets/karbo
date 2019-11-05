@@ -204,4 +204,13 @@ void serialize(BlockDetails& block, ISerializer& serializer) {
   serializer(block.transactions, "transactions");
 }
 
+void serialize(BlockDetailsShort& block, ISerializer& serializer) {
+  serializer(block.timestamp, "timestamp");
+  serializer(block.index, "index");
+  serializePod(block.hash, "hash", serializer);
+  serializer(block.difficulty, "difficulty");
+  serializer(block.blockSize, "blockSize");
+  serializer(block.transactionsCount, "txCount");
+}
+
 } //namespace CryptoNote

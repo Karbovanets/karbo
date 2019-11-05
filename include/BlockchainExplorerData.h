@@ -115,4 +115,13 @@ struct BlockDetails {
   std::vector<TransactionDetails> transactions;
 };
 
+struct BlockDetailsShort {
+  uint64_t timestamp = 0;
+  uint32_t index = 0;
+  Crypto::Hash hash;
+  uint64_t difficulty = 0;
+  uint64_t blockSize = 0;
+  uint64_t transactionsCount = 0;
+};
+
 }
