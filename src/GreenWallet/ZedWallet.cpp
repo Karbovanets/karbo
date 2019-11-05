@@ -26,6 +26,8 @@
 #include <GreenWallet/Tools.h>
 #include <GreenWallet/WalletConfig.h>
 
+using namespace Tools;
+
 int main(int argc, char **argv)
 {
 	/* Fix wallet not responding when enter cyrillic (non-latin) characters 

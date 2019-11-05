@@ -46,6 +46,8 @@ namespace WalletErrors
 #include "Common/DnsTools.h"
 #include "Common/UrlTools.h"
 
+using namespace Tools;
+
 bool parseAmount(std::string strAmount, uint64_t &amount)
 {
     boost::algorithm::trim(strAmount);
@@ -553,7 +555,7 @@ void doTransfer(std::string address, uint64_t amount, uint64_t fee,
 	}
 
     p.fee = fee;
-	p.mixIn = mixin;
+    p.mixIn = mixin;
     p.extra = extra;
     p.changeDestination = walletInfo->walletAddress;
 

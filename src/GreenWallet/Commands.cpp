@@ -9,6 +9,8 @@
 
 #include <GreenWallet/Tools.h>
 
+using namespace Tools;
+
 std::vector<Command> startupCommands()
 {
     return 

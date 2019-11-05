@@ -36,7 +36,7 @@
 void changePassword(std::shared_ptr<WalletInfo> walletInfo)
 {
     /* Check the user knows the current password */
-    confirmPassword(walletInfo->walletPass, "Confirm your current password: ");
+    Tools::confirmPassword(walletInfo->walletPass, "Confirm your current password: ");
 
     /* Get a new password for the wallet */
     const std::string newPassword
@@ -56,7 +56,7 @@ void changePassword(std::shared_ptr<WalletInfo> walletInfo)
 
 void exportKeys(std::shared_ptr<WalletInfo> walletInfo)
 {
-    confirmPassword(walletInfo->walletPass);
+    Tools::confirmPassword(walletInfo->walletPass);
     printPrivateKeys(walletInfo->wallet, walletInfo->viewWallet);
 }
 
@@ -152,11 +152,11 @@ void balance(CryptoNote::INode &node, CryptoNote::WalletGreen &wallet,
     const uint32_t walletHeight = wallet.getBlockCount();
 
     std::cout << "Available balance: "
-              << SuccessMsg(formatAmount(confirmedBalance)) << std::endl
+              << SuccessMsg(Tools::formatAmount(confirmedBalance)) << std::endl
               << "Locked (unconfirmed) balance: "
-              << WarningMsg(formatAmount(unconfirmedBalance))
+              << WarningMsg(Tools::formatAmount(unconfirmedBalance))
               << std::endl << "Total balance: "
-              << InformationMsg(formatAmount(totalBalance)) << std::endl;
+              << InformationMsg(Tools::formatAmount(totalBalance)) << std::endl;
 
     if (viewWallet)
     {
@@ -407,7 +407,7 @@ void status(CryptoNote::INode &node, CryptoNote::WalletGreen &wallet)
 
 void reset(CryptoNote::INode &node, std::shared_ptr<WalletInfo> walletInfo)
 {
-	uint64_t scanHeight = getScanHeight();
+	uint64_t scanHeight = Tools::getScanHeight();
 
 	std::cout << std::endl
 		<< InformationMsg("This process may take some time to complete.")
@@ -416,7 +416,7 @@ void reset(CryptoNote::INode &node, std::shared_ptr<WalletInfo> walletInfo)
 		<< InformationMsg("process.")
 		<< std::endl << std::endl;
 
-	if (!confirm("Are you sure?"))
+	if (!Tools::confirm("Are you sure?"))
 	{
 		return;
 	}
@@ -463,11 +463,11 @@ void saveCSV(CryptoNote::WalletGreen &wallet, CryptoNote::INode &node)
             continue;
         }
 
-        const std::string amount = formatAmountBasic(std::abs(t.totalAmount));
+        const std::string amount = Tools::formatAmountBasic(std::abs(t.totalAmount));
 
         const std::string direction = t.totalAmount > 0 ? "IN" : "OUT";
 
-        csv << unixTimeToDate(t.timestamp) << ","       /* Timestamp */
+        csv << Tools::unixTimeToDate(t.timestamp) << ","       /* Timestamp */
             << t.blockHeight << ","                     /* Block Height */
             << Common::podToHex(t.hash) << ","          /* Hash */
             << amount << ","                            /* Amount */
@@ -498,18 +498,18 @@ void printOutgoingTransfer(CryptoNote::WalletTransaction t,
                   << WarningMsg(std::to_string(t.blockHeight))
                   << std::endl
                   << WarningMsg("Timestamp: ")
-                  << WarningMsg(unixTimeToDate(t.timestamp))
+                  << WarningMsg(Tools::unixTimeToDate(t.timestamp))
                   << std::endl;
     }
 
-    std::cout << WarningMsg("Spent: " + formatAmount(-t.totalAmount - t.fee))
+    std::cout << WarningMsg("Spent: " + Tools::formatAmount(-t.totalAmount - t.fee))
               << std::endl
-              << WarningMsg("Fee: " + formatAmount(t.fee))
+              << WarningMsg("Fee: " + Tools::formatAmount(t.fee))
               << std::endl
-              << WarningMsg("Total Spent: " + formatAmount(-t.totalAmount))
+              << WarningMsg("Total Spent: " + Tools::formatAmount(-t.totalAmount))
               << std::endl;
 
-    const std::string paymentID = getPaymentIDFromExtra(t.extra);
+    const std::string paymentID = Tools::getPaymentIDFromExtra(t.extra);
 
     if (paymentID != "")
     {
@@ -534,16 +534,16 @@ void printIncomingTransfer(CryptoNote::WalletTransaction t,
                   << SuccessMsg(std::to_string(t.blockHeight))
                   << std::endl
                   << SuccessMsg("Timestamp: ")
-                  << SuccessMsg(unixTimeToDate(t.timestamp))
+                  << SuccessMsg(Tools::unixTimeToDate(t.timestamp))
                   << std::endl;
     }
 
     std::cout << SuccessMsg("Hash: " + Common::podToHex(t.hash))
               << std::endl
-              << SuccessMsg("Amount: " + formatAmount(t.totalAmount))
+              << SuccessMsg("Amount: " + Tools::formatAmount(t.totalAmount))
               << std::endl;
 
-    const std::string paymentID = getPaymentIDFromExtra(t.extra);
+    const std::string paymentID = Tools::getPaymentIDFromExtra(t.extra);
 
     if (paymentID != "")
     {
@@ -580,13 +580,13 @@ void listTransfers(bool incoming, bool outgoing,
     if (incoming)
     {
         std::cout << SuccessMsg("Total received: " 
-                              + formatAmount(totalReceived))
+                              + Tools::formatAmount(totalReceived))
                   << std::endl;
     }
 
     if (outgoing)
     {
-        std::cout << WarningMsg("Total spent: " + formatAmount(totalSpent))
+        std::cout << WarningMsg("Total spent: " + Tools::formatAmount(totalSpent))
                   << std::endl;
     }
 }
@@ -823,7 +823,7 @@ void reserveProof(std::shared_ptr<WalletInfo> walletInfo, bool viewWallet)
             {
                 std::cout << WarningMsg("Amount is bigger than ")
                           << WarningMsg("actual balance ")
-                          << WarningMsg(formatAmount(actualBalance))
+                          << WarningMsg(Tools::formatAmount(actualBalance))
                           << std::endl;
             }
             else {

@@ -17,6 +17,8 @@
 #include <GreenWallet/Tools.h>
 #include <GreenWallet/WalletConfig.h>
 
+using namespace Tools;
+
 size_t makeFusionTransaction(CryptoNote::WalletGreen &wallet, 
                              uint64_t threshold)
 {

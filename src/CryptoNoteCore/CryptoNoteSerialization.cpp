@@ -469,9 +469,9 @@ void serialize(RawBlock& rawBlock, ISerializer& serializer) {
   if (serializer.type() == ISerializer::INPUT) {
     uint64_t blockSize;
     serializer(blockSize, "block_size");
-    rawBlock.block.resize(static_cast<size_t>(blockSize));
+    rawBlock.block.resize(static_cast<uint64_t>(blockSize));
   } else {
-    auto blockSize = rawBlock.block.size();
+    uint64_t blockSize = rawBlock.block.size();
     serializer(blockSize, "block_size");
   }
 
@@ -480,24 +480,36 @@ void serialize(RawBlock& rawBlock, ISerializer& serializer) {
   if (serializer.type() == ISerializer::INPUT) {
     uint64_t txCount;
     serializer(txCount, "tx_count");
-    rawBlock.transactions.resize(static_cast<size_t>(txCount));
+    rawBlock.transactions.resize(static_cast<uint64_t>(txCount));
 
-    for (auto& txBlob : rawBlock.transactions) {
+    serializer.beginArray(txCount, "transactions");
+
+    for (auto &txBlob : rawBlock.transactions) {
+      serializer.beginObject("transaction");
       uint64_t txSize;
       serializer(txSize, "tx_size");
       txBlob.resize(txSize);
       serializer.binary(txBlob.data(), txBlob.size(), "transaction");
+      serializer.endObject();
     }
+
+    serializer.endArray();
   } else {
-    auto txCount = rawBlock.transactions.size();
+    uint64_t txCount = rawBlock.transactions.size();
     serializer(txCount, "tx_count");
 
-    for (auto& txBlob : rawBlock.transactions) {
-      auto txSize = txBlob.size();
+    serializer.beginArray(txCount, "transactions");
+
+    for (auto &txBlob : rawBlock.transactions) {
+      serializer.beginObject("transaction");
+      uint64_t txSize = txBlob.size();
       serializer(txSize, "tx_size");
       serializer.binary(txBlob.data(), txBlob.size(), "transaction");
+      serializer.endObject();
     }
+
+    serializer.endArray();
   }
 }
 
-} //namespace CryptoNote
+} // namespace CryptoNote

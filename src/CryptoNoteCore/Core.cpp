@@ -2637,10 +2637,15 @@ uint64_t Core::getMinimalFeeForHeight(uint32_t height) {
   // calculate average reward for ~last day
   std::vector<uint64_t> rewards;
   rewards.reserve(window);
+  // is there anything faster?
   for (; offset < height; offset++) {
     auto blockTemplate = getBlockByIndex(offset);
     rewards.push_back(get_outs_money_amount(blockTemplate.baseTransaction));
   }
+
+  // calculate average reward for ~last day (simplified base reward)
+  // uint64_t avgRewardCurrent = (mainChain->getAlreadyGeneratedCoins(height) - mainChain->getAlreadyGeneratedCoins(offset)) / window;
+
   uint64_t avgRewardCurrent = std::accumulate(rewards.begin(), rewards.end(), 0ULL) / rewards.size();
   rewards.clear();
   rewards.shrink_to_fit();
@@ -2728,6 +2733,11 @@ uint32_t Core::get_current_blockchain_height() const {
 bool Core::isKeyImageSpent(const Crypto::KeyImage& key_im) {
   auto mainChain = chainsLeaves[0];
   return mainChain->checkIfSpent(key_im);
+}
+
+bool Core::isKeyImageSpent(const Crypto::KeyImage& key_im, uint32_t blockIndex) {
+  auto mainChain = chainsLeaves[0];
+  return mainChain->checkIfSpent(key_im, blockIndex);
 }
 
 std::time_t Core::getStartTime() const {

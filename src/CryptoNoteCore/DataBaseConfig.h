@@ -39,6 +39,7 @@ public:
   uint64_t getWriteBufferSize() const; //Bytes
   uint64_t getReadCacheSize() const; //Bytes
   bool getTestnet() const;
+  bool getCompressionEnabled() const;
 
   void setConfigFolderDefaulted(bool defaulted);
   void setDataDir(const std::string& dataDir);
@@ -56,5 +57,6 @@ private:
   uint64_t writeBufferSize;
   uint64_t readCacheSize;
   bool testnet;
+  bool compressionEnabled;
 };
 } //namespace CryptoNote

@@ -51,7 +51,7 @@ struct COMMAND_RPC_GET_HEIGHT {
   typedef EMPTY_STRUCT request;
 
   struct response {
-    uint64_t height;
+    uint32_t height;
     std::string status;
 
     void serialize(ISerializer &s) {
@@ -73,8 +73,8 @@ struct COMMAND_RPC_GET_BLOCKS_FAST {
 
   struct response {
     std::vector<RawBlock> blocks;
-    uint64_t start_height;
-    uint64_t current_height;
+    uint32_t start_height;
+    uint32_t current_height;
     std::string status;
   };
 };
@@ -268,7 +268,7 @@ struct COMMAND_RPC_GET_INFO {
   struct response {
     std::string status;
     std::string version;
-    uint64_t height;
+    uint32_t height;
     std::string top_block_hash;
     uint64_t difficulty;
     uint64_t min_tx_fee;
@@ -390,7 +390,7 @@ struct COMMAND_RPC_GETBLOCKTEMPLATE {
   struct response {
     uint64_t difficulty;
     uint32_t height;
-    uint64_t reserved_offset;
+    uint32_t reserved_offset;
     std::string blocktemplate_blob;
     std::string status;
 
@@ -539,7 +539,7 @@ struct f_block_details_response {
   uint32_t nonce;
   bool orphan_status;
   uint32_t height;
-  uint64_t depth;
+  uint32_t depth;
   std::string hash;
   uint64_t difficulty;
   uint64_t reward;
@@ -599,7 +599,7 @@ struct COMMAND_RPC_GET_BLOCK_HEADER_BY_HASH {
 
 struct COMMAND_RPC_GET_BLOCK_HEADER_BY_HEIGHT {
   struct request {
-    uint64_t height;
+    uint32_t height;
 
     void serialize(ISerializer &s) {
       KV_MEMBER(height)
@@ -612,7 +612,7 @@ struct COMMAND_RPC_GET_BLOCK_HEADER_BY_HEIGHT {
 
 struct F_COMMAND_RPC_GET_BLOCKS_LIST {
   struct request {
-    uint64_t height;
+    uint32_t height;
 
     void serialize(ISerializer &s) {
       KV_MEMBER(height)
@@ -722,9 +722,9 @@ struct COMMAND_RPC_QUERY_BLOCKS {
 
   struct response {
     std::string status;
-    uint64_t start_height;
-    uint64_t current_height;
-    uint64_t full_offset;
+    uint32_t start_height;
+    uint32_t current_height;
+    uint32_t full_offset;
     std::vector<BlockFullInfo> items;
 
     void serialize(ISerializer &s) {
@@ -750,9 +750,9 @@ struct COMMAND_RPC_QUERY_BLOCKS_LITE {
 
   struct response {
     std::string status;
-    uint64_t startHeight;
-    uint64_t currentHeight;
-    uint64_t fullOffset;
+    uint32_t startHeight;
+    uint32_t currentHeight;
+    uint32_t fullOffset;
     std::vector<BlockShortInfo> items;
 
     void serialize(ISerializer &s) {
@@ -1093,11 +1093,13 @@ struct K_COMMAND_RPC_CHECK_RESERVE_PROOF {
     std::string address;
     std::string message;
     std::string signature;
+    uint32_t height = 0;
 
     void serialize(ISerializer &s) {
       KV_MEMBER(address)
       KV_MEMBER(message)
       KV_MEMBER(signature)
+      KV_MEMBER(height)
     }
   };
 

@@ -16,6 +16,7 @@ set(CMAKE_SKIP_INSTALL_RULES OFF FORCE)
 set(CMAKE_SKIP_PACKAGE_ALL_DEPENDENCY ON FORCE)
 set(CMAKE_SUPPRESS_REGENERATION ON)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+
 set(FIND_BOOST_VERSION 1.55)
 
 ## This section is specifically for RocksDB build options that we've disabled for maximum portability
@@ -27,6 +28,7 @@ set(ENABLE_SYNC_FILE_RANGE_WRITE OFF CACHE STRING "Enable RocksDB SYNC_FILE_RANG
 set(ENABLE_PTHREAD_MUTEX_ADAPTIVE_NP OFF CACHE STRING "Enable RocksDB PTHREAD_MUTEX_ADAPTIVE_NP support detection? Defaults to OFF")
 set(ENABLE_MALLOC_USABLE_SIZE OFF CACHE STRING "Enable RocksDB MALLOC_USABLE_SIZE support detection? Defaults to OFF")
 set(ENABLE_SCHED_GETCPU OFF CACHE STRING "Enable RocksDB SCHED_GETCPU support detection? Defaults to OFF")
+set(WITH_LZ4 ON CACHE STRING "Enable lz4 compression")
 
 option(WITH_LITE_WALLET "Lite wallet specific" OFF)
 
@@ -76,6 +78,10 @@ endif()
 if(WITH_LITE_WALLET)
   add_definitions("-DUSE_LITE_WALLET")
 endif()
+
+if (WITH_ZSTD)
+    add_definitions(-DENABLE_ZSTD_COMPRESSION)
+endif ()
 
 ## We only build static binaries -- this is left here for our dependencies
 set(STATIC ON CACHE BOOL FORCE "Link libraries statically? Forced to ON")
@@ -275,10 +281,11 @@ add_subdirectory(external)
 add_subdirectory(src)
 
 ## We need to setup the RocksDB build environment to match our system
+include_directories(${CMAKE_SOURCE_DIR}/external/zstd)
 if (NOT ROCKSDB_FOUND)
   if(NOT MSVC)
     execute_process(
-      COMMAND cmake ${CMAKE_CURRENT_SOURCE_DIR}/external/rocksdb -DWITH_GFLAGS=0 -DCMAKE_BUILD_TYPE=MinSizeRel -DWITH_TESTS=OFF -DWITH_TOOLS=OFF -DPORTABLE=ON -B${PROJECT_BINARY_DIR}/rocksdb
+      COMMAND cmake ${CMAKE_CURRENT_SOURCE_DIR}/external/rocksdb -DARCH=${ARCH} -DWITH_ZSTD=${WITH_ZSTD} -DWITH_GFLAGS=0 -DCMAKE_BUILD_TYPE=MinSizeRel -DWITH_TESTS=OFF -DWITH_TOOLS=OFF -DPORTABLE=ON -B${PROJECT_BINARY_DIR}/rocksdb
     )
     set_directory_properties(PROPERTIES ADDITIONAL_MAKE_CLEAN_FILES "${PROJECT_BINARY_DIR}/rocksdb/librocksdb.a")
   endif()

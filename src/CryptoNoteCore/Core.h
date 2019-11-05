@@ -135,6 +135,7 @@ public:
   virtual uint64_t getMinimalFee() override;
 
   bool isKeyImageSpent(const Crypto::KeyImage& key_im);
+  bool isKeyImageSpent(const Crypto::KeyImage& key_im, uint32_t blockIndex);
 
 private:
   const Currency& currency;

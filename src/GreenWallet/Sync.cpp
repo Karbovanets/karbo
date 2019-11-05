@@ -18,6 +18,8 @@
 #include <GreenWallet/Types.h>
 #include <GreenWallet/WalletConfig.h>
 
+using namespace Tools;
+
 void checkForNewTransactions(std::shared_ptr<WalletInfo> walletInfo)
 {
     walletInfo->wallet.updateInternalCache();

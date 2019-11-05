@@ -27,6 +27,8 @@
 #include <Common/PasswordContainer.h>
 #include <GreenWallet/WalletConfig.h>
 
+using namespace Tools;
+
 std::shared_ptr<WalletInfo> createViewWallet(CryptoNote::WalletGreen &wallet)
 {
     std::cout << WarningMsg("View wallets are only for viewing incoming ")

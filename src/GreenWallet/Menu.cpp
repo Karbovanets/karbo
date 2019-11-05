@@ -16,6 +16,8 @@
 #include <GreenWallet/Sync.h>
 #include <GreenWallet/Tools.h>
 
+using namespace Tools;
+
 template<typename T>
 std::string parseCommand(const std::vector<T> &printableCommands,
                          const std::vector<T> &availableCommands,

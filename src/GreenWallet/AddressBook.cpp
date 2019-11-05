@@ -22,6 +22,8 @@
 #include <GreenWallet/Transfer.h>
 #include <GreenWallet/WalletConfig.h>
 
+using namespace Tools;
+
 const std::string getAddressBookName(AddressBook addressBook)
 {
     while (true)
