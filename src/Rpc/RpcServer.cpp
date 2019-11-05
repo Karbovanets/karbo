@@ -48,6 +48,8 @@ using namespace Logging;
 using namespace Crypto;
 using namespace Common;
 
+const uint64_t BLOCK_LIST_MAX_COUNT = 1000;
+
 static const Crypto::SecretKey I = { { 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } };
 
 namespace CryptoNote {
@@ -768,7 +770,10 @@ bool RpcServer::onGetBocksList(const COMMAND_RPC_GET_BLOCKS_LIST::request& req, 
       std::string("To big height: ") + std::to_string(req.height) + ", current blockchain height = " + std::to_string(m_core.getTopBlockIndex() + 1) };
   }
 
-  uint32_t print_blocks_count = 30;
+  uint32_t print_blocks_count = 10;
+  if (req.count <= BLOCK_LIST_MAX_COUNT)
+    print_blocks_count = req.count;
+
   uint32_t last_height = static_cast<uint32_t>(req.height - print_blocks_count);
   if (req.height <= print_blocks_count)  {
     last_height = 0;
@@ -791,7 +796,8 @@ bool RpcServer::onGetBocksList(const COMMAND_RPC_GET_BLOCKS_LIST::request& req, 
     block_short.hash = Common::podToHex(block_hash);
     block_short.tx_count = blk.transactionHashes.size() + 1;
     block_short.difficulty = m_core.getBlockDifficulty(static_cast<uint32_t>(i));
-    block_short.min_tx_fee = m_core.getMinimalFeeForHeight(i);
+    //block_short.min_tx_fee = m_core.getMinimalFeeForHeight(i);
+    block_short.min_tx_fee = CryptoNote::parameters::MINIMUM_FEE_V2;
 
     res.blocks.push_back(block_short);
 
