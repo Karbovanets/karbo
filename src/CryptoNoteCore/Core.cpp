@@ -427,7 +427,7 @@ bool Core::queryBlocks(const std::vector<Crypto::Hash>& blockHashes, uint64_t ti
 
     return true;
   } catch (std::exception& e) {
-    logger(Logging::ERROR) << "Failed to query blocks: " << e.what();
+    logger(Logging::DEBUGGING) << "Failed to query blocks: " << e.what();
     return false;
   }
 }
@@ -473,7 +473,7 @@ bool Core::queryBlocksLite(const std::vector<Crypto::Hash>& knownBlockHashes, ui
 
     return true;
   } catch (std::exception& e) {
-	logger(Logging::ERROR) << "Failed to query blocks: " << e.what();
+	logger(Logging::DEBUGGING) << "Failed to query blocks lite: " << e.what();
     return false;
   }
 }
@@ -1638,6 +1638,11 @@ std::error_code Core::validateSemantic(const Transaction& transaction, uint64_t&
 }
 
 uint32_t Core::findBlockchainSupplement(const std::vector<Crypto::Hash>& remoteBlockIds) const {
+  // Requester doesn't know anything about the chain yet
+  if (remoteBlockIds.empty()) {
+    return 0;
+  }
+
   // TODO: check for genesis blocks match
   for (auto& hash : remoteBlockIds) {
     IBlockchainCache* blockchainSegment = findMainChainSegmentContainingBlock(hash);
