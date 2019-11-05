@@ -427,7 +427,7 @@ bool Core::queryBlocks(const std::vector<Crypto::Hash>& blockHashes, uint64_t ti
 
     return true;
   } catch (std::exception& e) {
-    logger(Logging::ERROR) << "Failed to query blocks: " << e.what();
+    logger(Logging::DEBUGGING) << "Failed to query blocks: " << e.what();
     return false;
   }
 }
@@ -473,7 +473,7 @@ bool Core::queryBlocksLite(const std::vector<Crypto::Hash>& knownBlockHashes, ui
 
     return true;
   } catch (std::exception& e) {
-	logger(Logging::ERROR) << "Failed to query blocks: " << e.what();
+	logger(Logging::DEBUGGING) << "Failed to query blocks lite: " << e.what();
     return false;
   }
 }
@@ -1638,6 +1638,11 @@ std::error_code Core::validateSemantic(const Transaction& transaction, uint64_t&
 }
 
 uint32_t Core::findBlockchainSupplement(const std::vector<Crypto::Hash>& remoteBlockIds) const {
+  // Requester doesn't know anything about the chain yet
+  if (remoteBlockIds.empty()) {
+    return 0;
+  }
+
   // TODO: check for genesis blocks match
   for (auto& hash : remoteBlockIds) {
     IBlockchainCache* blockchainSegment = findMainChainSegmentContainingBlock(hash);
@@ -2283,9 +2288,16 @@ BlockDetails Core::getBlockDetails(const Crypto::Hash& blockHash) const {
   }
 
   blockDetails.index = blockIndex;
+  blockDetails.depth = get_current_blockchain_height() - blockDetails.index - 1;
+
   blockDetails.isAlternative = mainChainSet.count(segment) == 0;
 
+  Crypto::cn_context context;
+  blockDetails.proofOfWork = CachedBlock(blockTemplate).getBlockLongHash(context);
+
   blockDetails.difficulty = getBlockDifficulty(blockIndex);
+
+  blockDetails.cumulativeDifficulty = segment->getCurrentCumulativeDifficulty(blockDetails.index);
 
   std::vector<uint64_t> sizes = segment->getLastBlocksSizes(1, blockDetails.index, addGenesisBlock);
   assert(sizes.size() == 1);
@@ -2303,6 +2315,8 @@ BlockDetails Core::getBlockDetails(const Crypto::Hash& blockHash) const {
   if (blockDetails.index > 0) {
     auto lastBlocksSizes = segment->getLastBlocksSizes(currency.rewardBlocksWindow(), blockDetails.index - 1, addGenesisBlock);
     blockDetails.sizeMedian = Common::medianValue(lastBlocksSizes);
+    size_t blockGrantedFullRewardZone = CryptoNote::parameters::CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE;
+    blockDetails.effectiveSizeMedian = std::max(blockDetails.sizeMedian, blockGrantedFullRewardZone);
     prevBlockGeneratedCoins = segment->getAlreadyGeneratedCoins(blockDetails.index - 1);
   }
 
