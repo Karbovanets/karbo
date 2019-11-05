@@ -94,11 +94,14 @@ struct BlockDetails {
   uint8_t minorVersion = 0;
   uint64_t timestamp = 0;
   Crypto::Hash prevBlockHash;
+  Crypto::Hash proofOfWork;
   uint32_t nonce = 0;
   bool isAlternative = false;
   uint32_t index = 0;
+  uint32_t depth = 0;
   Crypto::Hash hash;
   uint64_t difficulty = 0;
+  uint64_t cumulativeDifficulty = 0;
   uint64_t reward = 0;
   uint64_t baseReward = 0;
   uint64_t blockSize = 0;
@@ -106,6 +109,7 @@ struct BlockDetails {
   uint64_t alreadyGeneratedCoins = 0;
   uint64_t alreadyGeneratedTransactions = 0;
   uint64_t sizeMedian = 0;
+  uint64_t effectiveSizeMedian = 0;
   double penalty = 0.0;
   uint64_t totalFeeAmount = 0;
   std::vector<TransactionDetails> transactions;

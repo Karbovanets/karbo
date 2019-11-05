@@ -2288,9 +2288,16 @@ BlockDetails Core::getBlockDetails(const Crypto::Hash& blockHash) const {
   }
 
   blockDetails.index = blockIndex;
+  blockDetails.depth = get_current_blockchain_height() - blockDetails.index - 1;
+
   blockDetails.isAlternative = mainChainSet.count(segment) == 0;
 
+  Crypto::cn_context context;
+  blockDetails.proofOfWork = CachedBlock(blockTemplate).getBlockLongHash(context);
+
   blockDetails.difficulty = getBlockDifficulty(blockIndex);
+
+  blockDetails.cumulativeDifficulty = segment->getCurrentCumulativeDifficulty(blockDetails.index);
 
   std::vector<uint64_t> sizes = segment->getLastBlocksSizes(1, blockDetails.index, addGenesisBlock);
   assert(sizes.size() == 1);
@@ -2308,6 +2315,8 @@ BlockDetails Core::getBlockDetails(const Crypto::Hash& blockHash) const {
   if (blockDetails.index > 0) {
     auto lastBlocksSizes = segment->getLastBlocksSizes(currency.rewardBlocksWindow(), blockDetails.index - 1, addGenesisBlock);
     blockDetails.sizeMedian = Common::medianValue(lastBlocksSizes);
+    size_t blockGrantedFullRewardZone = CryptoNote::parameters::CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE;
+    blockDetails.effectiveSizeMedian = std::max(blockDetails.sizeMedian, blockGrantedFullRewardZone);
     prevBlockGeneratedCoins = segment->getAlreadyGeneratedCoins(blockDetails.index - 1);
   }
 
