@@ -2656,20 +2656,16 @@ uint64_t Core::getMinimalFee() {
 uint64_t Core::getMinimalFeeForHeight(uint32_t height) {
   IBlockchainCache* mainChain = chainsLeaves[0];
   uint32_t currentIndex = mainChain->getTopBlockIndex();
-
   if (height < 3 || currentIndex <= 1) {
     return 0;
   }
-
   if (height > currentIndex) {
     height = currentIndex;
   }
-
   uint32_t window = std::min(height, std::min<uint32_t>(currentIndex, static_cast<uint32_t>(CryptoNote::parameters::EXPECTED_NUMBER_OF_BLOCKS_PER_DAY)));
   if (window == 0) {
     ++window;
   }
-
   uint32_t offset = height - window;
   if (offset == 0) {
     ++offset;
@@ -2677,15 +2673,12 @@ uint64_t Core::getMinimalFeeForHeight(uint32_t height) {
 
   // calculate average difficulty for ~last month
   uint64_t avgDifficultyCurrent = getAvgDifficulty(height, window * 7 * 4);
-
-  // historical reference moving average difficulty
+  // historical reference trailing average difficulty
   uint64_t avgDifficultyHistorical = mainChain->getCurrentCumulativeDifficulty(height) / height;
-
   // simplified and faster ~last month avg. reward (using base rewards, excluding fees)
   // makes little difference, excused by verification
   uint64_t avgRewardCurrent = (mainChain->getAlreadyGeneratedCoins(height) - mainChain->getAlreadyGeneratedCoins(offset)) / window;
-
-  // historical reference moving average reward
+  // historical reference trailing average reward
   uint64_t avgRewardHistorical = mainChain->getAlreadyGeneratedCoins(height) / height;
 
   return currency.getMinimalFee(avgDifficultyCurrent, avgRewardCurrent, avgDifficultyHistorical, avgRewardHistorical, height);
