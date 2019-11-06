@@ -2681,25 +2681,7 @@ uint64_t Core::getMinimalFeeForHeight(uint32_t height) {
   // historical reference moving average difficulty
   uint64_t avgDifficultyHistorical = mainChain->getCurrentCumulativeDifficulty(height) / height;
 
-  /*
-  * Total reward with transaction fees is used as the level of usage metric
-  * to take into account transaction volume and cost of space in blockchain.
-  */
-
-  // calculate average reward for ~last day
-  // This method of getting avg. reward is replaced with the method below as it is very slow
-  //std::vector<uint64_t> rewards;
-  //rewards.reserve(window);
-  //for (; offset < height; offset++) {
-  //  auto blockTemplate = getBlockByIndex(offset);
-  //  rewards.push_back(get_outs_money_amount(blockTemplate.baseTransaction));
-  //}
-  //
-  //uint64_t avgRewardCurrent = std::accumulate(rewards.begin(), rewards.end(), 0ULL) / rewards.size();
-  //rewards.clear();
-  //rewards.shrink_to_fit();
-  
-  // simplified and faster avg. reward (using base rewards, excluding fees)
+  // simplified and faster ~last month avg. reward (using base rewards, excluding fees)
   // makes little difference, excused by verification
   uint64_t avgRewardCurrent = (mainChain->getAlreadyGeneratedCoins(height) - mainChain->getAlreadyGeneratedCoins(offset)) / window;
 
