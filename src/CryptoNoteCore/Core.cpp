@@ -2675,8 +2675,7 @@ uint64_t Core::getMinimalFeeForHeight(uint32_t height) {
   uint64_t avgDifficultyCurrent = getAvgDifficulty(height, window * 7 * 4);
   // historical reference trailing average difficulty
   uint64_t avgDifficultyHistorical = mainChain->getCurrentCumulativeDifficulty(height) / height;
-  // simplified and faster ~last month avg. reward (using base rewards, excluding fees)
-  // makes little difference, excused by verification
+  // calculate average reward for ~last day (base, excluding fees)
   uint64_t avgRewardCurrent = (mainChain->getAlreadyGeneratedCoins(height) - mainChain->getAlreadyGeneratedCoins(offset)) / window;
   // historical reference trailing average reward
   uint64_t avgRewardHistorical = mainChain->getAlreadyGeneratedCoins(height) / height;
