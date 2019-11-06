@@ -2598,37 +2598,42 @@ std::vector<Crypto::Hash> Core::getTransactionHashesByPaymentId(const Hash& paym
 }
 
 bool Core::getTransactionsByPaymentId(const Crypto::Hash& paymentId, std::vector<Transaction>& transactions) {
-  auto blockchainTransactionHashes = getTransactionHashesByPaymentId(paymentId);
-  auto poolTransactionHashes = transactionPool->getTransactionHashesByPaymentId(paymentId);
+  throwIfNotInitialized();
+  auto mainChain = chainsLeaves[0];
+  const auto blockchainTransactionHashes = mainChain->getTransactionHashesByPaymentId(paymentId);
+  const auto poolTransactionHashes = transactionPool->getTransactionHashesByPaymentId(paymentId);
 
   std::vector<CachedTransaction> cachedTransactions;
   std::vector<Crypto::Hash> missedTransactions;
   std::vector<BinaryArray> rawTransactions;
+  uint64_t cumulativeSize;
+
+  if (!blockchainTransactionHashes.empty()) {
+    getTransactions(blockchainTransactionHashes, rawTransactions, missedTransactions);
+    if (missedTransactions.size() > 0) {
+      return false;
+    }
+
+    if (!extractTransactions(rawTransactions, cachedTransactions, cumulativeSize)) {
+      return false;
+    }
+  }
 
   if (!poolTransactionHashes.empty()) {
-    blockchainTransactionHashes.insert(blockchainTransactionHashes.end(), poolTransactionHashes.begin(), poolTransactionHashes.end());
+    for (const auto& poolTransactionHash : poolTransactionHashes) {
+      const auto poolTransaction = transactionPool->getTransaction(poolTransactionHash);
+      cachedTransactions.push_back(poolTransaction);
+    }
   }
 
-  if (blockchainTransactionHashes.empty()) {
-    return false;
+  if (!cachedTransactions.empty()) {
+    for (const auto& CachedTransaction : cachedTransactions) {
+      transactions.emplace_back(CachedTransaction.getTransaction());
+    }
+    return true;
   }
 
-  getTransactions(blockchainTransactionHashes, rawTransactions, missedTransactions);
-  if (missedTransactions.size() > 0) {
-    return false;
-  }
-
-	uint64_t cumulativeSize;
-
-	if (!extractTransactions(rawTransactions,  cachedTransactions, cumulativeSize)) {
-		return false;
-	}
-
-	for (const auto& CachedTransaction : cachedTransactions) {
-		transactions.emplace_back(CachedTransaction.getTransaction());
-	}
-
-	return true;
+  return false;
 }
 
 Difficulty Core::getAvgDifficulty(uint32_t height, uint32_t window) const {
