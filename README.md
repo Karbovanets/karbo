@@ -1,3 +1,5 @@
+This is the alternative version of Karbo codebase, fully functional and compatible. Yet we recommend to stick to our native version.
+
 The Karbo (Karbovanets) is cryptocurrency of Ukrainian origin, just like Bitcoin but more anonymous and privacy centric with opaque and more analysis resistant blockchain. It is people's electronic cash, not connected to government or officials.
 
 ## Building Karbo 
