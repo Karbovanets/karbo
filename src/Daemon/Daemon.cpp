@@ -146,6 +146,9 @@ int main(int argc, char* argv[])
 
     po::variables_map vm;
     boost::filesystem::path data_dir_path;
+    boost::system::error_code ec;
+    std::string data_dir = "";
+
     bool r = command_line::handle_error_helper(desc_options, [&]()
     {
       po::store(po::parse_command_line(argc, argv, desc_options), vm);
@@ -157,7 +160,7 @@ int main(int argc, char* argv[])
         return false;
       }
 
-      std::string data_dir = command_line::get_arg(vm, command_line::arg_data_dir);
+      data_dir = command_line::get_arg(vm, command_line::arg_data_dir);
       std::string config = command_line::get_arg(vm, arg_config_file);
 
       data_dir_path = data_dir;
@@ -166,7 +169,6 @@ int main(int argc, char* argv[])
         config_path = data_dir_path / config_path;
       }
 
-      boost::system::error_code ec;
       if (boost::filesystem::exists(config_path, ec)) {
         po::store(po::parse_config_file<char>(config_path.string<std::string>().c_str(), desc_cmd_sett), vm);
       }
@@ -353,9 +355,36 @@ int main(int argc, char* argv[])
       dch.start_handling();
     }
 
-    logger(INFO) << "Starting core rpc server on address " << rpcConfig.getBindAddress();
-    rpcServer.start(rpcConfig.bindIp, rpcConfig.bindPort);
-
+	boost::filesystem::path data_dir_path(data_dir);
+    boost::filesystem::path chain_file_path(rpcConfig.getChainFile());
+    boost::filesystem::path key_file_path(rpcConfig.getKeyFile());
+    boost::filesystem::path dh_file_path(rpcConfig.getDhFile());
+    if (!chain_file_path.has_parent_path()) {
+      chain_file_path = data_dir_path / chain_file_path;
+    }
+    if (!key_file_path.has_parent_path()) {
+      key_file_path = data_dir_path / key_file_path;
+    }
+    if (!dh_file_path.has_parent_path()) {
+      dh_file_path = data_dir_path / dh_file_path;
+    }
+    bool server_ssl_enable = false;
+    if (rpcConfig.isEnableSSL()) {
+      if (boost::filesystem::exists(chain_file_path, ec) &&
+          boost::filesystem::exists(key_file_path, ec) &&
+          boost::filesystem::exists(dh_file_path, ec)) {
+        rpcServer.setCerts(boost::filesystem::canonical(chain_file_path).string(),
+                           boost::filesystem::canonical(key_file_path).string(),
+                           boost::filesystem::canonical(dh_file_path).string());
+        server_ssl_enable = true;
+      } else {
+        logger(ERROR, BRIGHT_RED) << "Starting RPC SSL server was canceled because certificate file(s) could not be found" << std::endl;
+      }
+    }
+    std::string ssl_info = "";
+    if (server_ssl_enable) ssl_info += ", SSL on address " + rpcConfig.getBindAddressSSL();
+    logger(INFO) << "Starting core rpc server on address " << rpcConfig.getBindAddress() << ssl_info;
+    rpcServer.start(rpcConfig.getBindIP(), rpcConfig.getBindPort(), rpcConfig.getBindPortSSL(), server_ssl_enable);
     rpcServer.restrictRPC(rpcConfig.restrictedRpc);
     rpcServer.enableCors(rpcConfig.enableCors);
     if (!rpcConfig.nodeFeeAddress.empty() && !rpcConfig.nodeFeeAmountStr.empty()) {
