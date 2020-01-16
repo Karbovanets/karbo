@@ -1166,4 +1166,12 @@ std::error_code InProcessNode::doGetConnections(std::vector<p2pConnection>& conn
   return std::error_code();
 }
 
+void InProcessNode::setRootCert(const std::string &path) {
+  return;
+}
+
+void InProcessNode::disableVerify() {
+  return;
+}
+
 } //namespace CryptoNote

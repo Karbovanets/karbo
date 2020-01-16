@@ -49,7 +49,7 @@ public:
 
 class NodeRpcProxy : public CryptoNote::INode {
 public:
-  NodeRpcProxy(const std::string& nodeHost, unsigned short nodePort, Logging::ILogger& logger);
+  NodeRpcProxy(const std::string& nodeHost, unsigned short nodePort, const std::string &daemon_path, const bool &daemon_ssl, Logging::ILogger& logger);
   virtual ~NodeRpcProxy();
 
   virtual bool addObserver(CryptoNote::INodeObserver* observer) override;
@@ -112,8 +112,13 @@ public:
   unsigned int rpcTimeout() const { return m_rpcTimeout; }
   void rpcTimeout(unsigned int val) { m_rpcTimeout = val; }
 
+  const std::string m_daemon_path;
   const std::string m_nodeHost;
   const unsigned short m_nodePort;
+  const bool m_daemon_ssl;
+
+  virtual void setRootCert(const std::string &path) override;
+  virtual void disableVerify() override;
 
 private:
   void resetInternalState();
@@ -149,9 +154,9 @@ private:
 
   void scheduleRequest(std::function<std::error_code()>&& procedure, const Callback& callback);
   template <typename Request, typename Response>
-  std::error_code binaryCommand(const std::string& url, const Request& req, Response& res);
+  std::error_code binaryCommand(const std::string& comm, const Request& req, Response& res);
   template <typename Request, typename Response>
-  std::error_code jsonCommand(const std::string& url, const Request& req, Response& res);
+  std::error_code jsonCommand(const std::string& comm, const Request& req, Response& res);
   template <typename Request, typename Response>
   std::error_code jsonRpcCommand(const std::string& method, const Request& req, Response& res);
 
@@ -180,6 +185,8 @@ private:
 
   // Internal state
   bool m_stop = false;
+  bool m_connected;
+  bool m_daemon_no_verify;
   std::atomic<size_t> m_peerCount;
   std::atomic<uint32_t> m_networkHeight;
   std::atomic<uint32_t> m_nodeHeight;
@@ -196,6 +203,9 @@ private:
   std::atomic<uint64_t> m_whitePeerlistSize;
   std::atomic<uint64_t> m_greyPeerlistSize;
   std::string m_nodeVersion = "";
+  std::string m_daemon_cert;
+  std::string m_fee_address;
+  uint64_t m_fee_amount = 0;
 
   BlockHeaderInfo lastLocalBlockHeaderInfo;
   //protect it with mutex if decided to add worker threads
@@ -203,8 +213,5 @@ private:
   Crypto::Hash m_lastHash = CryptoNote::NULL_HASH;
   Crypto::Hash nullHash = CryptoNote::NULL_HASH;
 
-  bool m_connected;
-  std::string m_fee_address;
-  uint64_t m_fee_amount = 0;
 };
 }

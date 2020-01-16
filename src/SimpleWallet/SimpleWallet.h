@@ -1,7 +1,7 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2014-2016, XDN developers
 // Copyright (c) 2014-2017, The Monero Project
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // All rights reserved.
 // 
@@ -191,24 +191,26 @@ namespace CryptoNote
     };
 
   private:
-	  std::string m_wallet_file_arg;
-	  std::string m_generate_new;
-	  std::string m_import_new;
-	  std::string m_restore_new;
-	  std::string m_track_new;
-	  std::string m_import_path;
-	  std::string m_daemon_address;
-	  std::string m_daemon_host;
-	  std::string m_daemon_path;
-	  std::string m_mnemonic_seed;
+    std::string m_wallet_file_arg;
+    std::string m_generate_new;
+    std::string m_import_new;
+    std::string m_restore_new;
+    std::string m_track_new;
+    std::string m_import_path;
+    std::string m_daemon_address;
+    std::string m_daemon_host;
+    std::string m_daemon_path;
+    std::string m_daemon_cert;
+    std::string m_mnemonic_seed;
     std::string m_view_key;
     std::string m_spend_key;
-	  std::string m_wallet_file;
-	  uint16_t m_daemon_port;
-	  Crypto::SecretKey m_recovery_key;     // recovery key (used as random for wallet gen)
-	  bool m_restore_wallet;                // recover flag
-	  bool m_non_deterministic;             // old 2-random generation
+    std::string m_wallet_file;
+    uint16_t m_daemon_port;
+    Crypto::SecretKey m_recovery_key;     // recovery key (used as random for wallet gen)
+    bool m_restore_wallet;                // recover flag
+    bool m_non_deterministic;             // old 2-random generation
     bool m_daemon_ssl;
+    bool m_daemon_no_verify;
     uint32_t m_scan_height;
 
     std::unique_ptr<std::promise<std::error_code>> m_initResultPromise;

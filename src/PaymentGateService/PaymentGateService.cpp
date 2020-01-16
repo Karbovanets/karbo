@@ -332,6 +332,8 @@ void PaymentGateService::runRpcProxy(Logging::LoggerRef& log) {
     PaymentService::NodeFactory::createNode(
       config.remoteNodeConfig.m_daemon_host,
       config.remoteNodeConfig.m_daemon_port,
+      "/", // TODO: need to add implementation after merge
+      false,
       log.getLogger()));
 
   runWalletService(currency, *node);
