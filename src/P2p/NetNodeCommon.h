@@ -20,6 +20,9 @@
 
 #pragma once
 
+#include <list>
+#include <boost/uuid/uuid.hpp>
+
 #include "CryptoNote.h"
 #include "P2pProtocolTypes.h"
 #include "CryptoNoteConfig.h"

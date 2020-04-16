@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2018-2019, The TurtleCoin Developers
 // Copyright (c) 2016-2019, The Karbo developers
 //
 // This file is part of Karbo.
@@ -23,8 +24,10 @@
 #include <unordered_set>
 
 #include <boost/uuid/uuid.hpp>
-#include "Common/StringTools.h"
+#include <boost/optional.hpp>
 #include "crypto/hash.h"
+#include "Common/StringTools.h"
+#include "p2p/PendingLiteBlock.h"
 
 namespace CryptoNote {
 
@@ -47,6 +50,7 @@ struct CryptoNoteConnectionContext {
   };
 
   state m_state = state_befor_handshake;
+  boost::optional<PendingLiteBlock> m_pending_lite_block;
   std::list<Crypto::Hash> m_needed_objects;
   std::unordered_set<Crypto::Hash> m_requested_objects;
   uint32_t m_remote_blockchain_height = 0;
