@@ -1295,7 +1295,7 @@ uint64_t WalletGreen::scanHeightToTimestamp(const uint32_t scanHeight) {
 	}
 
 	/* Get the amount of seconds since the blockchain launched */
-	double secondsSinceLaunch = scanHeight *
+  uint64_t secondsSinceLaunch = scanHeight *
 		CryptoNote::parameters::DIFFICULTY_TARGET;
 
 	/* Add a bit of a buffer in case of difficulty weirdness, blocks coming
@@ -1303,8 +1303,7 @@ uint64_t WalletGreen::scanHeightToTimestamp(const uint32_t scanHeight) {
 	secondsSinceLaunch *= 0.95;
 
 	/* Get the genesis block timestamp and add the time since launch */
-	timestamp = UINT64_C(1464595534)
-		+ secondsSinceLaunch;
+	timestamp = UINT64_C(1464595534) + secondsSinceLaunch;
 
 	/* Timestamp in the future */
 	if (timestamp >= static_cast<uint64_t>(std::time(nullptr)))
@@ -1334,7 +1333,7 @@ uint64_t WalletGreen::getCurrentTimestampAdjusted()
 	return time - adjust;
 }
 
-void WalletGreen::reset(const uint64_t scanHeight)
+void WalletGreen::reset(const uint32_t scanHeight)
 {
     throwIfNotInitialized();
     throwIfStopped();

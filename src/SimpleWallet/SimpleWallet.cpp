@@ -1031,7 +1031,7 @@ bool simple_wallet::init(const boost::program_options::variables_map& vm)
   }
 
   if (m_daemon_host.empty())
-    m_daemon_host = "localhost"; Crypto::SecretKey private_spend_key;
+    m_daemon_host = "localhost";
   if (!m_daemon_port)
     m_daemon_port = RPC_DEFAULT_PORT;
   

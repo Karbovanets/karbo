@@ -19,7 +19,7 @@ ValidateTransaction::ValidateTransaction(
     const CryptoNote::Currency &currency,
     const CryptoNote::Checkpoints &checkpoints,
     Utilities::ThreadPool<bool> &threadPool,
-    const uint64_t blockHeight,
+    const uint32_t blockHeight,
     const uint64_t blockSizeMedian,
     const uint64_t minFee,
     const bool isPoolTransaction):
@@ -577,6 +577,8 @@ bool ValidateTransaction::validateTransactionInputsExpensive()
 
                 return false;
             }
+
+            return true;
 
         }));
 

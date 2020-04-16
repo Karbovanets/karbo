@@ -346,6 +346,8 @@ bool RpcServer::checkIncomingTransactionForFee(const BinaryArray& tx_blob) {
     return false;
 
   logger(Logging::INFO) << "Masternode received relayed transaction fee: " << m_core.getCurrency().formatAmount(amount) << " KRB";
+
+  return true;
 }
 
 //

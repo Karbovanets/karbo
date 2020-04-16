@@ -107,7 +107,7 @@ bool parseAmount(std::string strAmount, uint64_t &amount)
 }
 
 bool confirmTransaction(CryptoNote::TransactionParameters t,
-                        std::shared_ptr<WalletInfo> walletInfo, uint32_t nodeFee)
+                        std::shared_ptr<WalletInfo> walletInfo, uint64_t nodeFee)
 {
     std::cout << std::endl
               << InformationMsg("Confirm Transaction?") << std::endl;
@@ -347,8 +347,7 @@ void transfer(std::shared_ptr<WalletInfo> walletInfo, uint32_t height, bool send
     else if (!nodeAddress.empty() && nodeFee != 0)
       nodeFee = std::min<uint64_t>(nodeFee, (uint64_t)CryptoNote::parameters::COIN);
 
-		switch (doWeHaveEnoughBalance(amount, WalletConfig::defaultFee,
-			walletInfo, height, nodeFee))
+		switch (doWeHaveEnoughBalance(amount, WalletConfig::defaultFee,	walletInfo, height, nodeFee))
 		{
 			case NotEnoughBalance:
 			{
@@ -452,7 +451,7 @@ void transfer(std::shared_ptr<WalletInfo> walletInfo, uint32_t height, bool send
 
 BalanceInfo doWeHaveEnoughBalance(uint64_t amount, uint64_t fee,
                                   std::shared_ptr<WalletInfo> walletInfo,
-	                              uint64_t height, uint32_t nodeFee)
+	                              uint32_t height, uint64_t nodeFee)
 {
 	const uint64_t balance = walletInfo->wallet.getActualBalance();
 
@@ -519,7 +518,7 @@ BalanceInfo doWeHaveEnoughBalance(uint64_t amount, uint64_t fee,
 void doTransfer(std::string address, uint64_t amount, uint64_t fee,
                 std::string extra, std::shared_ptr<WalletInfo> walletInfo,
                 uint32_t height, uint64_t mixin,
-                std::string nodeAddress, uint32_t nodeFee)
+                std::string nodeAddress, uint64_t nodeFee)
 {
 	Crypto::SecretKey txSecretKey;
 	const uint64_t balance = walletInfo->wallet.getActualBalance();
