@@ -68,6 +68,7 @@ public:
                                std::vector<BlockShortInfo>& entries) const = 0;
 
   virtual bool hasTransaction(const Crypto::Hash& transactionHash) const = 0;
+  virtual bool getTransaction(const Crypto::Hash& transactionHash, BinaryArray& transaction) const = 0;
   virtual void getTransactions(const std::vector<Crypto::Hash>& transactionHashes,
                                std::vector<BinaryArray>& transactions,
                                std::vector<Crypto::Hash>& missedHashes) const = 0;
@@ -95,6 +96,7 @@ public:
 
   virtual std::vector<Crypto::Hash> getPoolTransactionHashes() const = 0;
   virtual std::vector<std::pair<Transaction, uint64_t>> getPoolTransactionsWithReceiveTime() const = 0;
+  virtual bool getPoolTransaction(const Crypto::Hash& transactionHash, BinaryArray& transaction) const = 0;
   virtual bool getPoolChanges(const Crypto::Hash& lastBlockHash, const std::vector<Crypto::Hash>& knownHashes,
                               std::vector<BinaryArray>& addedTransactions,
                               std::vector<Crypto::Hash>& deletedTransactions) const = 0;

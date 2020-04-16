@@ -1090,6 +1090,32 @@ std::vector<Crypto::Hash> Core::getPoolTransactionHashes() const {
   return transactionPool->getTransactionHashes();
 }
 
+bool Core::getTransaction(const Crypto::Hash& transactionHash, BinaryArray& transaction) const {
+  throwIfNotInitialized();
+  auto segment = findSegmentContainingTransaction(transactionHash);
+  if (segment != nullptr) {
+    transaction = segment->getRawTransactions({ transactionHash })[0];
+  }
+  else if (transactionPool->checkIfTransactionPresent(transactionHash)) {
+    transaction = transactionPool->getTransaction(transactionHash).getTransactionBinaryArray();
+  }
+  else {
+    return false;
+  }
+
+  return true;
+}
+
+bool Core::getPoolTransaction(const Crypto::Hash& transactionHash, BinaryArray& transaction) const {
+  throwIfNotInitialized();
+  if (transactionPool->checkIfTransactionPresent(transactionHash)) {
+    transaction = transactionPool->getTransaction(transactionHash).getTransactionBinaryArray();
+    return true;
+  }
+  
+  return false;
+}
+
 bool Core::getPoolChanges(const Crypto::Hash& lastBlockHash, const std::vector<Crypto::Hash>& knownHashes,
                           std::vector<BinaryArray>& addedTransactions,
                           std::vector<Crypto::Hash>& deletedTransactions) const {
