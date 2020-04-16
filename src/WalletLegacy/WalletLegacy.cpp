@@ -1,7 +1,7 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2014-2017, The Monero Project
 // Copyright (c) 2018, The BBSCoin Developers
-// Copyright (c) 2017-2019, Karbo developers
+// Copyright (c) 2017-2020, Karbo developers
 // 
 // All rights reserved.
 // 
@@ -33,7 +33,6 @@
 
 #include <algorithm>
 #include <numeric>
-#include <random>
 #include <set>
 #include <tuple>
 #include <utility>
@@ -41,6 +40,7 @@
 #include <time.h>
 
 #include "crypto/crypto.h"
+#include "crypto/random.h"
 #include "Common/Base58.h"
 #include "Common/ShuffleGenerator.h"
 #include "Logging/ConsoleLogger.h"
@@ -136,16 +136,16 @@ public:
   BlockchainSynchronizer& m_sync;
 };
 
-WalletLegacy::WalletLegacy(const CryptoNote::Currency& currency, INode& node, Logging::ILogger& loggerGroup) :
+WalletLegacy::WalletLegacy(const CryptoNote::Currency& currency, INode& node, Logging::ILogger& log) :
   m_state(NOT_INITIALIZED),
   m_currency(currency),
   m_node(node),
-  m_loggerGroup(loggerGroup),
+  m_logger(log, "WalletLegacy"),
   m_isStopping(false),
   m_lastNotifiedActualBalance(0),
   m_lastNotifiedPendingBalance(0),
-  m_blockchainSync(node, m_loggerGroup, currency.genesisBlockHash()),
-  m_transfersSync(currency, m_loggerGroup, m_blockchainSync, node),
+  m_blockchainSync(node, m_logger.getLogger(), currency.genesisBlockHash()),
+  m_transfersSync(currency, m_logger.getLogger(), m_blockchainSync, node),
   m_transferDetails(nullptr),
   m_transactionsCache(m_currency.mempoolTxLiveTime()),
   m_sender(nullptr),
@@ -179,7 +179,7 @@ void WalletLegacy::removeObserver(IWalletLegacyObserver* observer) {
   m_observerManager.remove(observer);
 }
 
-void WalletLegacy::initAndGenerate(const std::string& password) {
+void WalletLegacy::initAndGenerateNonDeterministic(const std::string& password) {
   {
     std::unique_lock<std::mutex> stateLock(m_cacheMutex);
 
@@ -188,7 +188,6 @@ void WalletLegacy::initAndGenerate(const std::string& password) {
     }
 
     m_account.generate();
-	//m_account.generateDeterministic();
     m_password = password;
 
     initSync();
@@ -214,22 +213,6 @@ void WalletLegacy::initAndGenerateDeterministic(const std::string& password) {
   m_observerManager.notify(&IWalletLegacyObserver::initCompleted, std::error_code());
 }
 
-Crypto::SecretKey WalletLegacy::generateKey(const std::string& password, const Crypto::SecretKey& recovery_param, bool recover, bool two_random) {
-  std::unique_lock<std::mutex> stateLock(m_cacheMutex);
-
-  if (m_state != NOT_INITIALIZED) {
-    throw std::system_error(make_error_code(error::ALREADY_INITIALIZED));
-  }
-
-  Crypto::SecretKey retval = m_account.generate_key(recovery_param, recover, two_random);
-  m_password = password;
-
-  initSync();
-
-  m_observerManager.notify(&IWalletLegacyObserver::initCompleted, std::error_code());
-  return retval;
-}
-
 void WalletLegacy::initWithKeys(const AccountKeys& accountKeys, const std::string& password) {
   {
     std::unique_lock<std::mutex> stateLock(m_cacheMutex);
@@ -240,6 +223,93 @@ void WalletLegacy::initWithKeys(const AccountKeys& accountKeys, const std::strin
 
     m_account.setAccountKeys(accountKeys);
     m_account.set_createtime(ACCOUNT_CREATE_TIME_ACCURACY);
+    m_password = password;
+
+    initSync();
+  }
+
+  m_observerManager.notify(&IWalletLegacyObserver::initCompleted, std::error_code());
+}
+
+uint64_t WalletLegacy::getBlockTimestamp(const uint32_t blockHeight) {
+  uint64_t timestamp = 0;
+
+  auto getBlockTimestampCompleted = std::promise<std::error_code>();
+  auto getBlockTimestampWaitFuture = getBlockTimestampCompleted.get_future();
+
+  m_node.getBlockTimestamp(std::move(blockHeight), std::ref(timestamp),
+    [&getBlockTimestampCompleted](std::error_code ec) {
+    auto detachedPromise = std::move(getBlockTimestampCompleted);
+    detachedPromise.set_value(ec);
+  });
+
+  std::error_code ec = getBlockTimestampWaitFuture.get();
+
+  if (ec) {
+    m_logger(Logging::ERROR) << "Failed to get block timestamp: " << ec << ", " << ec.message();
+  }
+
+  return timestamp;
+}
+
+uint64_t getCurrentTimestampAdjusted() {
+  /* Get the current time as a unix timestamp */
+  std::time_t time = std::time(nullptr);
+
+  /* Take the amount of time a block can potentially be in the past/future */
+  std::initializer_list<uint64_t> limits = {
+    CryptoNote::parameters::CRYPTONOTE_BLOCK_FUTURE_TIME_LIMIT,
+    CryptoNote::parameters::CRYPTONOTE_BLOCK_FUTURE_TIME_LIMIT_V1
+  };
+
+  /* Get the largest adjustment possible */
+  uint64_t adjust = std::max(limits);
+
+  /* Take the earliest timestamp that will include all possible blocks */
+  return time - adjust;
+}
+
+uint64_t WalletLegacy::scanHeightToTimestamp(const uint32_t scanHeight) {
+  if (scanHeight == 0) {
+    return 0;
+  }
+
+  /* Get the block timestamp from the node if the node has it */
+  uint64_t timestamp = getBlockTimestamp(scanHeight);
+
+  if (timestamp != 0) {
+    return timestamp;
+  }
+
+  /* Get the amount of seconds since the blockchain launched */
+  uint64_t secondsSinceLaunch = scanHeight * CryptoNote::parameters::DIFFICULTY_TARGET;
+
+  /* Add a bit of a buffer in case of difficulty weirdness, blocks coming
+     out too fast */
+  secondsSinceLaunch = static_cast<uint64_t>(secondsSinceLaunch * 0.95);
+
+  /* Get the genesis block timestamp and add the time since launch */
+  timestamp = UINT64_C(1464595534) + secondsSinceLaunch;
+
+  /* Timestamp in the future */
+  if (timestamp >= static_cast<uint64_t>(std::time(nullptr))) {
+    return getCurrentTimestampAdjusted();
+  }
+
+  return timestamp;
+}
+
+void WalletLegacy::initWithKeys(const AccountKeys& accountKeys, const std::string& password, const uint32_t scanHeight) {
+  {
+    std::unique_lock<std::mutex> stateLock(m_cacheMutex);
+
+    if (m_state != NOT_INITIALIZED) {
+      throw std::system_error(make_error_code(error::ALREADY_INITIALIZED));
+    }
+
+    m_account.setAccountKeys(accountKeys);
+    uint64_t newTimestamp = scanHeightToTimestamp((uint32_t)scanHeight);
+    m_account.set_createtime(newTimestamp);
     m_password = password;
 
     initSync();
@@ -451,6 +521,12 @@ std::error_code WalletLegacy::changePassword(const std::string& oldPassword, con
   return std::error_code();
 }
 
+bool WalletLegacy::tryLoadWallet(std::istream& source, const std::string& password) {
+  std::unique_lock<std::mutex> lock(m_cacheMutex);
+  WalletLegacySerializer serializer(m_account, m_transactionsCache);
+  return serializer.deserialize(source, password);
+}
+
 bool WalletLegacy::getSeed(std::string& electrum_words)
 {
 	std::string lang = "English";
@@ -522,7 +598,7 @@ uint64_t WalletLegacy::pendingBalance() {
   return m_transferDetails->balance(ITransfersContainer::IncludeKeyNotUnlocked) + change;
 }
 
-uint64_t WalletLegacy::dustBalance() { // unmixable balance
+uint64_t WalletLegacy::unmixableBalance() { // unmixable balance
   std::unique_lock<std::mutex> lock(m_cacheMutex);
   throwIfNotInitialised();
 
@@ -624,7 +700,7 @@ std::list<TransactionOutputInformation> WalletLegacy::selectFusionTransfersToSen
   //now, pick the bucket
   std::vector<uint8_t> bucketNumbers(bucketSizes.size());
   std::iota(bucketNumbers.begin(), bucketNumbers.end(), 0);
-  std::shuffle(bucketNumbers.begin(), bucketNumbers.end(), std::default_random_engine{ Crypto::rand<std::default_random_engine::result_type>() });
+  std::shuffle(bucketNumbers.begin(), bucketNumbers.end(), Random::generator());
   size_t bucketNumberIndex = 0;
   for (; bucketNumberIndex < bucketNumbers.size(); ++bucketNumberIndex) {
 	  if (bucketSizes[bucketNumbers[bucketNumberIndex]] >= minInputCount) {
@@ -662,7 +738,7 @@ std::list<TransactionOutputInformation> WalletLegacy::selectFusionTransfersToSen
 	  return selectedOutputs;
   }
 
-  ShuffleGenerator<size_t, Crypto::random_engine<size_t>> generator(selectedOuts.size());
+  ShuffleGenerator<size_t> generator(selectedOuts.size());
   std::vector<TransactionOutputInformation> trimmedSelectedOuts;
   trimmedSelectedOuts.reserve(maxInputCount);
   for (size_t i = 0; i < maxInputCount; ++i) {
@@ -672,6 +748,48 @@ std::list<TransactionOutputInformation> WalletLegacy::selectFusionTransfersToSen
   std::sort(trimmedSelectedOuts.begin(), trimmedSelectedOuts.end(), outputsSortingFunction);
   std::copy(trimmedSelectedOuts.begin(), trimmedSelectedOuts.end(), std::back_inserter(selectedOutputs));
   return selectedOutputs;
+}
+
+bool WalletLegacy::isFusionTransaction(const CryptoNote::WalletLegacyTransaction& walletTx) const {
+  if (walletTx.fee != 0) {
+    return false;
+  }
+
+  uint64_t inputsSum = 0;
+  uint64_t outputsSum = 0;
+  std::vector<uint64_t> outputsAmounts;
+  std::vector<uint64_t> inputsAmounts;
+
+  CryptoNote::TransactionInformation txInfo;
+
+  for (const CryptoNote::TransactionOutputInformation& output :
+    getTransactionOutputs(walletTx.hash, CryptoNote::ITransfersContainer::Flags::IncludeTypeKey
+      | CryptoNote::ITransfersContainer::Flags::IncludeStateAll)) {
+    if (outputsAmounts.size() <= output.outputInTransaction) {
+      outputsAmounts.resize(output.outputInTransaction + 1, 0);
+    }
+
+    assert(output.amount != 0);
+    assert(outputsAmounts[output.outputInTransaction] == 0);
+    outputsAmounts[output.outputInTransaction] = output.amount;
+    outputsSum += output.amount;
+  }
+
+  for (const CryptoNote::TransactionOutputInformation& input :
+    getTransactionInputs(walletTx.hash, CryptoNote::ITransfersContainer::Flags::IncludeTypeKey)) {
+    inputsSum += input.amount;
+    inputsAmounts.push_back(input.amount);
+  }
+
+  if (!getTransactionInformation(walletTx.hash, txInfo)) {
+    return false;
+  }
+
+  if (outputsSum != inputsSum || outputsSum != txInfo.totalAmountOut || inputsSum != txInfo.totalAmountIn) {
+    return false;
+  }
+
+  return m_currency.isFusionTransaction(inputsAmounts, outputsAmounts, 0, txInfo.blockHeight); //size = 0 here because can't get real size of tx in wallet.
 }
 
 TransactionId WalletLegacy::sendTransaction(const WalletLegacyTransfer& transfer, uint64_t fee, const std::string& extra, uint64_t mixIn, uint64_t unlockTimestamp) {
@@ -862,7 +980,7 @@ void WalletLegacy::notifyIfBalanceChanged() {
     m_observerManager.notify(&IWalletLegacyObserver::pendingBalanceUpdated, pending);
   }
 
-  auto dust = dustBalance();
+  auto dust = unmixableBalance();
   auto prevDust = m_lastNotifiedUnmixableBalance.exchange(dust);
 
   if (prevDust != dust) {
@@ -908,7 +1026,7 @@ bool WalletLegacy::get_tx_key(Crypto::Hash& txid, Crypto::SecretKey& txSecretKey
   getTransaction(ti, transaction);
   txSecretKey = transaction.secretKey.get();
   if (txSecretKey == NULL_SECRET_KEY) {
-    m_loggerGroup("WalletLegacy", Logging::INFO, boost::posix_time::second_clock::local_time(), "Transaction secret key is not stored in wallet cache.");
+    m_logger(Logging::ERROR) << "Transaction secret key is not stored in wallet cache.";
     return false;
   }
 
@@ -927,7 +1045,7 @@ bool WalletLegacy::getTxProof(Crypto::Hash& txid, CryptoNote::AccountPublicAddre
     Crypto::generate_tx_proof(txid, R, address.viewPublicKey, rA, tx_key, sig);
   }
   catch (const std::runtime_error &e) {
-    m_loggerGroup("WalletLegacy", Logging::INFO, boost::posix_time::second_clock::local_time(), "Proof generation error: " + *e.what());
+    m_logger(Logging::ERROR) << ("Proof generation error: " + *e.what());
     return false;
   }
 
@@ -1009,8 +1127,8 @@ std::string WalletLegacy::getReserveProof(const uint64_t &reserve, const std::st
 		const TransactionOutputInformation &td = selected_transfers[i];
 		reserve_proof_entry& proof = proofs[i];
 		proof.key_image = kimages[i];
-		proof.txid = td.transactionHash;
-		proof.index_in_tx = td.outputInTransaction;
+		proof.transaction_id = td.transactionHash;
+		proof.index_in_transaction = td.outputInTransaction;
 
 		auto txPubKey = td.transactionPublicKey;
 
@@ -1109,5 +1227,19 @@ bool WalletLegacy::checkTxProof(Crypto::Hash& txid, CryptoNote::AccountPublicAdd
   // check signature
   return Crypto::check_tx_proof(txid, R, address.viewPublicKey, rA, sig);
 }
+
+bool WalletLegacy::getTransactionInformation(const Crypto::Hash& transactionHash, TransactionInformation& info,
+  uint64_t* amountIn, uint64_t* amountOut) const {
+  return m_transferDetails->getTransactionInformation(transactionHash, info, amountIn, amountOut);
+};
+
+std::vector<TransactionOutputInformation> WalletLegacy::getTransactionOutputs(const Crypto::Hash& transactionHash,
+  uint32_t flags) const {
+  return m_transferDetails->getTransactionOutputs(transactionHash, flags);
+};
+
+std::vector<TransactionOutputInformation> WalletLegacy::getTransactionInputs(const Crypto::Hash& transactionHash, uint32_t flags) const {
+  return m_transferDetails->getTransactionInputs(transactionHash, flags);
+};
 
 } //namespace CryptoNote

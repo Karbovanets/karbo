@@ -77,7 +77,6 @@ namespace CryptoNote
 
     bool process_command(const std::vector<std::string> &args);
     std::string get_commands_str();
-    std::string getFeeAddress();
 
     const CryptoNote::Currency& currency() const { return m_currency; }
 
@@ -95,14 +94,10 @@ namespace CryptoNote
 
     void handle_command_line(const boost::program_options::variables_map& vm);
 
-    bool run_console_handler();
-
-    bool new_wallet(const std::string &wallet_file, const std::string& password);
-    bool new_wallet(Crypto::SecretKey &secret_key, Crypto::SecretKey &view_key, const std::string &wallet_file, const std::string& password);
-    bool gen_wallet(const std::string &wallet_file, const std::string& password, const Crypto::SecretKey& recovery_key = Crypto::SecretKey(), bool recover = false, bool two_random = false);
-    bool new_wallet(AccountKeys &private_key, const std::string &wallet_file, const std::string& password);
+    bool new_wallet(const std::string &wallet_file, const std::string& password, bool two_random = false); // Create deterministic wallets by default
+    bool new_wallet(const std::string &wallet_file, const std::string& password, const AccountKeys& private_keys);
+    bool new_wallet(const std::string &wallet_file, const std::string& password, const Crypto::SecretKey &secret_key, const Crypto::SecretKey &view_key);
     bool new_tracking_wallet(AccountKeys &tracking_key, const std::string &wallet_file, const std::string& password);
-    bool open_wallet(const std::string &wallet_file, const std::string& password);
     bool close_wallet();
 
     bool help(const std::vector<std::string> &args = std::vector<std::string>());
@@ -138,8 +133,6 @@ namespace CryptoNote
 #ifndef __ANDROID__
     std::string resolveAlias(const std::string& aliasUrl);
 #endif
-
-    bool ask_wallet_create_if_needed();
 
     void printConnectionError() const;
 
@@ -208,11 +201,15 @@ namespace CryptoNote
 	  std::string m_daemon_host;
 	  std::string m_daemon_path;
 	  std::string m_mnemonic_seed;
+    std::string m_view_key;
+    std::string m_spend_key;
 	  std::string m_wallet_file;
 	  uint16_t m_daemon_port;
-	  Crypto::SecretKey m_recovery_key;  // recovery key (used as random for wallet gen)
-	  bool m_restore_deterministic_wallet;  // recover flag
-	  bool m_non_deterministic;  // old 2-random generation
+	  Crypto::SecretKey m_recovery_key;     // recovery key (used as random for wallet gen)
+	  bool m_restore_wallet;                // recover flag
+	  bool m_non_deterministic;             // old 2-random generation
+    bool m_daemon_ssl;
+    uint32_t m_scan_height;
 
     std::unique_ptr<std::promise<std::error_code>> m_initResultPromise;
 

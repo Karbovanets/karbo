@@ -67,6 +67,7 @@ struct TransactionExtraDetails {
   Crypto::PublicKey publicKey; 
   BinaryArray nonce;
   BinaryArray raw;
+  size_t size = 0;
 };
 
 struct TransactionDetails {
@@ -78,6 +79,7 @@ struct TransactionDetails {
   uint64_t mixin = 0;
   uint64_t unlockTime = 0;
   uint64_t timestamp = 0;
+  uint8_t version = 0;
   Crypto::Hash paymentId;
   bool hasPaymentId = false;
   bool inBlockchain = false;

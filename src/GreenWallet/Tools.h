@@ -1,5 +1,5 @@
 // Copyright (c) 2018, The TurtleCoin Developers
-// Copyright (c) 2018-2019, The Karbo Developers
+// Copyright (c) 2018-2020, The Karbo Developers
 // 
 // Please see the included LICENSE file for more information.
 
@@ -24,6 +24,8 @@ namespace Tools {
   std::string formatAmount(uint64_t amount);
   std::string formatDollars(uint64_t amount);
   std::string formatCents(uint64_t amount);
+
+  uint64_t calculateNodeFee(uint64_t amount);
 
   std::string getPaymentIDFromExtra(std::string extra);
 

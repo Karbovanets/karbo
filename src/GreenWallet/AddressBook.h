@@ -1,5 +1,5 @@
 // Copyright (c) 2018, The TurtleCoin Developers
-// Copyright (c) 2018-2019, The Karbo Developers
+// Copyright (c) 2018-2020, The Karbo Developers
 // 
 // Please see the included LICENSE file for more information.
 
@@ -8,7 +8,7 @@
 void addToAddressBook();
 
 void sendFromAddressBook(std::shared_ptr<WalletInfo> walletInfo,
-                         uint32_t height, std::string feeAddress);
+                         uint32_t height, std::string feeAddress, uint64_t nodeFee);
 
 void deleteFromAddressBook();
 

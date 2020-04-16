@@ -1,7 +1,7 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2014-2016, XDN developers
 // Copyright (c) 2014-2016, The Monero Project
-// Copyright (c) 2016-2019, Karbo developers
+// Copyright (c) 2016-2020, Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -22,6 +22,7 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include "WalletRpcServer.h"
 #include "crypto/hash.h"
+#include "crypto/random.h"
 #include "Common/CommandLine.h"
 #include "Common/StringTools.h"
 #include "CryptoNoteCore/CryptoNoteFormatUtils.h"
@@ -516,7 +517,9 @@ namespace Tools {
     wallet_rpc::COMMAND_RPC_GEN_PAYMENT_ID::response& res) {
     std::string pid;
     try {
-      pid = Common::podToHex(Crypto::rand<Crypto::Hash>());
+      Crypto::Hash result;
+      Random::randomBytes(32, result.data);
+      pid = Common::podToHex(result);
     }
     catch (const std::exception& e) {
       throw JsonRpc::JsonRpcError(WALLET_RPC_ERROR_CODE_UNKNOWN_ERROR, std::string("Internal error: can't generate Payment ID: ") + e.what());

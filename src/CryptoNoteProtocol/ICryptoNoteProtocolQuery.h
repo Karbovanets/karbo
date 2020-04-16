@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -20,6 +20,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include "P2p/ConnectionContext.h"
 
 namespace CryptoNote {
 class ICryptoNoteProtocolObserver;
@@ -32,6 +33,7 @@ public:
   virtual uint32_t getObservedHeight() const = 0;
   virtual size_t getPeerCount() const = 0;
   virtual bool isSynchronized() const = 0;
+  virtual bool getConnections(std::vector<CryptoNoteConnectionContext>& connections) const = 0;
 };
 
 } //namespace CryptoNote

@@ -1,5 +1,7 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2014-2018, The Monero Project
+// Copyright (c) 2018-2019, The TurtleCoin Developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -90,7 +92,7 @@ namespace CryptoNote
 
     m_diffic = di;
     ++m_template_no;
-    m_starter_nonce = Crypto::rand<uint32_t>();
+    m_starter_nonce = Random::randomValue<uint32_t>();
     return true;
   }
   //-----------------------------------------------------------------------------------------------------
@@ -233,7 +235,7 @@ namespace CryptoNote
 
     m_mine_address = adr;
     m_threads_total = static_cast<uint32_t>(threads_count);
-    m_starter_nonce = Crypto::rand<uint32_t>();
+    m_starter_nonce = Random::randomValue<uint32_t>();
 
     if (!m_template_no) {
       request_block_template(); //lets update block template
@@ -287,7 +289,7 @@ namespace CryptoNote
       std::vector<std::future<void>> threads(nthreads);
       std::atomic<uint32_t> foundNonce;
       std::atomic<bool> found(false);
-      uint32_t startNonce = Crypto::rand<uint32_t>();
+      uint32_t startNonce = Random::randomValue<uint32_t>();
 
       for (unsigned i = 0; i < nthreads; ++i) {
         threads[i] = std::async(std::launch::async, [&, i]() {

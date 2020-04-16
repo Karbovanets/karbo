@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -58,6 +58,7 @@ namespace CryptoNote
     // ICore& get_core() { return m_core; }
     virtual bool isSynchronized() const override { return m_synchronized; }
     void log_connections();
+    virtual bool getConnections(std::vector<CryptoNoteConnectionContext>& connections) const override;
 
     // Interface t_payload_net_handler, where t_payload_net_handler is template argument of nodetool::node_server
     void stop();

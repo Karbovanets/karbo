@@ -32,8 +32,14 @@ public:
 
   std::string getBindAddress() const;
 
-  std::string bindIp;
+  bool restrictedRpc;
   uint16_t bindPort;
+  std::string bindIp;
+  std::string contactInfo;
+  std::string nodeFeeAddress;
+  std::string nodeFeeAmountStr;
+  std::string nodeFeeViewKey;
+  std::vector<std::string> enableCors;
 };
 
 }

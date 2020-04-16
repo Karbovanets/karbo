@@ -60,17 +60,6 @@ struct CachedTransactionInfo {
   void serialize(ISerializer& s);
 };
 
-struct CachedBlockInfo {
-  Crypto::Hash blockHash;
-  uint64_t timestamp;
-  Difficulty cumulativeDifficulty;
-  uint64_t alreadyGeneratedCoins;
-  uint64_t alreadyGeneratedTransactions;
-  uint32_t blockSize;
-
-  void serialize(ISerializer& s);
-};
-
 struct OutputGlobalIndexesForAmount {
   uint32_t startIndex = 0;
 
@@ -211,6 +200,8 @@ public:
 
   virtual std::vector<Crypto::Hash> getTransactionHashesByPaymentId(const Crypto::Hash& paymentId) const override;
   virtual std::vector<Crypto::Hash> getBlockHashesByTimestamps(uint64_t timestampBegin, size_t secondsCount) const override;
+  virtual std::vector<RawBlock> getBlocksByHeight(const uint64_t startHeight, const uint64_t endHeight) const override;
+  virtual std::vector<RawBlock> getNonEmptyBlocks(const uint64_t startHeight, const size_t blockCount) const override;
 
 private:
 

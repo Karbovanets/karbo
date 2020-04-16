@@ -1,5 +1,7 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2014-2018, The Monero project
+// Copyright (c) 2014-2018, The Forknote developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -22,6 +24,7 @@
 #include <boost/format.hpp>
 #include "math.h"
 
+#include "Common/ColouredMsg.h"
 #include "P2p/NetNode.h"
 #include "CryptoNoteCore/Miner.h"
 #include "CryptoNoteCore/Core.h"
@@ -75,6 +78,9 @@ DaemonCommandsHandler::DaemonCommandsHandler(CryptoNote::Core& core, CryptoNote:
   //m_consoleHandler.setHandler("hide_hr", boost::bind(&DaemonCommandsHandler::hide_hr, this, _1), "Stop showing hash rate");
   m_consoleHandler.setHandler("set_log", boost::bind(&DaemonCommandsHandler::set_log, this, _1), "set_log <level> - Change current log level, <level> is a number 0-4");
   m_consoleHandler.setHandler("print_diff", boost::bind(&DaemonCommandsHandler::print_diff, this, _1), "Difficulty for next block");
+  m_consoleHandler.setHandler("print_ban", boost::bind(&DaemonCommandsHandler::print_ban, this, _1), "Print banned nodes");
+  m_consoleHandler.setHandler("ban", boost::bind(&DaemonCommandsHandler::ban, this, _1), "Ban a given <IP> for a given amount of <seconds>, ban <IP> [<seconds>]");
+  m_consoleHandler.setHandler("unban", boost::bind(&DaemonCommandsHandler::unban, this, _1), "Unban a given <IP>, unban <IP>");
   m_consoleHandler.setHandler("status", boost::bind(&DaemonCommandsHandler::status, this, _1), "Show daemon status");
 }
 
@@ -127,10 +133,10 @@ bool DaemonCommandsHandler::help(const std::vector<std::string>& args) {
 
 //--------------------------------------------------------------------------------
 bool DaemonCommandsHandler::status(const std::vector<std::string>& args) {
-  uint32_t topBlkIndex = m_core.get_current_blockchain_height() - 1;
+  uint32_t topBlkIndex = m_core.getCurrentBlockchainHeight() - 1;
   uint64_t difficulty = m_core.getDifficultyForNextBlock();
-  size_t tx_pool_size = m_core.getPoolTransactionCount();
-  size_t alt_blocks_count = m_core.getAlternativeBlockCount();
+  size_t tx_pool_size = m_core.getPoolTransactionsCount();
+  size_t alt_blocks_count = m_core.getAlternativeBlocksCount();
   uint32_t last_known_block_index = std::max(static_cast<uint32_t>(1), protocolQuery.getObservedHeight() - 1);
   size_t total_conn = m_srv.get_connections_count();
   size_t rpc_conn = m_prpc_server->getConnectionsCount();
@@ -145,19 +151,24 @@ bool DaemonCommandsHandler::status(const std::vector<std::string>& args) {
   Crypto::Hash last_block_hash = m_core.getTopBlockHash();
 
   std::cout << std::endl
-    << (synced ? "Synchronized " : "Synchronizing ")
-    << topBlkIndex << "/" << last_known_block_index << " (" << get_sync_percentage(topBlkIndex, last_known_block_index) << "%), "
-    << "on " << (m_core.getCurrency().isTestnet() ? "testnet, " : "mainnet, ")
-    << "last block hash: " << Common::podToHex(last_block_hash) << ", "
-    << "network hashrate: " << get_mining_speed(hashrate) << ", difficulty: " << difficulty << ", "
-    << "block v. " << (int)majorVersion << ", "
-    << alt_blocks_count << " alt. block(s), "
-    << tx_pool_size << " transaction(s) in mempool, "
-    << outgoing_connections_count << " out. + " << incoming_connections_count << " inc. connections, "
-    << rpc_conn << " rpc connections, "
-    << "peers: " << white_peerlist_size << " white / " << grey_peerlist_size << " grey, "
-    << "uptime: " << (unsigned int)floor(uptime / 60.0 / 60.0 / 24.0) << "d " << (unsigned int)floor(fmod((uptime / 60.0 / 60.0), 24.0)) << "h "
-    << (unsigned int)floor(fmod((uptime / 60.0), 60.0)) << "m " << (unsigned int)fmod(uptime, 60.0) << "s"
+    << (synced ? ColouredMsg("Synchronized ", Common::Console::Color::BrightGreen) : ColouredMsg("Synchronizing ", Common::Console::Color::BrightYellow))
+    << ColouredMsg(std::to_string(topBlkIndex), Common::Console::Color::BrightWhite) 
+    << "/" << ColouredMsg(std::to_string(last_known_block_index), Common::Console::Color::BrightWhite)
+    << " (" << ColouredMsg(std::to_string(get_sync_percentage(topBlkIndex, last_known_block_index)).substr(0, 5) + "%", Common::Console::Color::BrightWhite) << ") "
+    << "on " << ColouredMsg((m_core.getCurrency().isTestnet() ? "testnet, " : "mainnet, "), Common::Console::Color::BrightWhite)
+    << "network hashrate: " << ColouredMsg(get_mining_speed(hashrate), Common::Console::Color::BrightWhite) << ",\n"
+    << "next difficulty: " << ColouredMsg(std::to_string(difficulty), Common::Console::Color::BrightWhite) << ", "
+    << "block v. " << ColouredMsg(std::to_string((int)majorVersion), Common::Console::Color::BrightWhite)
+    << ", alt. blocks: " << ColouredMsg(std::to_string(alt_blocks_count), Common::Console::Color::BrightWhite) << ", "
+    << ColouredMsg(std::to_string(tx_pool_size), Common::Console::Color::BrightWhite) << " transaction(s) in mempool,\n"
+    << "last block hash: " << ColouredMsg(Common::podToHex(last_block_hash), Common::Console::Color::BrightWhite) << ",\n"
+    << ColouredMsg(std::to_string(outgoing_connections_count), Common::Console::Color::BrightWhite) << " out. + "
+    << ColouredMsg(std::to_string(incoming_connections_count), Common::Console::Color::BrightWhite) << " inc. connection(s), "
+    << ColouredMsg(std::to_string(rpc_conn), Common::Console::Color::BrightWhite) << " rpc connection(s), "
+    << "peers: " << ColouredMsg(std::to_string(white_peerlist_size), Common::Console::Color::BrightWhite) << " white / "
+    << ColouredMsg(std::to_string(grey_peerlist_size), Common::Console::Color::BrightWhite) << " grey, \n"
+    << "uptime: " << ColouredMsg(std::to_string((unsigned int)floor(uptime / 60.0 / 60.0 / 24.0)) + "d " + std::to_string((unsigned int)floor(fmod((uptime / 60.0 / 60.0), 24.0))) + "h "
+      + std::to_string((unsigned int)floor(fmod((uptime / 60.0), 60.0))) + "m " + std::to_string((unsigned int)fmod(uptime, 60.0)) + "s", Common::Console::Color::BrightWhite) << std::endl
     << std::endl;
 
   return true;
@@ -374,6 +385,52 @@ bool DaemonCommandsHandler::print_diff(const std::vector<std::string>& args)
 //--------------------------------------------------------------------------------
 bool DaemonCommandsHandler::print_pool_count(const std::vector<std::string>& args)
 {
-  logger(Logging::INFO) << "Pending transactions in mempool: " << m_core.getPoolTransactionCount() << std::endl;
+  logger(Logging::INFO) << "Pending transactions in mempool: " << m_core.getPoolTransactionsCount() << std::endl;
   return true;
+}
+
+//--------------------------------------------------------------------------------
+bool DaemonCommandsHandler::print_ban(const std::vector<std::string>& args) {
+  m_srv.log_banlist();
+  return true;
+}
+
+bool DaemonCommandsHandler::ban(const std::vector<std::string>& args)
+{
+  if (args.size() != 1 && args.size() != 2) return false;
+  std::string addr = args[0];
+  uint32_t ip;
+  time_t seconds;
+  if (args.size() > 1) {
+    try {
+      seconds = std::stoi(args[1]);
+    }
+    catch (const std::exception &e) {
+      return false;
+    }
+    if (seconds == 0) {
+      return false;
+    }
+  }
+  try {
+    ip = Common::stringToIpAddress(addr);
+  }
+  catch (const std::exception &e) {
+    return false;
+  }
+  return m_srv.ban_host(ip, seconds);
+}
+
+bool DaemonCommandsHandler::unban(const std::vector<std::string>& args)
+{
+  if (args.size() != 1) return false;
+  std::string addr = args[0];
+  uint32_t ip;
+  try {
+    ip = Common::stringToIpAddress(addr);
+  }
+  catch (const std::exception &e) {
+    return false;
+  }
+  return m_srv.unban_host(ip);
 }

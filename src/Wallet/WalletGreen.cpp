@@ -1,7 +1,7 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2018, The BBSCoin Developers
 // Copyright (c) 2018-2019, The TurtleCoin Developers
-// Copyright (c) 2016-2019, The Karbo Developers
+// Copyright (c) 2016-2020, The Karbo Developers
 //
 // This file is part of Karbo.
 //
@@ -25,7 +25,6 @@
 #include <cassert>
 #include <fstream>
 #include <numeric>
-#include <random>
 #include <set>
 #include <tuple>
 #include <utility>
@@ -54,6 +53,7 @@
 #include "CryptoNoteCore/CryptoNoteTools.h"
 #include "CryptoNoteCore/TransactionApi.h"
 #include "crypto/crypto.h"
+#include "crypto/random.h"
 #include "Transfers/TransfersContainer.h"
 #include "WalletSerializationV1.h"
 #include "WalletSerializationV2.h"
@@ -175,8 +175,8 @@ void WalletGreen::initialize(const std::string& path, const std::string& passwor
   Crypto::PublicKey viewPublicKey;
   Crypto::SecretKey viewSecretKey;
   Crypto::generate_keys(viewPublicKey, viewSecretKey);
-
-  initWithKeys(path, password, viewPublicKey, viewSecretKey);
+  uint64_t creationTimestamp = time(nullptr);
+  initWithKeys(path, password, viewPublicKey, viewSecretKey, creationTimestamp);
   m_logger(INFO, BRIGHT_WHITE) << "New container initialized, public view key " << viewPublicKey;
 }
 
@@ -186,19 +186,32 @@ void WalletGreen::initializeWithViewKey(const std::string& path, const std::stri
     m_logger(ERROR, BRIGHT_RED) << "initializeWithViewKey(" << viewSecretKey << ") Failed to convert secret key to public key";
     throw std::system_error(make_error_code(CryptoNote::error::KEY_GENERATION_ERROR));
   }
-
-  initWithKeys(path, password, viewPublicKey, viewSecretKey);
+  uint64_t creationTimestamp = time(nullptr);
+  initWithKeys(path, password, viewPublicKey, viewSecretKey, creationTimestamp);
   m_logger(INFO, BRIGHT_WHITE) << "Container initialized with view secret key, public view key " << viewPublicKey;
 }
 
-void WalletGreen::initializeWithViewKeyAndTimestamp(const std::string& path, const std::string& password, const Crypto::SecretKey& viewSecretKey, const uint64_t& creationTimestamp) {
+void WalletGreen::initializeWithViewKey(const std::string& path, const std::string& password, const Crypto::SecretKey& viewSecretKey, const uint64_t& creationTimestamp) {
   Crypto::PublicKey viewPublicKey;
   if (!Crypto::secret_key_to_public_key(viewSecretKey, viewPublicKey)) {
     m_logger(ERROR, BRIGHT_RED) << "initializeWithViewKey(" << viewSecretKey << ") Failed to convert secret key to public key";
     throw std::system_error(make_error_code(CryptoNote::error::KEY_GENERATION_ERROR));
   }
 
-  initWithKeysAndTimestamp(path, password, viewPublicKey, viewSecretKey, creationTimestamp);
+  initWithKeys(path, password, viewPublicKey, viewSecretKey, creationTimestamp);
+  m_logger(INFO, BRIGHT_WHITE) << "Container initialized with view secret key, public view key " << viewPublicKey;
+}
+
+void WalletGreen::initializeWithViewKey(const std::string& path, const std::string& password, const Crypto::SecretKey& viewSecretKey, const uint32_t scanHeight) {
+  Crypto::PublicKey viewPublicKey;
+  if (!Crypto::secret_key_to_public_key(viewSecretKey, viewPublicKey)) {
+    m_logger(ERROR, BRIGHT_RED) << "initializeWithViewKey(" << viewSecretKey << ") Failed to convert secret key to public key";
+    throw std::system_error(make_error_code(CryptoNote::error::KEY_GENERATION_ERROR));
+  }
+
+  uint64_t creationTimestamp = scanHeightToTimestamp(scanHeight);
+
+  initWithKeys(path, password, viewPublicKey, viewSecretKey, creationTimestamp);
   m_logger(INFO, BRIGHT_WHITE) << "Container initialized with view secret key, public view key " << viewPublicKey;
 }
 
@@ -332,45 +345,6 @@ void WalletGreen::incNextIv() {
 }
 
 void WalletGreen::initWithKeys(const std::string& path, const std::string& password,
-  const Crypto::PublicKey& viewPublicKey, const Crypto::SecretKey& viewSecretKey) {
-
-  if (m_state != WalletState::NOT_INITIALIZED) {
-    m_logger(ERROR, BRIGHT_RED) << "Failed to initialize with keys: already initialized. Current state: " << m_state;
-    throw std::system_error(make_error_code(CryptoNote::error::ALREADY_INITIALIZED));
-  }
-
-  throwIfStopped();
-
-  ContainerStorage newStorage(path, Common::FileMappedVectorOpenMode::CREATE, sizeof(ContainerStoragePrefix));
-  ContainerStoragePrefix* prefix = reinterpret_cast<ContainerStoragePrefix*>(newStorage.prefix());
-  prefix->version = static_cast<uint8_t>(WalletSerializerV2::SERIALIZATION_VERSION);
-  prefix->nextIv = Crypto::rand<Crypto::chacha8_iv>();
-
-  Crypto::cn_context cnContext;
-  Crypto::generate_chacha8_key(cnContext, password, m_key);
-
-  uint64_t creationTimestamp = time(nullptr);
-  prefix->encryptedViewKeys = encryptKeyPair(viewPublicKey, viewSecretKey, creationTimestamp, m_key, prefix->nextIv);
-
-  newStorage.flush();
-  m_containerStorage.swap(newStorage);
-  incNextIv();
-
-  m_viewPublicKey = viewPublicKey;
-  m_viewSecretKey = viewSecretKey;
-  m_password = password;
-  m_path = path;
-  m_logger = Logging::LoggerRef(m_logger.getLogger(), "WalletGreen/" + podToHex(m_viewPublicKey).substr(0, 5));
-
-  assert(m_blockchain.empty());
-  m_blockchain.push_back(m_currency.genesisBlockHash());
-
-  m_blockchainSynchronizer.addObserver(this);
-
-  m_state = WalletState::INITIALIZED;
-}
-
-void WalletGreen::initWithKeysAndTimestamp(const std::string& path, const std::string& password,
   const Crypto::PublicKey& viewPublicKey, const Crypto::SecretKey& viewSecretKey, const uint64_t& _creationTimestamp) {
 
   if (m_state != WalletState::NOT_INITIALIZED) {
@@ -383,10 +357,9 @@ void WalletGreen::initWithKeysAndTimestamp(const std::string& path, const std::s
   ContainerStorage newStorage(path, Common::FileMappedVectorOpenMode::CREATE, sizeof(ContainerStoragePrefix));
   ContainerStoragePrefix* prefix = reinterpret_cast<ContainerStoragePrefix*>(newStorage.prefix());
   prefix->version = static_cast<uint8_t>(WalletSerializerV2::SERIALIZATION_VERSION);
-  prefix->nextIv = Crypto::rand<Crypto::chacha8_iv>();
+  prefix->nextIv = Crypto::randomChachaIV();
 
-  Crypto::cn_context cnContext;
-  Crypto::generate_chacha8_key(cnContext, password, m_key);
+  Crypto::generate_chacha8_key(password, m_key);
 
   prefix->encryptedViewKeys = encryptKeyPair(viewPublicKey, viewSecretKey, _creationTimestamp, m_key, prefix->nextIv);
 
@@ -453,8 +426,7 @@ void WalletGreen::exportWallet(const std::string& path, bool encrypt, WalletSave
     if (encrypt) {
       newStorageKey = m_key;
     } else {
-      cn_context cnContext;
-      generate_chacha8_key(cnContext, "", newStorageKey);
+      generate_chacha8_key("", newStorageKey);
     }
 
     copyContainerStoragePrefix(m_containerStorage, m_key, newStorage, newStorageKey);
@@ -486,8 +458,7 @@ void WalletGreen::load(const std::string& path, const std::string& password, std
 
   stopBlockchainSynchronizer();
 
-  Crypto::cn_context cnContext;
-  generate_chacha8_key(cnContext, password, m_key);
+  generate_chacha8_key(password, m_key);
 
   std::ifstream walletFileStream(path, std::ios_base::binary);
   int version = walletFileStream.peek();
@@ -734,7 +705,7 @@ void WalletGreen::copyContainerStoragePrefix(ContainerStorage& src, const chacha
   ContainerStoragePrefix* srcPrefix = reinterpret_cast<ContainerStoragePrefix*>(src.prefix());
   ContainerStoragePrefix* dstPrefix = reinterpret_cast<ContainerStoragePrefix*>(dst.prefix());
   dstPrefix->version = srcPrefix->version;
-  dstPrefix->nextIv = Crypto::rand<chacha8_iv>();
+  dstPrefix->nextIv = Crypto::randomChachaIV();
 
   Crypto::PublicKey publicKey;
   Crypto::SecretKey secretKey;
@@ -907,7 +878,7 @@ void WalletGreen::convertAndLoadWalletFile(const std::string& path, std::ifstrea
   m_containerStorage.open(tmpPath.string(), Common::FileMappedVectorOpenMode::CREATE, sizeof(ContainerStoragePrefix));
   ContainerStoragePrefix* prefix = reinterpret_cast<ContainerStoragePrefix*>(m_containerStorage.prefix());
   prefix->version = WalletSerializerV2::SERIALIZATION_VERSION;
-  prefix->nextIv = Crypto::rand<Crypto::chacha8_iv>();
+  prefix->nextIv = Crypto::randomChachaIV();
 
 #ifdef USE_LITE_WALLET
   uint64_t creationTimestamp;
@@ -959,9 +930,8 @@ void WalletGreen::changePassword(const std::string& oldPassword, const std::stri
     return;
   }
 
-  Crypto::cn_context cnContext;
   Crypto::chacha8_key newKey;
-  Crypto::generate_chacha8_key(cnContext, newPassword, newKey);
+  Crypto::generate_chacha8_key(newPassword, newKey);
 
   m_containerStorage.atomicUpdate([this, newKey](ContainerStorage& newStorage) {
     copyContainerStoragePrefix(m_containerStorage, m_key, newStorage, newKey);
@@ -1054,7 +1024,7 @@ std::string WalletGreen::createAddress(const Crypto::SecretKey& spendSecretKey, 
   return doCreateAddress(spendPublicKey, spendSecretKey, creationTimestamp);
 }
 
-std::string WalletGreen::createAddressWithTimestamp(const Crypto::SecretKey& spendSecretKey, const uint64_t& creationTimestamp) {
+std::string WalletGreen::createAddress(const Crypto::SecretKey& spendSecretKey, const uint64_t& creationTimestamp) {
   Crypto::PublicKey spendPublicKey;
   if (!Crypto::secret_key_to_public_key(spendSecretKey, spendPublicKey)) {
     m_logger(ERROR, BRIGHT_RED) << "createAddress(" << spendSecretKey << ") Failed to convert secret key to public key";
@@ -1064,13 +1034,44 @@ std::string WalletGreen::createAddressWithTimestamp(const Crypto::SecretKey& spe
   return doCreateAddress(spendPublicKey, spendSecretKey, creationTimestamp);
 }
 
-std::string WalletGreen::createAddress(const Crypto::PublicKey& spendPublicKey) {
+std::string WalletGreen::createAddress(const Crypto::PublicKey& spendPublicKey, bool reset) {
+  if (!Crypto::check_key(spendPublicKey)) {
+    m_logger(ERROR, BRIGHT_RED) << "createAddress(" << spendPublicKey << ") Wrong public key format";
+    throw std::system_error(make_error_code(error::WRONG_PARAMETERS), "Wrong public key format");
+  }
+  uint64_t creationTimestamp = reset ? 0 : static_cast<uint64_t>(time(nullptr));
+
+  return doCreateAddress(spendPublicKey, NULL_SECRET_KEY, creationTimestamp);
+}
+
+std::string WalletGreen::createAddress(const Crypto::PublicKey& spendPublicKey, const uint64_t& creationTimestamp) {
   if (!Crypto::check_key(spendPublicKey)) {
     m_logger(ERROR, BRIGHT_RED) << "createAddress(" << spendPublicKey << ") Wrong public key format";
     throw std::system_error(make_error_code(error::WRONG_PARAMETERS), "Wrong public key format");
   }
 
-  return doCreateAddress(spendPublicKey, NULL_SECRET_KEY, 0);
+  return doCreateAddress(spendPublicKey, NULL_SECRET_KEY, creationTimestamp);
+}
+
+std::string WalletGreen::createAddress(const Crypto::SecretKey& spendSecretKey, const uint32_t scanHeight) {
+  Crypto::PublicKey spendPublicKey;
+  if (!Crypto::secret_key_to_public_key(spendSecretKey, spendPublicKey)) {
+    m_logger(ERROR, BRIGHT_RED) << "createAddress(" << spendSecretKey << ") Failed to convert secret key to public key";
+    throw std::system_error(make_error_code(CryptoNote::error::KEY_GENERATION_ERROR));
+  }
+  uint64_t creationTimestamp = scanHeightToTimestamp(scanHeight);
+
+  return doCreateAddress(spendPublicKey, spendSecretKey, creationTimestamp);
+}
+
+std::string WalletGreen::createAddress(const Crypto::PublicKey& spendPublicKey, const uint32_t scanHeight) {
+  if (!Crypto::check_key(spendPublicKey)) {
+    m_logger(ERROR, BRIGHT_RED) << "createAddress(" << spendPublicKey << ") Wrong public key format";
+    throw std::system_error(make_error_code(error::WRONG_PARAMETERS), "Wrong public key format");
+  }
+  uint64_t creationTimestamp = scanHeightToTimestamp(scanHeight);
+
+  return doCreateAddress(spendPublicKey, NULL_SECRET_KEY, creationTimestamp);
 }
 
 std::vector<std::string> WalletGreen::createAddressList(const std::vector<Crypto::SecretKey>& spendSecretKeys, bool reset) {
@@ -1085,6 +1086,48 @@ std::vector<std::string> WalletGreen::createAddressList(const std::vector<Crypto
     addressDataList[i].spendSecretKey = spendSecretKeys[i];
     addressDataList[i].spendPublicKey = spendPublicKey;
     addressDataList[i].creationTimestamp = reset ? 0 : static_cast<uint64_t>(time(nullptr));
+  }
+
+  return doCreateAddressList(addressDataList);
+}
+
+std::vector<std::string> WalletGreen::createAddressList(const std::vector<Crypto::SecretKey>& spendSecretKeys, const std::vector<uint64_t>&creationTimestamps) {
+  if (spendSecretKeys.size() != creationTimestamps.size()) {
+    m_logger(ERROR, BRIGHT_RED) << "createAddressList(): the sizes of keys and timestamps vectors do not match.";
+    throw std::system_error(make_error_code(std::errc::invalid_argument));
+  }
+  std::vector<NewAddressData> addressDataList(spendSecretKeys.size());
+  for (size_t i = 0; i < spendSecretKeys.size(); ++i) {
+    Crypto::PublicKey spendPublicKey;
+    if (!Crypto::secret_key_to_public_key(spendSecretKeys[i], spendPublicKey)) {
+      m_logger(ERROR, BRIGHT_RED) << "createAddressList(): failed to convert secret key to public key, secret key " << spendSecretKeys[i];
+      throw std::system_error(make_error_code(CryptoNote::error::KEY_GENERATION_ERROR));
+    }
+
+    addressDataList[i].spendSecretKey = spendSecretKeys[i];
+    addressDataList[i].spendPublicKey = spendPublicKey;
+    addressDataList[i].creationTimestamp = creationTimestamps[i];
+  }
+
+  return doCreateAddressList(addressDataList);
+}
+
+std::vector<std::string> WalletGreen::createAddressList(const std::vector<Crypto::SecretKey>& spendSecretKeys, const std::vector<uint32_t>& scanHeights) {
+  if (spendSecretKeys.size() != scanHeights.size()) {
+    m_logger(ERROR, BRIGHT_RED) << "createAddressList(): the sizes of keys and scan heights vectors do not match.";
+    throw std::system_error(make_error_code(std::errc::invalid_argument));
+  }
+  std::vector<NewAddressData> addressDataList(spendSecretKeys.size());
+  for (size_t i = 0; i < spendSecretKeys.size(); ++i) {
+    Crypto::PublicKey spendPublicKey;
+    if (!Crypto::secret_key_to_public_key(spendSecretKeys[i], spendPublicKey)) {
+      m_logger(ERROR, BRIGHT_RED) << "createAddressList(): failed to convert secret key to public key, secret key " << spendSecretKeys[i];
+      throw std::system_error(make_error_code(CryptoNote::error::KEY_GENERATION_ERROR));
+    }
+
+    addressDataList[i].spendSecretKey = spendSecretKeys[i];
+    addressDataList[i].spendPublicKey = spendPublicKey;
+    addressDataList[i].creationTimestamp = scanHeightToTimestamp(scanHeights[i]);
   }
 
   return doCreateAddressList(addressDataList);
@@ -1218,43 +1261,36 @@ std::string WalletGreen::addWallet(const Crypto::PublicKey& spendPublicKey, cons
   }
 }
 
-CryptoNote::BlockDetails WalletGreen::getBlock(const uint32_t blockHeight)
-{
-	CryptoNote::BlockDetails block;
+uint64_t WalletGreen::getBlockTimestamp(const uint32_t blockHeight) {
+  uint64_t timestamp = 0;
 
-	if (m_node.getLastKnownBlockHeight() == 0)
-	{
-		return block;
-	}
+  auto getBlockTimestampCompleted = std::promise<std::error_code>();
+  auto getBlockTimestampWaitFuture = getBlockTimestampCompleted.get_future();
 
-	std::promise<std::error_code> errorPromise;
+  m_node.getBlockTimestamp(std::move(blockHeight), std::ref(timestamp),
+    [&getBlockTimestampCompleted](std::error_code ec) {
+    auto detachedPromise = std::move(getBlockTimestampCompleted);
+    detachedPromise.set_value(ec);
+  });
 
-	auto e = errorPromise.get_future();
+  std::error_code ec = getBlockTimestampWaitFuture.get();
 
-	auto callback = [&errorPromise](std::error_code e)
-	{
-		errorPromise.set_value(e);
-	};
+  if (ec) {
+    m_logger(ERROR) << "Failed to get block timestamp: " << ec << ", " << ec.message();
+  }
 
-	m_node.getBlock(blockHeight, block, callback);
-
-	e.get();
-
-	return block;
+  return timestamp;
 }
 
-uint64_t WalletGreen::scanHeightToTimestamp(const uint64_t scanHeight)
-{
-	if (scanHeight == 0)
-	{
+uint64_t WalletGreen::scanHeightToTimestamp(const uint32_t scanHeight) {
+	if (scanHeight == 0) {
 		return 0;
 	}
 
 	/* Get the block timestamp from the node if the node has it */
-	uint64_t timestamp = static_cast<uint64_t>(getBlock(scanHeight).timestamp);
+	uint64_t timestamp = getBlockTimestamp(scanHeight);
 
-	if (timestamp != 0)
-	{
+	if (timestamp != 0) {
 		return timestamp;
 	}
 
@@ -2276,7 +2312,7 @@ std::unique_ptr<CryptoNote::ITransaction> WalletGreen::makeTransaction(const std
     }
   }
 
-  std::shuffle(amountsToAddresses.begin(), amountsToAddresses.end(), std::default_random_engine{Crypto::rand<std::default_random_engine::result_type>()});
+  std::shuffle(amountsToAddresses.begin(), amountsToAddresses.end(), Random::generator());
   std::sort(amountsToAddresses.begin(), amountsToAddresses.end(), [] (const AmountToAddress& left, const AmountToAddress& right) {
     return left.second < right.second;
   });
@@ -2457,7 +2493,7 @@ uint64_t WalletGreen::selectTransfers(
     }
   }
 
-  ShuffleGenerator<size_t, Crypto::random_engine<size_t>> indexGenerator(walletOuts.size());
+  ShuffleGenerator<size_t> indexGenerator(walletOuts.size());
   while (foundMoney < neededMoney && !indexGenerator.empty()) {
     auto& out = walletOuts[indexGenerator()];
     foundMoney += out.second.amount;
@@ -2465,7 +2501,7 @@ uint64_t WalletGreen::selectTransfers(
   }
 
   if (dust && !dustOutputs.empty()) {
-    ShuffleGenerator<size_t, Crypto::random_engine<size_t>> dustIndexGenerator(dustOutputs.size());
+    ShuffleGenerator<size_t> dustIndexGenerator(dustOutputs.size());
     do {
       auto& out = dustOutputs[dustIndexGenerator()];
       foundMoney += out.second.amount;
@@ -2843,8 +2879,8 @@ std::string WalletGreen::getReserveProof(const uint64_t &reserve, const std::str
     const TransactionOutputInformation &td = selectedTransfers[i];
     reserve_proof_entry& proof = proofs[i];
     proof.key_image = kimages[i];
-    proof.txid = td.transactionHash;
-    proof.index_in_tx = td.outputInTransaction;
+    proof.transaction_id = td.transactionHash;
+    proof.index_in_transaction = td.outputInTransaction;
 
     auto txPubKey = td.transactionPublicKey;
 
@@ -3587,7 +3623,7 @@ std::vector<WalletGreen::OutputToTransfer> WalletGreen::pickRandomFusionInputs(c
   //now, pick the bucket
   std::vector<uint8_t> bucketNumbers(bucketSizes.size());
   std::iota(bucketNumbers.begin(), bucketNumbers.end(), 0);
-  std::shuffle(bucketNumbers.begin(), bucketNumbers.end(), std::default_random_engine{Crypto::rand<std::default_random_engine::result_type>()});
+  std::shuffle(bucketNumbers.begin(), bucketNumbers.end(), Random::generator());
   size_t bucketNumberIndex = 0;
   for (; bucketNumberIndex < bucketNumbers.size(); ++bucketNumberIndex) {
     if (bucketSizes[bucketNumbers[bucketNumberIndex]] >= minInputCount) {
@@ -3624,7 +3660,7 @@ std::vector<WalletGreen::OutputToTransfer> WalletGreen::pickRandomFusionInputs(c
     return selectedOuts;
   }
 
-  ShuffleGenerator<size_t, Crypto::random_engine<size_t>> generator(selectedOuts.size());
+  ShuffleGenerator<size_t> generator(selectedOuts.size());
   std::vector<WalletGreen::OutputToTransfer> trimmedSelectedOuts;
   trimmedSelectedOuts.reserve(maxInputCount);
   for (size_t i = 0; i < maxInputCount; ++i) {

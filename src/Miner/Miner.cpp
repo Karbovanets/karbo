@@ -1,5 +1,7 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2014-2018, The Monero Project
+// Copyright (c) 2018-2019, The TurtleCoin Developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -21,6 +23,7 @@
 #include <functional>
 
 #include "crypto/crypto.h"
+#include <crypto/random.h>
 #include "CryptoNoteCore/CachedBlock.h"
 #include "CryptoNoteCore/CryptoNoteFormatUtils.h"
 
@@ -76,9 +79,8 @@ void Miner::runWorkers(BlockMiningParameters blockMiningParameters, size_t threa
   assert(threadCount > 0);
 
   m_logger(Logging::INFO) << "Starting mining for difficulty " << blockMiningParameters.difficulty;
-
   try {
-    blockMiningParameters.blockTemplate.nonce = Crypto::rand<uint32_t>();
+    blockMiningParameters.blockTemplate.nonce = Random::randomValue<uint32_t>();
 
     for (size_t i = 0; i < threadCount; ++i) {
       m_workers.emplace_back(std::unique_ptr<System::RemoteContext<void>> (

@@ -131,6 +131,7 @@ void serialize(TransactionExtraDetails& extra, ISerializer& serializer) {
   serializePod(extra.publicKey, "publicKey", serializer);
   serializer(extra.nonce, "nonce");
   serializeAsBinary(extra.raw, "raw", serializer);
+  serializer(extra.size, "size");
 }
 
 void serialize(TransactionDetails& transaction, ISerializer& serializer) {
@@ -142,6 +143,7 @@ void serialize(TransactionDetails& transaction, ISerializer& serializer) {
   serializer(transaction.mixin, "mixin");
   serializer(transaction.unlockTime, "unlockTime");
   serializer(transaction.timestamp, "timestamp");
+  serializer(transaction.version, "version");
   serializePod(transaction.paymentId, "paymentId", serializer);
   serializer(transaction.inBlockchain, "inBlockchain");
   serializePod(transaction.blockHash, "blockHash", serializer);

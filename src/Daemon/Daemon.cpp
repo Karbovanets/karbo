@@ -19,6 +19,7 @@
 // along with Karbo.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <fstream>
+#include <thread>
 
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
@@ -29,7 +30,9 @@
 #include "Common/SignalHandler.h"
 #include "Common/StdOutputStream.h"
 #include "Common/StdInputStream.h"
+#include "Common/ColouredMsg.h"
 #include "Common/PathTools.h"
+#include "Common/FormatTools.h"
 #include "Common/Util.h"
 #include "crypto/hash.h"
 #include "CheckpointsData.h"
@@ -38,7 +41,6 @@
 #include "CryptoNoteCore/Currency.h"
 #include "CryptoNoteCore/DatabaseBlockchainCache.h"
 #include "CryptoNoteCore/DatabaseBlockchainCacheFactory.h"
-#include "CryptoNoteCore/MainChainStorage.h"
 #include "CryptoNoteCore/MinerConfig.h"
 #include "CryptoNoteCore/RocksDBWrapper.h"
 #include "CryptoNoteProtocol/CryptoNoteProtocolHandler.h"
@@ -68,18 +70,13 @@ namespace
   const command_line::arg_descriptor<bool>                     arg_os_version          = {"os-version", ""};
   const command_line::arg_descriptor<std::string>              arg_log_file            = {"log-file", "", ""};
   const command_line::arg_descriptor<int>                      arg_log_level           = {"log-level", "", 2}; // info level
-  const command_line::arg_descriptor<bool>                     arg_console             = {"no-console", "Disable daemon console commands"};
-  const command_line::arg_descriptor<bool>                     arg_restricted_rpc      = { "restricted-rpc", "Disable some of the RPC methods to prevent abuse" };
-  const command_line::arg_descriptor<std::string>              arg_set_fee_address     = { "fee-address", "Sets fee address for light wallets to the daemon's RPC responses.", "" };
-  const command_line::arg_descriptor<std::string>              arg_set_contact         = { "contact", "Sets node admin contact", "" };
-  const command_line::arg_descriptor<std::string>              arg_set_view_key        = { "view-key", "Sets private view key to check for masternode's fee.", "" };
+  const command_line::arg_descriptor<bool>                     arg_no_console          = {"no-console", "Disable daemon console commands"};
   const command_line::arg_descriptor<bool>                     arg_print_genesis_tx    = { "print-genesis-tx", "Prints genesis' block tx hex to insert it to config and exits" };
-  const command_line::arg_descriptor<std::vector<std::string>> arg_enable_cors         = { "enable-cors", "Adds header 'Access-Control-Allow-Origin' to the daemon's RPC responses. Uses the value as domain. Use * for all" };
   const command_line::arg_descriptor<bool>                     arg_testnet_on          = {"testnet", "Used to deploy test nets. Checkpoints and hardcoded seeds are ignored, "
     "network id is changed. Use it with --data-dir flag. The wallet must be launched with --testnet flag.", false};
   const command_line::arg_descriptor<std::string>              arg_load_checkpoints    = { "load-checkpoints", "<filename> Load checkpoints from csv file.", "" };
   const command_line::arg_descriptor<bool>                     arg_disable_checkpoints = { "without-checkpoints", "Synchronize without checkpoints" };
-  const command_line::arg_descriptor<std::string>              arg_rollback            = { "rollback", "Rollback blockchain to <height>" };
+  const command_line::arg_descriptor<std::string>              arg_rollback            = { "rollback", "Rollback blockchain to <height>", "", true };
 }
 
 bool command_line_preprocessor(const boost::program_options::variables_map& vm, LoggerRef& logger);
@@ -133,17 +130,12 @@ int main(int argc, char* argv[])
     command_line::add_arg(desc_cmd_only, arg_config_file);
     command_line::add_arg(desc_cmd_sett, arg_log_file);
     command_line::add_arg(desc_cmd_sett, arg_log_level);
-    command_line::add_arg(desc_cmd_sett, arg_console);
-    command_line::add_arg(desc_cmd_sett, arg_restricted_rpc);
-    command_line::add_arg(desc_cmd_sett, arg_set_fee_address);
-    command_line::add_arg(desc_cmd_sett, arg_set_view_key);
+    command_line::add_arg(desc_cmd_sett, arg_no_console);
     command_line::add_arg(desc_cmd_sett, arg_testnet_on);
-    command_line::add_arg(desc_cmd_sett, arg_enable_cors);
     command_line::add_arg(desc_cmd_sett, arg_print_genesis_tx);
     command_line::add_arg(desc_cmd_sett, arg_load_checkpoints);
     command_line::add_arg(desc_cmd_sett, arg_disable_checkpoints);
     command_line::add_arg(desc_cmd_sett, arg_rollback);
-    command_line::add_arg(desc_cmd_sett, arg_set_contact);
 
     RpcServerConfig::initOptions(desc_cmd_sett);
     NetNodeConfig::initOptions(desc_cmd_sett);
@@ -213,20 +205,14 @@ int main(int argc, char* argv[])
       return 0;
     }
 
-    std::string contact_str = command_line::get_arg(vm, arg_set_contact);
-    if (!contact_str.empty() && contact_str.size() > 128) {
-      logger(ERROR, BRIGHT_RED) << "Too long contact info";
-      return 1;
-    }
-
-	std::cout <<
-"\n                                                   \n"
-"  _|    _|    _|_|    _|_|_|    _|_|_|      _|_|    \n"
-"  _|  _|    _|    _|  _|    _|  _|    _|  _|    _|  \n"
-"  _|_|      _|_|_|_|  _|_|_|    _|_|_|    _|    _|  \n"
-"  _|  _|    _|    _|  _|    _|  _|    _|  _|    _|  \n"
-"  _|    _|  _|    _|  _|    _|  _|_|_|      _|_|    \n"
-"                                                    \n" << ENDL;
+    std::cout << ColouredMsg("\n"
+    "  _|    _|    _|_|    _|_|_|    _|_|_|      _|_|    \n"
+    "  _|  _|    _|    _|  _|    _|  _|    _|  _|    _|  \n"
+    "  _|_|      _|_|_|_|  _|_|_|    _|_|_|    _|    _|  \n",Common::Console::Color::BrightCyan);
+    std::cout << ColouredMsg(
+    "  _|  _|    _|    _|  _|    _|  _|    _|  _|    _|  \n"
+    "  _|    _|  _|    _|  _|    _|  _|    _|  _|    _|  \n"
+    "  _|    _|  _|    _|  _|    _|  _|_|_|      _|_|    \n\n", Common::Console::Color::BrightYellow);
 
     logger(INFO) << "Module folder: " << argv[0];
 
@@ -279,6 +265,19 @@ int main(int argc, char* argv[])
     RpcServerConfig rpcConfig;
     rpcConfig.init(vm);
 
+    std::string contact_str = rpcConfig.contactInfo;
+    if (!contact_str.empty() && contact_str.size() > 128) {
+      logger(ERROR, BRIGHT_RED) << "Too long contact info";
+      return 1;
+    }
+
+    // check this early
+    if ((rpcConfig.nodeFeeAddress.empty() && !rpcConfig.nodeFeeAmountStr.empty()) ||
+      (!rpcConfig.nodeFeeAddress.empty() && rpcConfig.nodeFeeAmountStr.empty())) {
+      logger(ERROR, BRIGHT_RED) << "Need to set both, fee-address and fee-amount";
+      return 1;
+    }
+
     DataBaseConfig dbConfig;
     dbConfig.init(vm);
 
@@ -292,51 +291,48 @@ int main(int argc, char* argv[])
       }
     }
 
-    RocksDBWrapper database(logManager);
-    database.init(dbConfig);
+    RocksDBWrapper database(logManager, dbConfig);
+    database.init();
     Tools::ScopeExit dbShutdownOnExit([&database] () { database.shutdown(); });
 
-    if (!DatabaseBlockchainCache::checkDBSchemeVersion(database, logManager))
-    {
+    if (!DatabaseBlockchainCache::checkDBSchemeVersion(database, logManager)) {
       dbShutdownOnExit.cancel();
       database.shutdown();
-
-      database.destoy(dbConfig);
-
-      database.init(dbConfig);
+      database.destroy();
+      database.init();
       dbShutdownOnExit.resume();
     }
 
     System::Dispatcher dispatcher;
 
-    std::unique_ptr<IMainChainStorage> mainChainStorage = createSwappedMainChainStorage(data_dir_path.string(), currency);
-
-    if (command_line::has_arg(vm, arg_rollback)) {
-      std::string rollback_str = command_line::get_arg(vm, arg_rollback);
-      if (!rollback_str.empty()) {
-        uint32_t _index = 0;
-        if (!Common::fromString(rollback_str, _index)) {
-          std::cout << "wrong block index parameter" << ENDL;
-          return false;
-        }
-        logger(INFO, BRIGHT_YELLOW) << "Rollback blockchain to height " << _index;
-        while (mainChainStorage->getBlockCount() >= _index)
-        {
-          mainChainStorage->popBlock();
-        }
-      }
-    }
-
+    uint32_t transactionValidationThreads = std::thread::hardware_concurrency();
     logger(INFO) << "Initializing core...";
+    logger(DEBUGGING) << "with " << transactionValidationThreads << " threads for transactions validation";
     CryptoNote::Core ccore(
       currency,
       logManager,
       std::move(checkpoints),
       dispatcher,
       std::unique_ptr<IBlockchainCacheFactory>(new DatabaseBlockchainCacheFactory(database, logger.getLogger())),
-      std::move(mainChainStorage));
+      transactionValidationThreads);
     ccore.load();
     logger(INFO) << "Core initialized OK";
+
+    if (command_line::has_arg(vm, arg_rollback)) {
+      std::string rollback_str = command_line::get_arg(vm, arg_rollback);
+      if (!rollback_str.empty()) {
+        uint32_t _index = 0;
+        if (!Common::fromString(rollback_str, _index)) {
+          std::cout << "Wrong block index parameter" << ENDL;
+          return false;
+        }
+        logger(INFO, BRIGHT_YELLOW) << "Rewinding blockchain to height " << _index;
+
+        ccore.rewind(_index);
+
+        logger(INFO, BRIGHT_YELLOW) << "Blockchain rewound to height " << _index;
+      }
+    }
 
     CryptoNote::CryptoNoteProtocolHandler cprotocol(currency, dispatcher, ccore, nullptr, logManager);
     CryptoNote::NodeServer p2psrv(dispatcher, cprotocol, logManager);
@@ -353,37 +349,44 @@ int main(int argc, char* argv[])
 
     logger(INFO) << "P2p server initialized OK";
 
-    if (!command_line::has_arg(vm, arg_console)) {
+    if (!command_line::has_arg(vm, arg_no_console)) {
       dch.start_handling();
     }
 
     logger(INFO) << "Starting core rpc server on address " << rpcConfig.getBindAddress();
     rpcServer.start(rpcConfig.bindIp, rpcConfig.bindPort);
 
-    rpcServer.restrictRPC(command_line::get_arg(vm, arg_restricted_rpc));
-    rpcServer.enableCors(command_line::get_arg(vm, arg_enable_cors));
-	if (command_line::has_arg(vm, arg_set_fee_address)) {
-	  std::string addr_str = command_line::get_arg(vm, arg_set_fee_address);
-	  if (!addr_str.empty()) {
-        AccountPublicAddress acc = boost::value_initialized<AccountPublicAddress>();
-        if (!currency.parseAccountAddressString(addr_str, acc)) {
-          logger(ERROR, BRIGHT_RED) << "Bad fee address: " << addr_str;
-          return 1;
-        }
-        rpcServer.setFeeAddress(addr_str, acc);
+    rpcServer.restrictRPC(rpcConfig.restrictedRpc);
+    rpcServer.enableCors(rpcConfig.enableCors);
+    if (!rpcConfig.nodeFeeAddress.empty() && !rpcConfig.nodeFeeAmountStr.empty()) {
+      AccountPublicAddress acc = boost::value_initialized<AccountPublicAddress>();
+      if (!currency.parseAccountAddressString(rpcConfig.nodeFeeAddress, acc)) {
+        logger(ERROR, BRIGHT_RED) << "Bad fee address: " << rpcConfig.nodeFeeAddress;
+        return 1;
       }
-	}
-    if (command_line::has_arg(vm, arg_set_view_key)) {
-      std::string vk_str = command_line::get_arg(vm, arg_set_view_key);
-	  if (!vk_str.empty()) {
-        rpcServer.setViewKey(vk_str);
+      rpcServer.setFeeAddress(rpcConfig.nodeFeeAddress, acc);
+
+      uint64_t fee;
+      if (!Common::parseAmount(rpcConfig.nodeFeeAmountStr, fee)) {
+        logger(ERROR, BRIGHT_RED) << "Couldn't parse fee amount";
+        return 1;
       }
+      if (fee > CryptoNote::parameters::COIN) {
+        logger(ERROR, BRIGHT_RED) << "Maximum allowed fee is "
+          << Common::formatAmount(CryptoNote::parameters::COIN);
+        return 1;
+      }
+
+      rpcServer.setFeeAmount(fee);
     }
-    if (command_line::has_arg(vm, arg_set_contact)) {
-      if (!contact_str.empty()) {
-        rpcServer.setContactInfo(contact_str);
-      }
+
+    if (!rpcConfig.nodeFeeViewKey.empty()) {
+      rpcServer.setViewKey(rpcConfig.nodeFeeViewKey);
     }
+    if (!rpcConfig.contactInfo.empty()) {
+      rpcServer.setContactInfo(rpcConfig.contactInfo);
+    }
+
     logger(INFO) << "Core rpc server started ok";
 
     Tools::SignalHandler::install([&dch, &p2psrv] {

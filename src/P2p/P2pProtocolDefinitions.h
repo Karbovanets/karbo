@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -51,12 +51,6 @@ namespace CryptoNote
     uint32_t packet_max_size;
     uint32_t config_id;
     uint32_t send_peerlist_sz;
-  };
-
-  enum P2PProtocolVersion : uint8_t {
-    V0 = 0,
-    V1 = 1,
-    CURRENT = V1
   };
 
   struct basic_node_data
@@ -265,6 +259,7 @@ namespace CryptoNote
 
     struct response
     {
+      std::list<AnchorPeerlistEntry> local_peerlist_anchor;
       std::list<PeerlistEntry> local_peerlist_white;
       std::list<PeerlistEntry> local_peerlist_gray;
       std::list<connection_entry> connections_list;
@@ -272,6 +267,7 @@ namespace CryptoNote
       uint64_t local_time;
 
       void serialize(ISerializer& s) {
+        serializeAsBinary(local_peerlist_anchor, "local_peerlist_anchor", s);
         serializeAsBinary(local_peerlist_white, "local_peerlist_white", s);
         serializeAsBinary(local_peerlist_gray, "local_peerlist_gray", s);
         serializeAsBinary(connections_list, "connections_list", s);

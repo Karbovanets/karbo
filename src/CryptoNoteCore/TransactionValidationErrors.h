@@ -55,7 +55,8 @@ enum class TransactionValidationError {
   BASE_INVALID_SIGNATURES_COUNT,
   INPUT_INVALID_SIGNATURES_COUNT,
   OUTPUT_INVALID_DECOMPOSED_AMOUNT,
-  INVALID_FEE
+  INVALID_FEE,
+  SIZE_TOO_LARGE
 };
 
 // custom category:
@@ -106,6 +107,7 @@ public:
       case TransactionValidationError::INPUT_INVALID_SIGNATURES_COUNT: return "The number of input signatures is not correct";
       case TransactionValidationError::OUTPUT_INVALID_DECOMPOSED_AMOUNT: return "Invalid decomposed output amount (unmixable output)";
       case TransactionValidationError::INVALID_FEE: return "Fee is too small and it's not a fusion transaction";
+      case TransactionValidationError::SIZE_TOO_LARGE: return "Transaction is too large (in bytes)";
       default: return "Unknown error";
     }
   }

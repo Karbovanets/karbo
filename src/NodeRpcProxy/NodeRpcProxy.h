@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016-2019 The Karbo developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -68,13 +68,24 @@ public:
   virtual uint32_t getKnownBlockCount() const override;
   virtual uint64_t getLastLocalBlockTimestamp() const override;
   virtual uint64_t getMinimalFee() const override;
+  virtual uint64_t getNextDifficulty() const override;
+  virtual uint64_t getNextReward() const override;
+  virtual uint64_t getAlreadyGeneratedCoins() const override;
   virtual uint32_t getNodeHeight() const override;
+  virtual uint64_t getTransactionsCount() const override;
+  virtual uint64_t getTransactionsPoolSize() const override;
+  virtual uint64_t getAltBlocksCount() const override;
+  virtual uint64_t getOutConnectionsCount() const override;
+  virtual uint64_t getIncConnectionsCount() const override;
+  virtual uint64_t getRpcConnectionsCount() const override;
+  virtual uint64_t getWhitePeerlistSize() const override;
+  virtual uint64_t getGreyPeerlistSize() const override;
+  virtual std::string getNodeVersion() const override;
 
   virtual void getBlockHashesByTimestamps(uint64_t timestampBegin, size_t secondsCount, std::vector<Crypto::Hash>& blockHashes, const Callback& callback) override;
   virtual void getTransactionHashesByPaymentId(const Crypto::Hash& paymentId, std::vector<Crypto::Hash>& transactionHashes, const Callback& callback) override;
 
   virtual BlockHeaderInfo getLastLocalBlockHeaderInfo() const override;
-  virtual void getFeeAddress() override;
 
   virtual void relayTransaction(const CryptoNote::Transaction& transaction, const Callback& callback) override;
   virtual void getRandomOutsByAmounts(std::vector<uint64_t>&& amounts, uint16_t outsCount, std::vector<COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::outs_for_amount>& result, const Callback& callback) override;
@@ -87,11 +98,15 @@ public:
   virtual void getBlocks(const std::vector<uint32_t>& blockHeights, std::vector<std::vector<BlockDetails>>& blocks, const Callback& callback) override;
   virtual void getBlocks(const std::vector<Crypto::Hash>& blockHashes, std::vector<BlockDetails>& blocks, const Callback& callback) override;
   virtual void getBlock(const uint32_t blockHeight, BlockDetails &block, const Callback& callback) override;
+  virtual void getBlockTimestamp(uint32_t height, uint64_t& timestamp, const Callback& callback) override;
+  virtual void getTransaction(const Crypto::Hash& transactionHash, CryptoNote::Transaction& transaction, const Callback& callback) override;
   virtual void getTransactions(const std::vector<Crypto::Hash>& transactionHashes, std::vector<TransactionDetails>& transactions, const Callback& callback) override;
   virtual void getTransactionsByPaymentId(const Crypto::Hash& paymentId, std::vector<TransactionDetails>& transactions, const Callback& callback) override;
   virtual void isSynchronized(bool& syncStatus, const Callback& callback) override;
+  virtual void getConnections(std::vector<p2pConnection>& connections, const Callback& callback) override;
 
   virtual std::string feeAddress() const override;
+  virtual uint64_t feeAmount() const override;
 
   unsigned int rpcTimeout() const { return m_rpcTimeout; }
   void rpcTimeout(unsigned int val) { m_rpcTimeout = val; }
@@ -110,15 +125,14 @@ private:
   bool updatePoolStatus();
   void updatePeerCount(size_t peerCount);
   void updatePoolState(const std::vector<std::unique_ptr<ITransactionReader>>& addedTxs, const std::vector<Crypto::Hash>& deletedTxsIds);
+  void getFeeAddress();
 
   std::error_code doGetBlockHashesByTimestamps(uint64_t timestampBegin, size_t secondsCount, std::vector<Crypto::Hash>& blockHashes);
   std::error_code doRelayTransaction(const CryptoNote::Transaction& transaction);
   std::error_code doGetRandomOutsByAmounts(std::vector<uint64_t>& amounts, uint16_t outsCount,
                                            std::vector<COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::outs_for_amount>& result);
-  std::error_code doGetNewBlocks(std::vector<Crypto::Hash>& knownBlockIds,
-    std::vector<CryptoNote::RawBlock>& newBlocks, uint32_t& startHeight);
-  std::error_code doGetTransactionOutsGlobalIndices(const Crypto::Hash& transactionHash,
-                                                    std::vector<uint32_t>& outsGlobalIndices);
+  std::error_code doGetNewBlocks(std::vector<Crypto::Hash>& knownBlockIds, std::vector<CryptoNote::RawBlock>& newBlocks, uint32_t& startHeight);
+  std::error_code doGetTransactionOutsGlobalIndices(const Crypto::Hash& transactionHash, std::vector<uint32_t>& outsGlobalIndices);
   std::error_code doQueryBlocksLite(const std::vector<Crypto::Hash>& knownBlockIds, uint64_t timestamp,
     std::vector<CryptoNote::BlockShortEntry>& newBlocks, uint32_t& startHeight);
   std::error_code doGetPoolSymmetricDifference(std::vector<Crypto::Hash>&& knownPoolTxIds, Crypto::Hash knownBlockId, bool& isBcActual,
@@ -126,8 +140,11 @@ private:
   std::error_code doGetBlocksByHeights(const std::vector<uint32_t>& blockHeights, std::vector<std::vector<BlockDetails>>& blocks);
   std::error_code doGetBlocksByHashes(const std::vector<Crypto::Hash>& blockHashes, std::vector<BlockDetails>& blocks);
   std::error_code doGetBlock(const uint32_t blockHeight, BlockDetails& block);
+  std::error_code doGetBlockTimestamp(uint32_t height, uint64_t& timestamp);
   std::error_code doGetTransactionHashesByPaymentId(const Crypto::Hash& paymentId, std::vector<Crypto::Hash>& transactionHashes);
+  std::error_code doGetTransaction(const Crypto::Hash& transactionHash, CryptoNote::Transaction& transaction);
   std::error_code doGetTransactions(const std::vector<Crypto::Hash>& transactionHashes, std::vector<TransactionDetails>& transactions);
+  std::error_code doGetConnections(std::vector<p2pConnection>& connections);
 
   void scheduleRequest(std::function<std::error_code()>&& procedure, const Callback& callback);
   template <typename Request, typename Response>
@@ -166,6 +183,18 @@ private:
   std::atomic<uint32_t> m_networkHeight;
   std::atomic<uint32_t> m_nodeHeight;
   std::atomic<uint64_t> m_minimalFee;
+  std::atomic<uint64_t> m_nextDifficulty;
+  std::atomic<uint64_t> m_nextReward;
+  std::atomic<uint64_t> m_alreadyGeneratedCoins;
+  std::atomic<uint64_t> m_transactionsCount;
+  std::atomic<uint64_t> m_transactionsPoolSize;
+  std::atomic<uint64_t> m_altBlocksCount;
+  std::atomic<uint64_t> m_outConnectionsCount;
+  std::atomic<uint64_t> m_incConnectionsCount;
+  std::atomic<uint64_t> m_rpcConnectionsCount;
+  std::atomic<uint64_t> m_whitePeerlistSize;
+  std::atomic<uint64_t> m_greyPeerlistSize;
+  std::string m_nodeVersion = "";
 
   BlockHeaderInfo lastLocalBlockHeaderInfo;
   //protect it with mutex if decided to add worker threads
@@ -175,5 +204,6 @@ private:
 
   bool m_connected;
   std::string m_fee_address;
+  uint64_t m_fee_amount = 0;
 };
 }

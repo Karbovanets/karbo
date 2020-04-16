@@ -1,6 +1,7 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2018, The TurtleCoin Developers
-// Copyright (c) 2018-2019 The Karbo developers
+// Copyright (c) 2018-2019 The Cash2 developers
+// Copyright (c) 2016-2020 The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -26,6 +27,8 @@
 
 #include "Serialization/JsonInputValueSerializer.h"
 #include "Serialization/JsonOutputStreamSerializer.h"
+
+#include "version.h"
 
 namespace PaymentService {
 
@@ -58,6 +61,7 @@ PaymentServiceJsonRpcServer::PaymentServiceJsonRpcServer(System::Dispatcher& sys
   handlers.emplace("getMnemonicSeed", jsonHandler<GetMnemonicSeed::Request, GetMnemonicSeed::Response>(std::bind(&PaymentServiceJsonRpcServer::handleGetMnemonicSeed, this, std::placeholders::_1, std::placeholders::_2)));
   handlers.emplace("getStatus", jsonHandler<GetStatus::Request, GetStatus::Response>(std::bind(&PaymentServiceJsonRpcServer::handleGetStatus, this, std::placeholders::_1, std::placeholders::_2)));
   handlers.emplace("getAddresses", jsonHandler<GetAddresses::Request, GetAddresses::Response>(std::bind(&PaymentServiceJsonRpcServer::handleGetAddresses, this, std::placeholders::_1, std::placeholders::_2)));
+  handlers.emplace("getAddressesCount", jsonHandler<GetAddressesCount::Request, GetAddressesCount::Response>(std::bind(&PaymentServiceJsonRpcServer::handleGetAddressesCount, this, std::placeholders::_1, std::placeholders::_2)));
   handlers.emplace("sendFusionTransaction", jsonHandler<SendFusionTransaction::Request, SendFusionTransaction::Response>(std::bind(&PaymentServiceJsonRpcServer::handleSendFusionTransaction, this, std::placeholders::_1, std::placeholders::_2)));
   handlers.emplace("estimateFusion", jsonHandler<EstimateFusion::Request, EstimateFusion::Response>(std::bind(&PaymentServiceJsonRpcServer::handleEstimateFusion, this, std::placeholders::_1, std::placeholders::_2)));
   handlers.emplace("validateAddress", jsonHandler<ValidateAddress::Request, ValidateAddress::Response>(std::bind(&PaymentServiceJsonRpcServer::handleValidateAddress, this, std::placeholders::_1, std::placeholders::_2)));
@@ -113,9 +117,19 @@ std::error_code PaymentServiceJsonRpcServer::handleExport(const Export::Request&
 
 std::error_code PaymentServiceJsonRpcServer::handleReset(const Reset::Request& request, Reset::Response& response) {
   if (request.viewSecretKey.empty()) {
-    return service.resetWallet();
+    if (request.scanHeight != std::numeric_limits<uint32_t>::max()) {
+      return service.resetWallet(request.scanHeight);
+    }
+    else {
+      return service.resetWallet();
+    }
   } else {
-    return service.replaceWithNewWallet(request.viewSecretKey);
+    if (request.scanHeight != std::numeric_limits<uint32_t>::max()) {
+      return service.replaceWithNewWallet(request.viewSecretKey, request.scanHeight);
+    }
+    else {
+      return service.replaceWithNewWallet(request.viewSecretKey);
+    }
   }
 }
 
@@ -123,14 +137,29 @@ std::error_code PaymentServiceJsonRpcServer::handleCreateAddress(const CreateAdd
   if (request.spendSecretKey.empty() && request.spendPublicKey.empty()) {
     return service.createAddress(response.address);
   } else if (!request.spendSecretKey.empty()) {
-    return service.createAddress(request.spendSecretKey, request.reset, response.address);
+    if (request.scanHeight != std::numeric_limits<uint32_t>::max()) {
+      return service.createAddress(request.spendSecretKey, request.scanHeight, response.address);
+    }
+    else {
+      return service.createAddress(request.spendSecretKey, request.reset, response.address);
+    }
   } else {
-    return service.createTrackingAddress(request.spendPublicKey, response.address);
+    if (request.scanHeight != std::numeric_limits<uint32_t>::max()) {
+      return service.createTrackingAddress(request.spendPublicKey, request.scanHeight, response.address);
+    }
+    else {
+      return service.createTrackingAddress(request.spendPublicKey, response.address);
+    }
   }
 }
 
 std::error_code PaymentServiceJsonRpcServer::handleCreateAddressList(const CreateAddressList::Request& request, CreateAddressList::Response& response) {
-  return service.createAddressList(request.spendSecretKeys, request.reset, response.addresses);
+  if (request.scanHeights.size() != 0) {
+    return service.createAddressList(request.spendSecretKeys, request.scanHeights, response.addresses);
+  }
+  else {
+    return service.createAddressList(request.spendSecretKeys, request.reset, response.addresses);
+  }
 }
 
 std::error_code PaymentServiceJsonRpcServer::handleDeleteAddress(const DeleteAddress::Request& request, DeleteAddress::Response& response) {
@@ -218,6 +247,7 @@ std::error_code PaymentServiceJsonRpcServer::handleGetMnemonicSeed(const GetMnem
 }
 
 std::error_code PaymentServiceJsonRpcServer::handleGetStatus(const GetStatus::Request& request, GetStatus::Response& response) {
+  response.version = PROJECT_VERSION_LONG;
   return service.getStatus(response.blockCount, response.knownBlockCount, response.localDaemonBlockCount, response.lastBlockHash, response.peerCount, response.minimalFee);
 }
 
@@ -227,6 +257,10 @@ std::error_code PaymentServiceJsonRpcServer::handleValidateAddress(const Validat
 
 std::error_code PaymentServiceJsonRpcServer::handleGetAddresses(const GetAddresses::Request& request, GetAddresses::Response& response) {
   return service.getAddresses(response.addresses);
+}
+
+std::error_code PaymentServiceJsonRpcServer::handleGetAddressesCount(const GetAddressesCount::Request& request, GetAddressesCount::Response& response) {
+  return service.getAddressesCount(response.addresses_count);
 }
 
 std::error_code PaymentServiceJsonRpcServer::handleSendFusionTransaction(const SendFusionTransaction::Request& request, SendFusionTransaction::Response& response) {

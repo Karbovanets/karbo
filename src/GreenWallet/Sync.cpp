@@ -1,5 +1,5 @@
 // Copyright (c) 2018, The TurtleCoin Developers
-// Copyright (c) 2018-2019, The Karbo Developers
+// Copyright (c) 2018-2020, The Karbo Developers
 // 
 // Please see the included LICENSE file for more information.
 
@@ -7,11 +7,11 @@
 #include <GreenWallet/Sync.h>
 ///////////////////////////
 
-#include <Common/StringTools.h>
-
 #include <iostream>
 
-#include <GreenWallet/ColouredMsg.h>
+#include <Common/StringTools.h>
+#include <Common/ColouredMsg.h>
+#include <Common/FormatTools.h>
 #include <GreenWallet/CommandImplementations.h>
 #include <GreenWallet/GetInput.h>
 #include <GreenWallet/Tools.h>
@@ -45,7 +45,7 @@ void checkForNewTransactions(std::shared_ptr<WalletInfo> walletInfo)
                           << SuccessMsg("Hash: " + Common::podToHex(t.hash))
                           << std::endl
                           << SuccessMsg("Amount: "
-                                      + formatAmount(t.totalAmount))
+                                      + Common::formatAmountWithTicker(t.totalAmount))
                           << std::endl
                           << InformationMsg(getPrompt(walletInfo))
                           << std::flush;

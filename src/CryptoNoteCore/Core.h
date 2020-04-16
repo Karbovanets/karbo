@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -30,25 +30,26 @@
 #include "IBlockchainCacheFactory.h"
 #include "ICore.h"
 #include "ICoreInformation.h"
-#include "IMainChainStorage.h"
 #include "ITransactionPool.h"
 #include "ITransactionPoolCleaner.h"
 #include "IUpgradeManager.h"
 #include <Logging/LoggerMessage.h>
 #include "MessageQueue.h"
-#include "TransactionValidatiorState.h"
+#include "TransactionValidatorState.h"
 #include "SwappedVector.h"
-
+#include "Common/ThreadPool.h"
+#include "Common/ThreadSafeQueue.h"
 #include "CryptoNoteCore/MinerConfig.h"
-
 #include <System/ContextGroup.h>
 
 namespace CryptoNote {
 
+using Utilities::ThreadPool;
+
 class Core : public ICore, public ICoreInformation {
 public:
   Core(const Currency& currency, Logging::ILogger& logger, Checkpoints&& checkpoints, System::Dispatcher& dispatcher,
-       std::unique_ptr<IBlockchainCacheFactory>&& blockchainCacheFactory, std::unique_ptr<IMainChainStorage>&& mainChainStorage);
+       std::unique_ptr<IBlockchainCacheFactory>&& blockchainCacheFactory, uint32_t transactionValidationThreads);
   virtual ~Core() override;
 
   virtual bool addMessageQueue(MessageQueue<BlockchainMessage>&  messageQueue) override;
@@ -78,6 +79,9 @@ public:
   virtual void getTransactions(const std::vector<Crypto::Hash>& transactionHashes, std::vector<BinaryArray>& transactions, std::vector<Crypto::Hash>& missedHashes) const override;
 
   virtual Difficulty getBlockDifficulty(uint32_t blockIndex) const override;
+  virtual Difficulty getBlockCumulativeDifficulty(uint32_t blockIndex) const override;
+  virtual uint64_t getBlockTimestamp(uint32_t blockIndex) const override;
+
   virtual Difficulty getDifficultyForNextBlock() const override;
   virtual Difficulty getAvgDifficulty(uint32_t height, uint32_t window) const override;
 
@@ -104,15 +108,17 @@ public:
   virtual std::time_t getStartTime() const;
 
   //ICoreInformation
-  virtual size_t getPoolTransactionCount() const override;
-  virtual size_t getBlockchainTransactionCount() const override;
-  virtual size_t getAlternativeBlockCount() const override;
+  virtual size_t getPoolTransactionsCount() const override;
+  virtual size_t getBlockchainTransactionsCount() const override;
+  virtual size_t getAlternativeBlocksCount() const override;
   virtual uint64_t getTotalGeneratedAmount() const override;
   virtual std::vector<BlockTemplate> getAlternativeBlocks() const override;
   virtual std::vector<Transaction> getPoolTransactions() const override;
   virtual std::vector<std::pair<Transaction, uint64_t>> getPoolTransactionsWithReceiveTime() const override;
   boost::optional<std::pair<MultisignatureOutput, uint64_t>>
   getMultisignatureOutput(uint64_t amount, uint32_t globalIndex) const override;
+
+  virtual bool isInCheckpointZone(uint32_t height) const override;
 
   const Currency& getCurrency() const;
 
@@ -129,12 +135,16 @@ public:
   virtual std::vector<Crypto::Hash> getTransactionHashesByPaymentId(const Crypto::Hash& paymentId) const override;
   virtual bool getTransactionsByPaymentId(const Crypto::Hash& paymentId, std::vector<Transaction>& transactions) override;
 
-  virtual uint32_t get_current_blockchain_height() const;
+  virtual uint32_t getCurrentBlockchainHeight() const;
+
+  virtual void rewind(const uint64_t blockIndex) override;
+
   uint8_t getBlockMajorVersionForHeight(uint32_t height) const;
   virtual bool getMixin(const Transaction& transaction, uint64_t& mixin) override;
 
-  virtual uint64_t getMinimalFeeForHeight(uint32_t height) override;
+  virtual uint64_t getMinimalFee(uint32_t height) override;
   virtual uint64_t getMinimalFee() override;
+  virtual uint64_t calculateReward(uint64_t alreadyGeneratedCoins) const override;
 
   bool isKeyImageSpent(const Crypto::KeyImage& key_im);
   bool isKeyImageSpent(const Crypto::KeyImage& key_im, uint32_t blockIndex);
@@ -156,7 +166,7 @@ private:
 
   IntrusiveLinkedList<MessageQueue<BlockchainMessage>> queueList;
   std::unique_ptr<IBlockchainCacheFactory> blockchainCacheFactory;
-  std::unique_ptr<IMainChainStorage> mainChainStorage;
+  Utilities::ThreadPool<bool> m_transactionValidationThreadPool;
   bool initialized;
 
   time_t start_time;
@@ -166,10 +176,8 @@ private:
   void throwIfNotInitialized() const;
   bool extractTransactions(const std::vector<BinaryArray>& rawTransactions, std::vector<CachedTransaction>& transactions, uint64_t& cumulativeSize);
 
-  std::error_code validateSemantic(const Transaction& transaction, uint64_t& fee, uint32_t blockIndex);
-  std::error_code validateTransaction(const CachedTransaction& transaction, TransactionValidatorState& state, IBlockchainCache* cache, uint64_t& fee, uint32_t blockIndex);
-  std::error_code validateMixin(const Transaction& transaction, uint32_t blockIndex);
-  std::error_code validateFee(const Transaction& transaction, uint32_t blockIndex);
+  std::error_code validateTransaction(const CachedTransaction& transaction, TransactionValidatorState& state, IBlockchainCache* cache, 
+    Utilities::ThreadPool<bool> &threadPool, uint64_t& fee, uint64_t minFee, uint32_t blockIndex, const bool isPoolTransaction);
 
   bool check_tx_inputs_keyimages_diff(const Transaction& tx);
 
@@ -223,10 +231,8 @@ private:
   bool isTransactionValidForPool(const CachedTransaction& cachedTransaction, TransactionValidatorState& validatorState);
 
   void initRootSegment();
-  void importBlocksFromStorage();
   void cutSegment(IBlockchainCache& segment, uint32_t startIndex);
 
-  void switchMainChainStorage(uint32_t splitBlockIndex, IBlockchainCache& newChain);
 };
 
 }

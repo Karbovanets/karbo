@@ -1,5 +1,5 @@
 // Copyright (c) 2018, The TurtleCoin Developers
-// Copyright (c) 2018-2019, The Karbo Developers
+// Copyright (c) 2018-2020, The Karbo Developers
 // 
 // Please see the included LICENSE file for more information.
 
@@ -19,7 +19,7 @@
 
 #include <Wallet/WalletErrors.h>
 
-#include <GreenWallet/ColouredMsg.h>
+#include <Common/ColouredMsg.h>
 #include <GreenWallet/CommandImplementations.h>
 #include <GreenWallet/Tools.h>
 #include <GreenWallet/Transfer.h>
@@ -221,8 +221,8 @@ std::shared_ptr<WalletInfo> generateWallet(CryptoNote::WalletGreen &wallet)
 
     uint64_t creationTimestamp = static_cast<uint64_t>(time(nullptr));
 
-    const std::string walletAddress = wallet.createAddressWithTimestamp(spendKey.secretKey,
-                                                                        creationTimestamp);
+    const std::string walletAddress = wallet.createAddress(spendKey.secretKey,
+                                                          creationTimestamp);
 
     promptSaveKeys(wallet);
 

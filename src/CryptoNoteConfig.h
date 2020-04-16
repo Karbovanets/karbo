@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -32,7 +32,6 @@ const size_t   CRYPTONOTE_MAX_BLOCK_BLOB_SIZE                = 500000000;
 const size_t   CRYPTONOTE_MAX_TX_SIZE                        = 1000000000;
 const uint64_t CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX       = 111;
 const size_t   CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW          = 10;
-const size_t   CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1       = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;
 const size_t   CRYPTONOTE_TX_SPENDABLE_AGE                   = 6;
 const uint64_t CRYPTONOTE_BLOCK_FUTURE_TIME_LIMIT            = DIFFICULTY_TARGET * 7;
 const uint64_t CRYPTONOTE_BLOCK_FUTURE_TIME_LIMIT_V1         = DIFFICULTY_TARGET * 3;
@@ -59,23 +58,20 @@ const size_t   CRYPTONOTE_DISPLAY_DECIMAL_POINT              = 12;
 
 const uint64_t MINIMUM_FEE_V1                                = UINT64_C(100000000);
 const uint64_t MINIMUM_FEE_V2                                = UINT64_C(100000000000);
-const uint32_t MINIMUM_FEE_V2_HEIGHT                         = 216394;
-const uint64_t MINIMUM_FEE                                   = MINIMUM_FEE_V1; // Temporarily, should be MINIMUM_FEE_V2
+const uint64_t MINIMUM_FEE                                   = MINIMUM_FEE_V2;
 const uint64_t MAXIMUM_FEE                                   = UINT64_C(100000000000);
 
 const uint64_t DEFAULT_DUST_THRESHOLD                        = UINT64_C(100000000);
 const uint64_t MIN_TX_MIXIN_SIZE                             = 2;
-const uint64_t MAX_TX_MIXIN_SIZE_V1                          = 50;
-const uint64_t MAX_TX_MIXIN_SIZE_V2                          = 20;
-const uint64_t MAX_TX_MIXIN_SIZE                             = MAX_TX_MIXIN_SIZE_V2;
-const uint32_t MIN_TX_MIXIN_V1_HEIGHT                        = 216245;
-const uint32_t MIN_TX_MIXIN_V2_HEIGHT                        = 216394;
+const uint64_t MAX_TX_MIXIN_SIZE                             = 20;
+const uint64_t MAX_EXTRA_SIZE                                = 1024;
+
 const uint64_t MAX_TRANSACTION_SIZE_LIMIT                    = CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_CURRENT / 4 - CRYPTONOTE_COINBASE_BLOB_RESERVED_SIZE;
 
 const size_t   DIFFICULTY_WINDOW                             = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY; // blocks
 const size_t   DIFFICULTY_WINDOW_V2                          = 17;  // blocks
 const size_t   DIFFICULTY_WINDOW_V3                          = 60;  // blocks
-const size_t   DIFFICULTY_WINDOW_V4                          = 90;  // blocks
+const size_t   DIFFICULTY_WINDOW_V4                          = 120; // blocks
 const size_t   DIFFICULTY_CUT                                = 60;  // timestamps to cut after sorting
 const size_t   DIFFICULTY_LAG                                = 15;  // !!!
 static_assert(2 * DIFFICULTY_CUT <= DIFFICULTY_WINDOW - 2, "Bad DIFFICULTY_WINDOW or DIFFICULTY_CUT");
@@ -104,8 +100,10 @@ const uint32_t KEY_IMAGE_CHECKING_BLOCK_INDEX                = 0;
 
 const uint32_t UPGRADE_HEIGHT_V2                             = 60000;
 const uint32_t UPGRADE_HEIGHT_V3                             = 216000;
+const uint32_t UPGRADE_HEIGHT_MIN_FEE_V2_MAX_MIXIN           = 216394;
 const uint32_t UPGRADE_HEIGHT_V4                             = 266000;
 const uint32_t UPGRADE_HEIGHT_LWMA3                          = 300000;
+const uint32_t UPGRADE_HEIGHT_FEE_PER_BYTE                   = 500000;
 const uint32_t UPGRADE_HEIGHT_V5                             = 4294967294;
 
 const unsigned UPGRADE_VOTING_THRESHOLD                      = 90;               // percent
@@ -114,14 +112,12 @@ const uint32_t UPGRADE_WINDOW                                = EXPECTED_NUMBER_O
 static_assert(0 < UPGRADE_VOTING_THRESHOLD && UPGRADE_VOTING_THRESHOLD <= 100, "Bad UPGRADE_VOTING_THRESHOLD");
 static_assert(UPGRADE_VOTING_WINDOW > 1, "Bad UPGRADE_VOTING_WINDOW");
 
-const char     CRYPTONOTE_BLOCKS_FILENAME[]                  = "blocks.bin";
-const char     CRYPTONOTE_BLOCKINDEXES_FILENAME[]            = "blockindexes.bin";
-const char     CRYPTONOTE_POOLDATA_FILENAME[]                = "poolstate.bin";
 const char     P2P_NET_DATA_FILENAME[]                       = "p2pstate.bin";
 const char     MINER_CONFIG_FILE_NAME[]                      = "miner_conf.json";
 } // parameters
 
 const char     CRYPTONOTE_NAME[]                             = "karbowanec";
+const char     CRYPTONOTE_TICKER[]                           = "KRB";
 const char     GENESIS_COINBASE_TX_HEX[]                     = "010a01ff0001fac484c69cd608029b2e4c0281c0b02e7c53291a94d1d0cbff8883f8024f5142ee494ffbbd0880712101f904925cc23f86f9f3565188862275dc556a9bdfb6aec22c5aca7f0177c45ba8";
 
 const uint8_t  TRANSACTION_VERSION_1                         =  1;
@@ -145,8 +141,25 @@ const int      RPC_DEFAULT_PORT                              =  32348;
 const size_t   P2P_LOCAL_WHITE_PEERLIST_LIMIT                =  1000;
 const size_t   P2P_LOCAL_GRAY_PEERLIST_LIMIT                 =  5000;
 
+// This defines our current P2P network version
+// and the minimum version for communication between nodes
+const uint8_t  P2P_VERSION_1                                 = 1;
+const uint8_t  P2P_VERSION_2                                 = 2;
+const uint8_t  P2P_VERSION_3                                 = 3;
+const uint8_t  P2P_VERSION_4                                 = 4;
+const uint8_t  P2P_CURRENT_VERSION                           = P2P_VERSION_4;
+const uint8_t  P2P_MINIMUM_VERSION                           = 1;
+
+// This defines the number of versions ahead we must see peers before
+// we start displaying warning messages that we need to upgrade our software
+const uint8_t  P2P_UPGRADE_WINDOW                            = 2;
+
+// This defines the minimum P2P version required for lite blocks propogation
+const uint8_t  P2P_LITE_BLOCKS_PROPOGATION_VERSION           = 3;
+
 const size_t   P2P_CONNECTION_MAX_WRITE_BUFFER_SIZE          = 64 * 1024 * 1024; // 64 MB
 const uint32_t P2P_DEFAULT_CONNECTIONS_COUNT                 = 8;
+const size_t   P2P_DEFAULT_ANCHOR_CONNECTIONS_COUNT          = 2;
 const size_t   P2P_DEFAULT_WHITELIST_CONNECTIONS_PERCENT     = 70;
 const uint32_t P2P_DEFAULT_HANDSHAKE_INTERVAL                = 60;            // seconds
 const uint32_t P2P_DEFAULT_PACKET_MAX_SIZE                   = 100000000;     // 100000000 bytes maximum packet size
@@ -155,6 +168,10 @@ const uint32_t P2P_DEFAULT_CONNECTION_TIMEOUT                = 5000;          //
 const uint32_t P2P_DEFAULT_PING_CONNECTION_TIMEOUT           = 2000;          // 2 seconds
 const uint64_t P2P_DEFAULT_INVOKE_TIMEOUT                    = 60 * 2 * 1000; // 2 minutes
 const size_t   P2P_DEFAULT_HANDSHAKE_INVOKE_TIMEOUT          = 5000;          // 5 seconds
+const uint32_t P2P_FAILED_ADDR_FORGET_SECONDS                = (60 * 60);     //1 hour
+const uint32_t P2P_IP_BLOCKTIME                              = (60 * 60 * 24);//24 hour
+const uint32_t P2P_IP_FAILS_BEFORE_BLOCK                     = 10;
+const uint32_t P2P_IDLE_CONNECTION_KILL_INTERVAL             = (5 * 60);      //5 minutes
 
 const char     P2P_STAT_TRUSTED_PUB_KEY[]                    = "";
 
@@ -164,12 +181,13 @@ const char* const SEED_NODES[] = {
   "seed.karbo.cloud:32347",
   "seed.karbo.org:32347",
   "seed.karbo.io:32347",
-  "95.46.98.64:32347",
+  "185.86.78.40:32347",
   "108.61.198.115:32347",
   "45.32.232.11:32347",
   "46.149.182.151:32347",
   "144.91.94.65:32347",
-  "95.216.195.104:32347"
+  "95.216.195.104:32347",
+  "45.151.175.158:32347"
 };
 
 } // CryptoNote

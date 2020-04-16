@@ -1,6 +1,6 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2018-2019, The TurtleCoin developers
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -31,10 +31,10 @@ using namespace CryptoNote;
 
 namespace {
 
-const uint64_t WRITE_BUFFER_MB_DEFAULT_SIZE     = 1024; // 1 GB
-const uint64_t READ_BUFFER_MB_DEFAULT_SIZE      = 1024; // 1 GB
-const uint32_t DEFAULT_MAX_OPEN_FILES           = 500;  // 500 files
-const uint16_t DEFAULT_BACKGROUND_THREADS_COUNT = 10;   // 10 DB threads
+const uint64_t WRITE_BUFFER_MB_DEFAULT_SIZE     = 256; // Mb
+const uint64_t READ_BUFFER_MB_DEFAULT_SIZE      = 128; // Mb
+const uint32_t DEFAULT_MAX_OPEN_FILES           = 128; // Nr of files
+const uint16_t DEFAULT_BACKGROUND_THREADS_COUNT = 4;   // DB threads
 
 const uint64_t MEGABYTE = 1024 * 1024;
 
@@ -42,7 +42,6 @@ const command_line::arg_descriptor<uint16_t>    argBackgroundThreadsCount = { "d
 const command_line::arg_descriptor<uint32_t>    argMaxOpenFiles = { "db-max-open-files", "Number of open files that can be used by the DB", DEFAULT_MAX_OPEN_FILES};
 const command_line::arg_descriptor<uint64_t>    argWriteBufferSize = { "db-write-buffer-size", "Size of data base write buffer in megabytes", WRITE_BUFFER_MB_DEFAULT_SIZE};
 const command_line::arg_descriptor<uint64_t>    argReadCacheSize = { "db-read-cache-size", "Size of data base read cache in megabytes", READ_BUFFER_MB_DEFAULT_SIZE};
-const command_line::arg_descriptor<bool>        argEnableDbCompression = { "db-enable-compression", "Enable data base compression", true};
 
 } //namespace
 
@@ -51,7 +50,6 @@ void DataBaseConfig::initOptions(boost::program_options::options_description& de
   command_line::add_arg(desc, argMaxOpenFiles);
   command_line::add_arg(desc, argWriteBufferSize);
   command_line::add_arg(desc, argReadCacheSize);
-  command_line::add_arg(desc, argEnableDbCompression);
 }
 
 DataBaseConfig::DataBaseConfig() :
@@ -61,7 +59,7 @@ DataBaseConfig::DataBaseConfig() :
   writeBufferSize(WRITE_BUFFER_MB_DEFAULT_SIZE * MEGABYTE),
   readCacheSize(READ_BUFFER_MB_DEFAULT_SIZE * MEGABYTE),
   testnet(false),
-  compressionEnabled(false) {
+  compressionEnabled(true) {
 }
 
 bool DataBaseConfig::init(const boost::program_options::variables_map& vm) {
@@ -86,8 +84,6 @@ bool DataBaseConfig::init(const boost::program_options::variables_map& vm) {
   }
 
   configFolderDefaulted = vm[command_line::arg_data_dir.name].defaulted();
-
-  compressionEnabled = command_line::get_arg(vm, argEnableDbCompression);
 
   return true;
 }

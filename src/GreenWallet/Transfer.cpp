@@ -1,5 +1,5 @@
 // Copyright (c) 2018, The TurtleCoin Developers
-// Copyright (c) 2018-2019, The Karbo Developers
+// Copyright (c) 2018-2020, The Karbo Developers
 // 
 // Please see the included LICENSE file for more information.
 
@@ -11,8 +11,8 @@
 
 #include <Common/StringTools.h>
 
-#include "CryptoNoteConfig.h"
-
+#include <CryptoNoteConfig.h>
+#include <Common/FormatTools.h>
 #include <CryptoNoteCore/CryptoNoteBasicImpl.h>
 #include <CryptoNoteCore/TransactionExtra.h>
 
@@ -31,7 +31,7 @@ namespace NodeErrors
     #include <NodeRpcProxy/NodeErrors.h>
 }
 
-#include <GreenWallet/ColouredMsg.h>
+#include <Common/ColouredMsg.h>
 #include <GreenWallet/Fusion.h>
 #include <GreenWallet/Tools.h>
 #include <GreenWallet/WalletConfig.h>
@@ -113,10 +113,10 @@ bool confirmTransaction(CryptoNote::TransactionParameters t,
               << InformationMsg("Confirm Transaction?") << std::endl;
 
     std::cout << "You are sending "
-              << SuccessMsg(formatAmount(t.destinations[0].amount))
-              << ", with a network fee of " << SuccessMsg(formatAmount(t.fee));
+              << SuccessMsg(Common::formatAmountWithTicker(t.destinations[0].amount))
+              << ", with a network fee of " << SuccessMsg(Common::formatAmountWithTicker(t.fee));
     if(nodeFee != 0)
-        std::cout << " and a node fee of " << SuccessMsg(formatAmount(nodeFee));
+        std::cout << " and a node fee of " << SuccessMsg(Common::formatAmountWithTicker(nodeFee));
 
     const std::string paymentID = getPaymentIDFromExtra(t.extra);
 
@@ -154,7 +154,7 @@ void sendMultipleTransactions(CryptoNote::WalletGreen &wallet,
 
     std::cout << "Your transaction has been split up into " << numTxs
               << " separate transactions of " 
-              << formatAmount(transfers[0].destinations[0].amount)
+              << Common::formatAmountWithTicker(transfers[0].destinations[0].amount)
               << ". "
               << std::endl
               << "It may take some time to send all the transactions."
@@ -298,7 +298,7 @@ void splitTx(CryptoNote::WalletGreen &wallet,
     }
 }
 
-void transfer(std::shared_ptr<WalletInfo> walletInfo, uint32_t height, bool sendAll, std::string nodeAddress)
+void transfer(std::shared_ptr<WalletInfo> walletInfo, uint32_t height, bool sendAll, std::string nodeAddress, uint64_t nodeFee)
 {
     std::cout << InformationMsg("Note: You can type cancel at any time to "
                                 "cancel the transaction")
@@ -327,8 +327,7 @@ void transfer(std::shared_ptr<WalletInfo> walletInfo, uint32_t height, bool send
 	/* Make sure we set this later if we're sending everything by deducting
 	   the fee from full balance */
 	uint64_t amount = 0;
-	uint64_t nodeFee = 0;
-
+	
 	uint64_t mixin = WalletConfig::defaultMixin;
 
 	/* If we're sending everything, obviously we don't need to ask them how
@@ -343,8 +342,10 @@ void transfer(std::shared_ptr<WalletInfo> walletInfo, uint32_t height, bool send
 		}
 		amount = maybeAmount.x;
 
-		if (!nodeAddress.empty())
-			nodeFee = calculateNodeFee(amount);
+    if (!nodeAddress.empty() && nodeFee == 0)
+      nodeFee = Tools::calculateNodeFee(amount);
+    else if (!nodeAddress.empty() && nodeFee != 0)
+      nodeFee = std::min<uint64_t>(nodeFee, (uint64_t)CryptoNote::parameters::COIN);
 
 		switch (doWeHaveEnoughBalance(amount, WalletConfig::defaultFee,
 			walletInfo, height, nodeFee))
@@ -405,11 +406,11 @@ void transfer(std::shared_ptr<WalletInfo> walletInfo, uint32_t height, bool send
 			amount = balanceNoDust - fee - nodeFee;
 
 			if (!nodeAddress.empty())
-				nodeFee = calculateNodeFee(amount);
+				nodeFee = Tools::calculateNodeFee(amount);
 
 			std::cout << WarningMsg("Due to dust inputs, we are unable to ")
 				<< WarningMsg("send ")
-				<< InformationMsg(formatAmount(unsendable))
+				<< InformationMsg(Common::formatAmountWithTicker(unsendable))
 				<< WarningMsg("of your balance.") << std::endl;
 
 			if (!WalletConfig::mixinZeroDisabled ||
@@ -449,13 +450,6 @@ void transfer(std::shared_ptr<WalletInfo> walletInfo, uint32_t height, bool send
     doTransfer(address, amount, fee, extra, walletInfo, height, mixin, nodeAddress, nodeFee);
 }
 
-uint64_t calculateNodeFee(uint64_t amount) {
-	uint32_t node_fee = static_cast<int64_t>(amount * 0.0025);
-	if (node_fee > (uint64_t)10000000000000)
-		node_fee = (uint64_t)10000000000000;
-	return node_fee;
-}
-
 BalanceInfo doWeHaveEnoughBalance(uint64_t amount, uint64_t fee,
                                   std::shared_ptr<WalletInfo> walletInfo,
 	                              uint64_t height, uint32_t nodeFee)
@@ -474,15 +468,15 @@ BalanceInfo doWeHaveEnoughBalance(uint64_t amount, uint64_t fee,
 			<< WarningMsg("You don't have enough funds to cover ")
 			<< WarningMsg("this transaction!") << std::endl << std::endl
 			<< "Funds needed: "
-			<< InformationMsg(formatAmount(amount + fee + nodeFee))
+			<< InformationMsg(Common::formatAmountWithTicker(amount + fee + nodeFee))
 			<< " (Includes a network fee of "
-			<< InformationMsg(formatAmount(fee))
+			<< InformationMsg(Common::formatAmountWithTicker(fee))
 			<< " and a node fee of "
-			<< InformationMsg(formatAmount(nodeFee))
+			<< InformationMsg(Common::formatAmountWithTicker(nodeFee))
 			<< ")"
 			<< std::endl
 			<< "Funds available: "
-			<< SuccessMsg(formatAmount(balance))
+			<< SuccessMsg(Common::formatAmountWithTicker(balance))
 			<< std::endl << std::endl;
 
 		return NotEnoughBalance;
@@ -494,11 +488,11 @@ BalanceInfo doWeHaveEnoughBalance(uint64_t amount, uint64_t fee,
 			<< WarningMsg("This transaction is unable to be sent ")
 			<< WarningMsg("due to dust inputs.") << std::endl
 			<< "You can send "
-			<< InformationMsg(formatAmount(balanceNoDust))
+			<< InformationMsg(Common::formatAmountWithTicker(balanceNoDust))
 			<< " without issues (includes a network fee of "
-			<< InformationMsg(formatAmount(fee)) << " and "
+			<< InformationMsg(Common::formatAmountWithTicker(fee)) << " and "
 			<< " a node fee of "
-			<< InformationMsg(formatAmount(nodeFee))
+			<< InformationMsg(Common::formatAmountWithTicker(nodeFee))
 			<< ")"
 			<< std::endl;
 
@@ -536,9 +530,9 @@ void doTransfer(std::string address, uint64_t amount, uint64_t fee,
                   << WarningMsg("transaction!")
                   << std::endl
                   << InformationMsg("Funds needed: ")
-                  << InformationMsg(formatAmount(amount + fee + nodeFee))
+                  << InformationMsg(Common::formatAmountWithTicker(amount + fee + nodeFee))
                   << std::endl
-                  << SuccessMsg("Funds available: " + formatAmount(balance))
+                  << SuccessMsg("Funds available: " + Common::formatAmountWithTicker(balance))
                   << std::endl;
         return;
     }
@@ -826,7 +820,7 @@ Maybe<uint64_t> getFee()
                   << InformationMsg("What fee do you want to use?")
                   << std::endl
                   << "Hit enter for the default fee of "
-                  << formatAmount(WalletConfig::defaultFee)
+                  << Common::formatAmountWithTicker(WalletConfig::defaultFee)
                   << ": ";
 
         std::getline(std::cin, stringAmount);
@@ -845,7 +839,7 @@ Maybe<uint64_t> getFee()
 
         if (parseFee(stringAmount))
         {
-            parseAmount(stringAmount, amount);
+            Common::parseAmount(stringAmount, amount);
             return Just<uint64_t>(amount);
         }
 
@@ -877,7 +871,7 @@ Maybe<uint64_t> getTransferAmount()
 
         if (parseAmount(stringAmount))
         {
-            parseAmount(stringAmount, amount);
+            Common::parseAmount(stringAmount, amount);
             return Just<uint64_t>(amount);
         }
 
@@ -904,11 +898,13 @@ Maybe<std::string> getDestinationAddress()
             return Nothing<std::string>();
         }
 
+#ifndef __ANDROID__
         std::string aliasAddress;
         if (getOpenAlias(transferAddr, aliasAddress))
         {
            return Just<std::string>(aliasAddress);
         }
+#endif
 
         if (parseAddress(transferAddr))
         {
@@ -925,7 +921,7 @@ bool parseFee(std::string feeString)
 {
     uint64_t fee;
 
-    if (!parseAmount(feeString, fee))
+    if (!Common::parseAmount(feeString, fee))
     {
         std::cout << WarningMsg("Failed to parse fee! Ensure you entered the "
                                 "value correctly.")
@@ -939,7 +935,7 @@ bool parseFee(std::string feeString)
     else if (fee < WalletConfig::minimumFee)
     {
         std::cout << WarningMsg("Fee must be at least ")
-                  << formatAmount(WalletConfig::minimumFee) << "!"
+                  << Common::formatAmountWithTicker(WalletConfig::minimumFee) << "!"
                   << std::endl;
 
         return false;
@@ -1001,13 +997,13 @@ bool parseAmount(std::string amountString)
 {
     uint64_t amount;
 
-    if (!parseAmount(amountString, amount))
+    if (!Common::parseAmount(amountString, amount))
     {
         std::cout << WarningMsg("Failed to parse amount! Ensure you entered "
                                 "the value correctly.")
                   << std::endl
                   << "Please note, the minimum you can send is "
-                  << formatAmount(WalletConfig::minimumSend) << ","
+                  << Common::formatAmountWithTicker(WalletConfig::minimumSend) << ","
                   << std::endl
                   << "and you can only use " << WalletConfig::numDecimalPlaces
                   << " decimal places."
@@ -1019,6 +1015,7 @@ bool parseAmount(std::string amountString)
     return true;
 }
 
+#ifndef __ANDROID__
 bool getOpenAlias(const std::string& alias, std::string& address)
 {
     // If string doesn't contain a dot, we won't consider it an URL
@@ -1130,3 +1127,4 @@ bool askAliasesTransfersConfirmation(const std::string address)
 
     return answer == "y" || answer == "Y";
 }
+#endif

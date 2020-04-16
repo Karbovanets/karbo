@@ -1,5 +1,5 @@
 // Copyright (c) 2018, The TurtleCoin Developers
-// Copyright (c) 2018-2019, The Karbo Developers
+// Copyright (c) 2018-2020, The Karbo Developers
 // 
 // Please see the included LICENSE file for more information.
 
@@ -12,7 +12,7 @@
 
 enum BalanceInfo { NotEnoughBalance, EnoughBalance, SetMixinToZero };
 void transfer(std::shared_ptr<WalletInfo> walletInfo, uint32_t height,
-	bool sendAll = false, std::string nodeAddress = std::string());
+  bool sendAll = false, std::string nodeAddress = std::string(), uint64_t nodeFee = 0);
 
 void doTransfer(std::string address, uint64_t amount, uint64_t fee,
                 std::string extra, std::shared_ptr<WalletInfo> walletInfo,
@@ -37,15 +37,17 @@ bool parseAddress(std::string address);
 
 bool parseFee(std::string feeString);
 
+#ifndef __ANDROID__
 bool getOpenAlias(const std::string& alias, std::string& address);
 
 bool processServerAliasResponse(const std::string& s, std::string& address);
 
 bool askAliasesTransfersConfirmation(const std::string address);
 
-std::string getExtraFromPaymentID(std::string paymentID);
-
 std::string resolveAlias(const std::string& aliasUrl);
+#endif
+
+std::string getExtraFromPaymentID(std::string paymentID);
 
 Maybe<std::string> getPaymentID(std::string msg);
 
@@ -60,5 +62,3 @@ Maybe<uint64_t> getTransferAmount();
 BalanceInfo doWeHaveEnoughBalance(uint64_t amount, uint64_t fee,
 	std::shared_ptr<WalletInfo> walletInfo,
 	uint64_t height, uint32_t nodeFee);
-
-uint64_t calculateNodeFee(uint64_t amount);

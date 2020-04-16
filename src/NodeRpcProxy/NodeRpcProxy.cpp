@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -22,6 +22,9 @@
 #include <atomic>
 #include <system_error>
 #include <thread>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_io.hpp>
+#include <boost/lexical_cast.hpp>
 
 #include <HTTP/HttpRequest.h>
 #include <HTTP/HttpResponse.h>
@@ -31,9 +34,10 @@
 #include <System/EventLock.h>
 #include <System/Timer.h>
 #include <CryptoNoteCore/TransactionApi.h>
-
+#include "Common/FormatTools.h"
 #include "Common/StringTools.h"
 #include "CryptoNoteCore/CryptoNoteBasicImpl.h"
+#include "CryptoNoteCore/CryptoNoteFormatUtils.h"
 #include "CryptoNoteCore/CryptoNoteTools.h"
 #include "Rpc/CoreRpcServerCommandsDefinitions.h"
 #include "Rpc/HttpClient.h"
@@ -72,7 +76,19 @@ NodeRpcProxy::NodeRpcProxy(const std::string& nodeHost, unsigned short nodePort,
     m_connected(true),
     m_peerCount(0),
     m_networkHeight(0),
-    m_nodeHeight(0) {
+    m_nodeHeight(0),
+    m_nextDifficulty(0),
+    m_nextReward(0),
+    m_minimalFee(CryptoNote::parameters::MAXIMUM_FEE),
+    m_alreadyGeneratedCoins(0),
+    m_transactionsCount(0),
+    m_transactionsPoolSize(0),
+    m_altBlocksCount(0),
+    m_outConnectionsCount(0),
+    m_incConnectionsCount(0),
+    m_rpcConnectionsCount(0),
+    m_whitePeerlistSize(0),
+    m_greyPeerlistSize(0) {
   resetInternalState();
 }
 
@@ -165,8 +181,6 @@ void NodeRpcProxy::workerThread(const INode::Callback& initialized_callback) {
       m_cv_initialized.notify_all();
     }
 
-	getFeeAddress();
-
     initialized_callback(std::error_code());
 
     contextGroup.spawn([this]() {
@@ -199,6 +213,7 @@ void NodeRpcProxy::updateNodeStatus() {
     updateBlockchainStatus();
     updateBlockchain = !updatePoolStatus();
   }
+  getFeeAddress(); // Get public node's fee info
 }
 
 bool NodeRpcProxy::updatePoolStatus() {
@@ -275,7 +290,22 @@ void NodeRpcProxy::updateBlockchainStatus() {
 
     updatePeerCount(getInfoResp.incoming_connections_count + getInfoResp.outgoing_connections_count);
     m_nodeHeight.store(getInfoResp.height, std::memory_order_relaxed);
-    m_minimalFee.store(getInfoResp.min_tx_fee, std::memory_order_relaxed);
+    m_minimalFee.store(getInfoResp.min_fee, std::memory_order_relaxed);
+    m_nextDifficulty.store(getInfoResp.difficulty, std::memory_order_relaxed);
+    m_nextReward.store(getInfoResp.next_reward, std::memory_order_relaxed);
+    m_transactionsCount.store(getInfoResp.transactions_count, std::memory_order_relaxed);
+    m_transactionsPoolSize.store(getInfoResp.transactions_pool_size, std::memory_order_relaxed);
+    m_altBlocksCount.store(getInfoResp.alt_blocks_count, std::memory_order_relaxed);
+    m_outConnectionsCount.store(getInfoResp.outgoing_connections_count, std::memory_order_relaxed);
+    m_incConnectionsCount.store(getInfoResp.incoming_connections_count, std::memory_order_relaxed);
+    m_rpcConnectionsCount.store(getInfoResp.rpc_connections_count, std::memory_order_relaxed);
+    m_whitePeerlistSize.store(getInfoResp.white_peerlist_size, std::memory_order_relaxed);
+    m_greyPeerlistSize.store(getInfoResp.grey_peerlist_size, std::memory_order_relaxed);
+    m_nodeVersion = getInfoResp.version;
+    uint64_t alreadyGenCoins;
+    if (Common::parseAmount(boost::lexical_cast<std::string>(getInfoResp.already_generated_coins), alreadyGenCoins)) {
+      m_alreadyGeneratedCoins.store(alreadyGenCoins, std::memory_order_relaxed);
+    }
   }
 
   if (m_connected != m_httpClient->isConnected()) {
@@ -312,12 +342,17 @@ void NodeRpcProxy::getFeeAddress() {
     return;
   }
   m_fee_address = iresp.fee_address;
+  m_fee_amount = iresp.fee_amount;
 
   return;
 }
 
 std::string NodeRpcProxy::feeAddress() const {
   return m_fee_address;
+}
+
+uint64_t NodeRpcProxy::feeAmount() const {
+  return m_fee_amount;
 }
 
 std::vector<Crypto::Hash> NodeRpcProxy::getKnownTxsVector() const {
@@ -371,9 +406,61 @@ uint64_t NodeRpcProxy::getMinimalFee() const {
   return m_minimalFee.load(std::memory_order_relaxed);
 }
 
+uint64_t NodeRpcProxy::getNextDifficulty() const {
+  return m_nextDifficulty.load(std::memory_order_relaxed);
+}
+
+uint64_t NodeRpcProxy::getNextReward() const {
+  return m_nextReward.load(std::memory_order_relaxed);
+}
+
+uint64_t NodeRpcProxy::getAlreadyGeneratedCoins() const {
+  return m_alreadyGeneratedCoins.load(std::memory_order_relaxed);
+}
+
 BlockHeaderInfo NodeRpcProxy::getLastLocalBlockHeaderInfo() const {
   std::lock_guard<std::mutex> lock(m_mutex);
   return lastLocalBlockHeaderInfo;
+}
+
+uint32_t NodeRpcProxy::getNodeHeight() const {
+  return m_nodeHeight.load(std::memory_order_relaxed);
+}
+
+uint64_t NodeRpcProxy::getTransactionsCount() const {
+  return m_transactionsCount.load(std::memory_order_relaxed);
+}
+
+uint64_t NodeRpcProxy::getTransactionsPoolSize() const {
+  return m_transactionsPoolSize.load(std::memory_order_relaxed);
+}
+
+uint64_t NodeRpcProxy::getAltBlocksCount() const {
+  return m_altBlocksCount.load(std::memory_order_relaxed);
+}
+
+uint64_t NodeRpcProxy::getOutConnectionsCount() const {
+  return m_outConnectionsCount.load(std::memory_order_relaxed);
+}
+
+uint64_t NodeRpcProxy::getIncConnectionsCount() const {
+  return m_incConnectionsCount.load(std::memory_order_relaxed);
+}
+
+uint64_t NodeRpcProxy::getRpcConnectionsCount() const {
+  return m_rpcConnectionsCount.load(std::memory_order_relaxed);
+}
+
+uint64_t NodeRpcProxy::getWhitePeerlistSize() const {
+  return m_whitePeerlistSize.load(std::memory_order_relaxed);
+}
+
+uint64_t NodeRpcProxy::getGreyPeerlistSize() const {
+  return m_greyPeerlistSize.load(std::memory_order_relaxed);
+}
+
+std::string NodeRpcProxy::getNodeVersion() const {
+  return m_nodeVersion;
 }
 
 void NodeRpcProxy::getBlockHashesByTimestamps(uint64_t timestampBegin, size_t secondsCount, std::vector<Crypto::Hash>& blockHashes, const Callback& callback) {
@@ -410,10 +497,6 @@ std::error_code NodeRpcProxy::doGetBlockHashesByTimestamps(uint64_t timestampBeg
   }
 
   return ec;
-}
-
-uint32_t NodeRpcProxy::getNodeHeight() const {
-  return m_nodeHeight.load(std::memory_order_relaxed);
 }
 
 void NodeRpcProxy::relayTransaction(const CryptoNote::Transaction& transaction, const Callback& callback) {
@@ -532,6 +615,75 @@ void NodeRpcProxy::getBlock(const uint32_t blockHeight, BlockDetails &block, con
   }
 
   scheduleRequest(std::bind(&NodeRpcProxy::doGetBlock, this, blockHeight, std::ref(block)), callback);
+}
+
+void NodeRpcProxy::getBlockTimestamp(uint32_t height, uint64_t& timestamp, const Callback& callback) {
+  std::lock_guard<std::mutex> lock(m_mutex);
+  if (m_state != STATE_INITIALIZED) {
+    callback(make_error_code(error::NOT_INITIALIZED));
+    return;
+  }
+
+  scheduleRequest(std::bind(&NodeRpcProxy::doGetBlockTimestamp, this, height, std::ref(timestamp)), callback);
+}
+
+std::error_code NodeRpcProxy::doGetBlockTimestamp(uint32_t height, uint64_t& timestamp) {
+  COMMAND_RPC_GET_BLOCK_TIMESTAMP_BY_HEIGHT::request req = AUTO_VAL_INIT(req);
+  COMMAND_RPC_GET_BLOCK_TIMESTAMP_BY_HEIGHT::response rsp = AUTO_VAL_INIT(rsp);
+  req.height = height;
+  std::error_code ec = jsonRpcCommand("getblocktimestamp", req, rsp);
+
+  timestamp = rsp.timestamp;
+  return ec;
+}
+
+void NodeRpcProxy::getConnections(std::vector<p2pConnection>& connections, const Callback& callback) {
+  std::lock_guard<std::mutex> lock(m_mutex);
+  if (m_state != STATE_INITIALIZED) {
+    callback(make_error_code(error::NOT_INITIALIZED));
+    return;
+  }
+
+  scheduleRequest(std::bind(&NodeRpcProxy::doGetConnections, this, std::ref(connections)), callback);
+}
+
+std::error_code NodeRpcProxy::doGetConnections(std::vector<p2pConnection>& connections) {
+  COMMAND_RPC_GET_CONNECTIONS::request req = AUTO_VAL_INIT(req);
+  COMMAND_RPC_GET_CONNECTIONS::response rsp = AUTO_VAL_INIT(rsp);
+
+  std::error_code ec = jsonCommand("/getconnections", req, rsp);
+
+  if (ec || rsp.status != CORE_RPC_STATUS_OK) {
+    return ec;
+  }
+
+  for (const auto& p : rsp.connections) {
+    p2pConnection c;
+
+    c.version = p.version;
+    c.connection_state = get_protocol_state_from_string(p.state);
+    c.connection_id = boost::lexical_cast<boost::uuids::uuid>(p.connection_id);
+    c.remote_ip = Common::stringToIpAddress(p.remote_ip);
+    c.remote_port = p.remote_port;
+    c.is_incoming = p.is_incoming;
+    c.started = p.started;
+    c.remote_blockchain_height = p.remote_blockchain_height;
+    c.last_response_height = p.last_response_height;
+
+    connections.push_back(c);
+  }
+
+  return ec;
+}
+
+void NodeRpcProxy::getTransaction(const Crypto::Hash& transactionHash, CryptoNote::Transaction& transaction, const Callback& callback) {
+  std::lock_guard<std::mutex> lock(m_mutex);
+  if (m_state != STATE_INITIALIZED) {
+    callback(make_error_code(error::NOT_INITIALIZED));
+    return;
+  }
+
+  scheduleRequest(std::bind(&NodeRpcProxy::doGetTransaction, this, std::cref(transactionHash), std::ref(transaction)), callback);
 }
 
 void NodeRpcProxy::getTransactions(const std::vector<Crypto::Hash>& transactionHashes, std::vector<TransactionDetails>& transactions, const Callback& callback) {
@@ -777,6 +929,35 @@ std::error_code NodeRpcProxy::doGetTransactionHashesByPaymentId(const Crypto::Ha
   }
 
   transactionHashes = std::move(resp.transactionHashes);
+  return ec;
+}
+
+std::error_code NodeRpcProxy::doGetTransaction(const Crypto::Hash& transactionHash, CryptoNote::Transaction& transaction) {
+  COMMAND_RPC_GET_TRANSACTIONS::request req = AUTO_VAL_INIT(req);
+  COMMAND_RPC_GET_TRANSACTIONS::response  resp = AUTO_VAL_INIT(resp);
+
+  req.txs_hashes.push_back(Common::podToHex(transactionHash));
+
+  std::error_code ec = jsonCommand("/gettransactions", req, resp);
+  if (ec) {
+    return ec;
+  }
+
+  if (resp.missed_txs.size() > 0) {
+    return make_error_code(CryptoNote::error::REQUEST_ERROR);
+  }
+
+  BinaryArray tx_blob;
+  if (!Common::fromHex(resp.txs_as_hex[0], tx_blob)) {
+    return make_error_code(error::INTERNAL_NODE_ERROR);
+  }
+
+  Crypto::Hash tx_hash = NULL_HASH;
+  Crypto::Hash tx_prefixt_hash = NULL_HASH;
+  if (!parseAndValidateTransactionFromBinaryArray(tx_blob, transaction, tx_hash, tx_prefixt_hash) || tx_hash != transactionHash) {
+    return make_error_code(error::INTERNAL_NODE_ERROR);
+  }
+
   return ec;
 }
 

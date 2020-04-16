@@ -1,5 +1,5 @@
 // Copyright (c) 2018, The TurtleCoin Developers
-// Copyright (c) 2018-2019, The Karbo Developers
+// Copyright (c) 2018-2020, The Karbo Developers
 // 
 // Please see the included LICENSE file for more information.
 
@@ -22,7 +22,7 @@
 #include "Mnemonics/electrum-words.h"
 
 #include <GreenWallet/AddressBook.h>
-#include <GreenWallet/ColouredMsg.h>
+#include <Common/ColouredMsg.h>
 #include <GreenWallet/Commands.h>
 #include <GreenWallet/Fusion.h>
 #include <GreenWallet/Menu.h>
@@ -152,11 +152,11 @@ void balance(CryptoNote::INode &node, CryptoNote::WalletGreen &wallet,
     const uint32_t walletHeight = wallet.getBlockCount();
 
     std::cout << "Available balance: "
-              << SuccessMsg(Tools::formatAmount(confirmedBalance)) << std::endl
+              << SuccessMsg(Common::formatAmountWithTicker(confirmedBalance)) << std::endl
               << "Locked (unconfirmed) balance: "
-              << WarningMsg(Tools::formatAmount(unconfirmedBalance))
+              << WarningMsg(Common::formatAmountWithTicker(unconfirmedBalance))
               << std::endl << "Total balance: "
-              << InformationMsg(Tools::formatAmount(totalBalance)) << std::endl;
+              << InformationMsg(Common::formatAmountWithTicker(totalBalance)) << std::endl;
 
     if (viewWallet)
     {
@@ -463,7 +463,7 @@ void saveCSV(CryptoNote::WalletGreen &wallet, CryptoNote::INode &node)
             continue;
         }
 
-        const std::string amount = Tools::formatAmountBasic(std::abs(t.totalAmount));
+        const std::string amount = Common::formatAmountBasic(std::abs(t.totalAmount));
 
         const std::string direction = t.totalAmount > 0 ? "IN" : "OUT";
 
@@ -502,11 +502,11 @@ void printOutgoingTransfer(CryptoNote::WalletTransaction t,
                   << std::endl;
     }
 
-    std::cout << WarningMsg("Spent: " + Tools::formatAmount(-t.totalAmount - t.fee))
+    std::cout << WarningMsg("Spent: " + Common::formatAmountWithTicker(-t.totalAmount - t.fee))
               << std::endl
-              << WarningMsg("Fee: " + Tools::formatAmount(t.fee))
+              << WarningMsg("Fee: " + Common::formatAmountWithTicker(t.fee))
               << std::endl
-              << WarningMsg("Total Spent: " + Tools::formatAmount(-t.totalAmount))
+              << WarningMsg("Total Spent: " + Common::formatAmountWithTicker(-t.totalAmount))
               << std::endl;
 
     const std::string paymentID = Tools::getPaymentIDFromExtra(t.extra);
@@ -540,7 +540,7 @@ void printIncomingTransfer(CryptoNote::WalletTransaction t,
 
     std::cout << SuccessMsg("Hash: " + Common::podToHex(t.hash))
               << std::endl
-              << SuccessMsg("Amount: " + Tools::formatAmount(t.totalAmount))
+              << SuccessMsg("Amount: " + Common::formatAmountWithTicker(t.totalAmount))
               << std::endl;
 
     const std::string paymentID = Tools::getPaymentIDFromExtra(t.extra);
@@ -580,13 +580,13 @@ void listTransfers(bool incoming, bool outgoing,
     if (incoming)
     {
         std::cout << SuccessMsg("Total received: " 
-                              + Tools::formatAmount(totalReceived))
+                              + Common::formatAmountWithTicker(totalReceived))
                   << std::endl;
     }
 
     if (outgoing)
     {
-        std::cout << WarningMsg("Total spent: " + Tools::formatAmount(totalSpent))
+        std::cout << WarningMsg("Total spent: " + Common::formatAmountWithTicker(totalSpent))
                   << std::endl;
     }
 }
@@ -817,13 +817,13 @@ void reserveProof(std::shared_ptr<WalletInfo> walletInfo, bool viewWallet)
             break;
         }
 
-        if (parseAmount(amtStr, amount))
+        if (Common::parseAmount(amtStr, amount))
         {
             if (amount > actualBalance)
             {
                 std::cout << WarningMsg("Amount is bigger than ")
                           << WarningMsg("actual balance ")
-                          << WarningMsg(Tools::formatAmount(actualBalance))
+                          << WarningMsg(Common::formatAmountWithTicker(actualBalance))
                           << std::endl;
             }
             else {

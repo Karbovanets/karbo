@@ -31,7 +31,7 @@
 #include "ITransactionPool.h"
 #include <Logging/LoggerMessage.h>
 #include <Logging/LoggerRef.h>
-#include "TransactionValidatiorState.h"
+#include "TransactionValidatorState.h"
 
 namespace CryptoNote {
 

@@ -174,6 +174,9 @@ public:
   virtual std::vector<Crypto::Hash> getTransactionHashesByPaymentId(const Crypto::Hash& paymentId) const override;
   virtual std::vector<Crypto::Hash> getBlockHashesByTimestamps(uint64_t timestampBegin, size_t secondsCount) const override;
 
+  virtual std::vector<RawBlock> getBlocksByHeight(const uint64_t startHeight, const uint64_t endHeight) const override;
+  virtual std::vector<RawBlock> getNonEmptyBlocks(const uint64_t startHeight, const size_t blockCount) const override;
+
 private:
   const Currency& currency;
   IDataBase& database;

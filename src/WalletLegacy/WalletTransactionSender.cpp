@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -16,7 +16,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Karbo.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "crypto/crypto.h" //for rand()
+#include "crypto/crypto.h"
+#include "crypto/random.h"
 #include "CryptoNoteCore/Account.h"
 #include "CryptoNoteCore/CryptoNoteFormatUtils.h"
 #include "CryptoNoteCore/CryptoNoteTools.h"
@@ -27,8 +28,6 @@
 #include "CryptoNoteCore/CryptoNoteBasicImpl.h"
 
 #include <Logging/LoggerGroup.h>
-
-#include <random>
 
 using namespace Crypto;
 
@@ -368,10 +367,11 @@ T popRandomValue(URNG& randomGenerator, std::vector<T>& vec) {
 }
 
 
-uint64_t WalletTransactionSender::selectTransfersToSend(uint64_t neededMoney, bool addDust, uint64_t dust, std::list<TransactionOutputInformation>& selectedTransfers) {
+uint64_t WalletTransactionSender::selectTransfersToSend(uint64_t neededMoney, bool addUnmixable, uint64_t dust, std::list<TransactionOutputInformation>& selectedTransfers) {
 
   std::vector<size_t> unusedTransfers;
   std::vector<size_t> unusedDust;
+  std::vector<size_t> unusedUnmixable;
 
   std::vector<TransactionOutputInformation> outputs;
   m_transferDetails.getOutputs(outputs, ITransfersContainer::IncludeKeyUnlocked);
@@ -379,26 +379,31 @@ uint64_t WalletTransactionSender::selectTransfersToSend(uint64_t neededMoney, bo
   for (size_t i = 0; i < outputs.size(); ++i) {
     const auto& out = outputs[i];
     if (!m_transactionsCache.isUsed(out)) {
-      if (dust < out.amount)
-        unusedTransfers.push_back(i);
-      else
-        unusedDust.push_back(i);
+      if (is_valid_decomposed_amount(out.amount)) {
+        if (dust < out.amount) {
+          unusedTransfers.push_back(i);
+        }
+        else {
+          unusedDust.push_back(i);
+        }
+      }
+      else {
+        unusedUnmixable.push_back(i);
+      }
     }
   }
 
-  std::default_random_engine randomGenerator(Crypto::rand<std::default_random_engine::result_type>());
-  bool selectOneDust = addDust && !unusedDust.empty();
   uint64_t foundMoney = 0;
 
-  while (foundMoney < neededMoney && (!unusedTransfers.empty() || !unusedDust.empty())) {
+  while (foundMoney < neededMoney && (!unusedTransfers.empty() || !unusedDust.empty() || (addUnmixable && !unusedUnmixable.empty()))) {
     size_t idx;
-    if (selectOneDust) {
-      idx = popRandomValue(randomGenerator, unusedDust);
-      selectOneDust = false;
-    } else {
-      idx = !unusedTransfers.empty() ? popRandomValue(randomGenerator, unusedTransfers) : popRandomValue(randomGenerator, unusedDust);
+    std::mt19937 urng = Random::generator();
+    if (addUnmixable && !unusedUnmixable.empty()) {
+      idx = popRandomValue(urng, unusedUnmixable);
     }
-
+    else {
+      idx = !unusedTransfers.empty() ? popRandomValue(urng, unusedTransfers) : popRandomValue(urng, unusedDust);
+    }
     selectedTransfers.push_back(outputs[idx]);
     foundMoney += outputs[idx].amount;
   }
@@ -406,6 +411,5 @@ uint64_t WalletTransactionSender::selectTransfersToSend(uint64_t neededMoney, bo
   return foundMoney;
 
 }
-
 
 } /* namespace CryptoNote */

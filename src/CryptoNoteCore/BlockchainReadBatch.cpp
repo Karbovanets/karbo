@@ -98,6 +98,14 @@ BlockchainReadBatch& BlockchainReadBatch::requestRawBlock(uint32_t blockIndex) {
   return *this;
 }
 
+BlockchainReadBatch &BlockchainReadBatch::requestRawBlocks(uint64_t startHeight, uint64_t endHeight) {
+  for (uint64_t i = startHeight; i < endHeight; i++) {
+    state.rawBlocks.emplace(i, RawBlock());
+  }
+
+  return *this;
+}
+
 BlockchainReadBatch& BlockchainReadBatch::requestLastBlockIndex() {
   state.lastBlockIndex.second = true;
   return *this;

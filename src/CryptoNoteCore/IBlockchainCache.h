@@ -25,7 +25,7 @@
 #include "CryptoNoteCore/CachedBlock.h"
 #include "CryptoNoteCore/CachedTransaction.h"
 #include "CryptoNoteCore/Difficulty.h"
-#include "CryptoNoteCore/TransactionValidatiorState.h"
+#include "CryptoNoteCore/TransactionValidatorState.h"
 #include "Common/ArrayView.h"
 #include <CryptoNoteCore/Difficulty.h>
 
@@ -52,7 +52,19 @@ union PackedOutIndex {
 
 const uint32_t INVALID_BLOCK_INDEX = std::numeric_limits<uint32_t>::max();
 
+struct CachedBlockInfo {
+  Crypto::Hash blockHash;
+  uint64_t timestamp;
+  Difficulty cumulativeDifficulty;
+  uint64_t alreadyGeneratedCoins;
+  uint64_t alreadyGeneratedTransactions;
+  uint32_t blockSize;
+
+  void serialize(ISerializer& s);
+};
+
 struct PushedBlockInfo {
+  CachedBlockInfo cachedBlock;
   RawBlock rawBlock;
   TransactionValidatorState validatorState;
   size_t blockSize;
@@ -71,8 +83,7 @@ public:
 private:
   bool use = false;
 };
-  
-struct CachedBlockInfo;
+
 struct CachedTransactionInfo;
 class ITransactionPool;
 
@@ -190,6 +201,9 @@ public:
 
   virtual std::vector<Crypto::Hash> getTransactionHashesByPaymentId(const Crypto::Hash& paymentId) const = 0;
   virtual std::vector<Crypto::Hash> getBlockHashesByTimestamps(uint64_t timestampBegin, size_t secondsCount) const = 0;
+
+  virtual std::vector<RawBlock> getBlocksByHeight(const uint64_t startHeight, uint64_t endHeight) const = 0;
+  virtual std::vector<RawBlock> getNonEmptyBlocks(const uint64_t startHeight, const size_t blockCount) const = 0;
 };
 
 }

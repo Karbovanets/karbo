@@ -33,7 +33,7 @@ namespace CryptoNote {
 
 class RocksDBWrapper : public IDataBase {
 public:
-  RocksDBWrapper(Logging::ILogger& logger);
+  RocksDBWrapper(Logging::ILogger& logger, const DataBaseConfig& config);
   virtual ~RocksDBWrapper() override;
 
   RocksDBWrapper(const RocksDBWrapper&) = delete;
@@ -42,13 +42,14 @@ public:
   RocksDBWrapper& operator=(const RocksDBWrapper&) = delete;
   RocksDBWrapper& operator=(RocksDBWrapper&&) = delete;
 
-  void init(const DataBaseConfig& config);
+  void init();
   void shutdown();
-  void destoy(const DataBaseConfig& config); //Be careful with this method!
+  void destroy(); //Be careful with this method!
 
   std::error_code write(IWriteBatch& batch) override;
   std::error_code writeSync(IWriteBatch& batch) override;
   std::error_code read(IReadBatch& batch) override;
+  std::error_code readThreadSafe(IReadBatch &batch) override;
 
 private:
   std::error_code write(IWriteBatch& batch, bool sync);
@@ -64,5 +65,6 @@ private:
   Logging::LoggerRef logger;
   std::unique_ptr<rocksdb::DB> db;
   std::atomic<State> state;
+  const DataBaseConfig m_config;
 };
 }

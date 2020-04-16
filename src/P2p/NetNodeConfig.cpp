@@ -1,5 +1,6 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2018-2019, The TurtleCoin Developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -23,7 +24,7 @@
 #include <Common/Util.h>
 #include "Common/CommandLine.h"
 #include "Common/StringTools.h"
-#include "crypto/crypto.h"
+#include "crypto/random.h"
 #include "CryptoNoteConfig.h"
 
 namespace CryptoNote {
@@ -115,7 +116,7 @@ bool NetNodeConfig::init(const boost::program_options::variables_map& vm)
     std::vector<std::string> perrs = command_line::get_arg(vm, arg_p2p_add_peer);
     for(const std::string& pr_str: perrs) {
       PeerlistEntry pe = boost::value_initialized<PeerlistEntry>();
-      pe.id = Crypto::rand<uint64_t>();
+      pe.id = Random::randomValue<uint64_t>();
       if (!parsePeerFromString(pe.adr, pr_str)) {
         return false;
       }

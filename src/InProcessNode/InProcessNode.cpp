@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -26,6 +26,7 @@
 #include <System/RemoteContext.h>
 
 #include "CryptoNoteConfig.h"
+#include "Common/Math.h"
 #include "Common/StringTools.h"
 #include "Common/ScopeExit.h"
 #include "CryptoNoteCore/CryptoNoteTools.h"
@@ -33,6 +34,8 @@
 #include "CryptoNoteProtocol/CryptoNoteProtocolHandlerCommon.h"
 #include "InProcessNodeErrors.h"
 #include "Common/StringTools.h"
+#include "P2p/ConnectionContext.h"
+#include "version.h"
 
 using namespace Crypto;
 using namespace Common;
@@ -552,6 +555,95 @@ uint64_t InProcessNode::getMinimalFee() const {
   return core.getMinimalFee();
 }
 
+uint64_t InProcessNode::getNextDifficulty() const {
+  std::unique_lock<std::mutex> lock(mutex);
+  if (state != INITIALIZED) {
+    throw std::system_error(make_error_code(CryptoNote::error::NOT_INITIALIZED));
+  }
+  return core.getDifficultyForNextBlock();
+}
+
+uint64_t InProcessNode::getNextReward() const {
+  std::unique_lock<std::mutex> lock(mutex);
+  if (state != INITIALIZED) {
+    throw std::system_error(make_error_code(CryptoNote::error::NOT_INITIALIZED));
+  }
+
+  uint64_t alreadyGeneratedCoins = core.getTotalGeneratedAmount();
+  uint64_t nextReward = core.calculateReward(alreadyGeneratedCoins);
+
+  return nextReward;
+}
+
+uint64_t InProcessNode::getAlreadyGeneratedCoins() const {
+  std::unique_lock<std::mutex> lock(mutex);
+  if (state != INITIALIZED) {
+    throw std::system_error(make_error_code(CryptoNote::error::NOT_INITIALIZED));
+  }
+  return core.getTotalGeneratedAmount();
+}
+
+uint64_t InProcessNode::getTransactionsCount() const {
+  std::unique_lock<std::mutex> lock(mutex);
+  if (state != INITIALIZED) {
+    throw std::system_error(make_error_code(CryptoNote::error::NOT_INITIALIZED));
+  }
+
+  return core.getBlockchainTransactionsCount() - core.getCurrentBlockchainHeight();
+}
+
+uint64_t InProcessNode::getTransactionsPoolSize() const {
+  std::unique_lock<std::mutex> lock(mutex);
+  if (state != INITIALIZED) {
+    throw std::system_error(make_error_code(CryptoNote::error::NOT_INITIALIZED));
+  }
+
+  return core.getPoolTransactionsCount();
+}
+
+uint64_t InProcessNode::getAltBlocksCount() const {
+  std::unique_lock<std::mutex> lock(mutex);
+  if (state != INITIALIZED) {
+    throw std::system_error(make_error_code(CryptoNote::error::NOT_INITIALIZED));
+  }
+
+  return core.getAlternativeBlocksCount();
+}
+
+uint64_t InProcessNode::getOutConnectionsCount() const {
+  // NOT IMPLEMENTED
+
+  return 0;
+}
+
+uint64_t InProcessNode::getIncConnectionsCount() const {
+  // NOT IMPLEMENTED
+
+  return 0;
+}
+
+uint64_t InProcessNode::getRpcConnectionsCount() const {
+  // NOT IMPLEMENTED
+
+  return 0;
+}
+
+uint64_t InProcessNode::getWhitePeerlistSize() const {
+  // NOT IMPLEMENTED
+
+  return 0;
+}
+
+uint64_t InProcessNode::getGreyPeerlistSize() const {
+  // NOT IMPLEMENTED
+
+  return 0;
+}
+
+std::string InProcessNode::getNodeVersion() const {
+  return PROJECT_VERSION_LONG;
+}
+
 BlockHeaderInfo InProcessNode::getLastLocalBlockHeaderInfo() const {
   std::unique_lock<std::mutex> lock(mutex);
   if (state != INITIALIZED) {
@@ -559,15 +651,6 @@ BlockHeaderInfo InProcessNode::getLastLocalBlockHeaderInfo() const {
   }
 
   return lastLocalBlockHeaderInfo;
-}
-
-void InProcessNode::getFeeAddress() {
-  // Do nothing
-  return;
-}
-
-std::string InProcessNode::feeAddress() const {
-  return std::string();
 }
 
 void InProcessNode::getBlockHashesByTimestamps(uint64_t timestampBegin, size_t secondsCount, std::vector<Crypto::Hash>& blockHashes, const Callback& callback) {
@@ -906,6 +989,62 @@ std::error_code InProcessNode::doGetBlocks(const std::vector<Crypto::Hash>& bloc
   return std::error_code();
 }
 
+void InProcessNode::getBlockTimestamp(uint32_t height, uint64_t& timestamp, const Callback& callback) {
+  std::unique_lock<std::mutex> lock(mutex);
+  if (state != INITIALIZED) {
+    lock.unlock();
+    callback(make_error_code(CryptoNote::error::NOT_INITIALIZED));
+    return;
+  }
+
+  executeInDispatcherThread([=, &height, &timestamp]() {
+    auto ec = doGetBlockTimestamp(height, timestamp);
+    executeInRemoteThread([callback, ec]() { callback(ec); });
+  });
+}
+
+std::error_code InProcessNode::doGetBlockTimestamp(uint32_t height, uint64_t& timestamp) {
+  timestamp = core.getBlockTimestamp(height);
+
+  return std::error_code();
+}
+
+void InProcessNode::getTransaction(const Crypto::Hash& transactionHash, CryptoNote::Transaction& transaction, const Callback& callback) {
+  std::unique_lock<std::mutex> lock(mutex);
+  if (state != INITIALIZED) {
+    lock.unlock();
+    callback(make_error_code(CryptoNote::error::NOT_INITIALIZED));
+    return;
+  }
+
+  executeInDispatcherThread([=, &transaction]() {
+    auto ec = doGetTransaction(transactionHash, transaction);
+    executeInRemoteThread([callback, ec]() { callback(ec); });
+  });
+}
+
+std::error_code InProcessNode::doGetTransaction(const Crypto::Hash& transactionHash, CryptoNote::Transaction& transaction) {
+  try {
+    std::vector<Hash> tx_hashes;
+    tx_hashes.push_back(transactionHash);
+    std::vector<Hash> missed_txs;
+    std::vector<BinaryArray> txs;
+    core.getTransactions(tx_hashes, txs, missed_txs);
+    if (1 == txs.size()) {
+      if (!fromBinaryArray(transaction, txs.front())) {
+        return make_error_code(CryptoNote::error::INTERNAL_NODE_ERROR);
+      }
+    }
+  }
+  catch (std::system_error& e) {
+    return e.code();
+  }
+  catch (std::exception&) {
+    return make_error_code(CryptoNote::error::INTERNAL_NODE_ERROR);
+  }
+  return std::error_code();
+}
+
 void InProcessNode::getTransactions(const std::vector<Crypto::Hash>& transactionHashes,
                                     std::vector<TransactionDetails>& transactions, const Callback& callback) {
   std::unique_lock<std::mutex> lock(mutex);
@@ -987,6 +1126,45 @@ void InProcessNode::isSynchronized(bool& syncStatus, const Callback& callback) {
     syncStatus = protocol.isSynchronized();
     executeInRemoteThread([callback] () { callback({}); });
   });
+}
+
+void InProcessNode::getConnections(std::vector<p2pConnection>& connections, const Callback& callback) {
+  std::unique_lock<std::mutex> lock(mutex);
+  if (state != INITIALIZED) {
+    lock.unlock();
+    callback(make_error_code(CryptoNote::error::NOT_INITIALIZED));
+    return;
+  }
+
+  executeInDispatcherThread([=, &connections]() {
+    auto ec = doGetConnections(connections);
+    executeInRemoteThread([callback, ec]() { callback(ec); });
+  });
+}
+
+std::error_code InProcessNode::doGetConnections(std::vector<p2pConnection>& connections) {
+  std::vector<CryptoNoteConnectionContext> peers;
+  if (!protocol.getConnections(peers)) {
+    return make_error_code(CryptoNote::error::INTERNAL_NODE_ERROR);
+  }
+
+  for (const auto& p : peers) {
+    p2pConnection c;
+
+    c.version = p.version;
+    c.connection_state = static_cast<p2pConnection::state>(p.m_state);
+    c.connection_id = p.m_connection_id;
+    c.remote_ip = p.m_remote_ip;
+    c.remote_port = p.m_remote_port;
+    c.is_incoming = p.m_is_income;
+    c.started = static_cast<uint64_t>(p.m_started);
+    c.remote_blockchain_height = p.m_remote_blockchain_height;
+    c.last_response_height = p.m_last_response_height;
+
+    connections.push_back(c);
+  }
+
+  return std::error_code();
 }
 
 } //namespace CryptoNote

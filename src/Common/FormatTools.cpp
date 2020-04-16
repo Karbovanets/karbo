@@ -12,10 +12,17 @@
 
 #include <cstdio>
 #include <ctime>
+#include <boost/algorithm/string/trim.hpp>
+#include <boost/math/special_functions/round.hpp>
 
 #include "../CryptoNoteConfig.h"
+#include "Common/StringTools.h"
 #include "CryptoNoteCore/Core.h"
 #include "Rpc/CoreRpcServerCommandsDefinitions.h"
+
+namespace {
+  const size_t numberOfDecimalPlaces = CryptoNote::parameters::CRYPTONOTE_DISPLAY_DECIMAL_POINT;
+}
 
 namespace Common
 {
@@ -89,7 +96,7 @@ std::string formatDollars(const uint64_t amount)
     /* We want to format our number with comma separators so it's easier to
        use. Now, we could use the nice print_money() function to do this.
        However, whilst this initially looks pretty handy, if we have a locale
-       such as ja_JP.utf8, 1 TRTL will actually be formatted as 100 TRTL, which
+       such as ja_JP.utf8, 1 KRB will actually be formatted as 100 KRB, which
        is terrible, and could really screw over users.
 
        So, easy solution right? Just use en_US.utf8! Sure, it's not very
@@ -142,55 +149,114 @@ std::string formatCents(const uint64_t amount)
     return stream.str();
 }
 
-std::string formatAmount(const uint64_t amount)
+std::string formatAmountWithTicker(const uint64_t amount)
 {
     const uint64_t divisor = getDivisor();
     const uint64_t dollars = amount / divisor;
     const uint64_t cents = amount % divisor;
 
     return formatDollars(dollars) + "." + formatCents(cents) + " "
-         + "KRB";
+         + CryptoNote::CRYPTONOTE_TICKER;
+}
+
+std::string formatAmount(uint64_t amount)
+{
+    std::string s = std::to_string(amount);
+    if (s.size() < numberOfDecimalPlaces + 1)
+	{
+		s.insert(0, numberOfDecimalPlaces + 1 - s.size(), '0');
+    }
+    s.insert(s.size() - numberOfDecimalPlaces, ".");
+    return s;
+}
+
+std::string formatAmount(int64_t amount)
+{
+    std::string s = formatAmount(static_cast<uint64_t>(std::abs(amount)));
+
+    if (amount < 0)
+	{
+		s.insert(0, "-");
+    }
+
+    return s;
 }
 
 std::string formatAmountBasic(const uint64_t amount)
 {
-    const uint64_t divisor = getDivisor();
-    const uint64_t dollars = amount / divisor;
-    const uint64_t cents = amount % divisor;
+        const uint64_t divisor = getDivisor();
+        const uint64_t dollars = amount / divisor;
+        const uint64_t cents = amount % divisor;
 
-    return std::to_string(dollars) + "." + formatCents(cents);
+        return std::to_string(dollars) + "." + formatCents(cents);
 }
 
 std::string prettyPrintBytes(uint64_t input)
 {
-    /* Store as a double so we can have 12.34 kb for example */
-    double numBytes = static_cast<double>(input);
+        /* Store as a double so we can have 12.34 kb for example */
+        double numBytes = static_cast<double>(input);
 
-    std::vector<std::string> suffixes = { "B", "KB", "MB", "GB", "TB"};
+        std::vector<std::string> suffixes = { "B", "KB", "MB", "GB", "TB"};
 
-    uint64_t selectedSuffix = 0;
+        uint64_t selectedSuffix = 0;
 
-    while (numBytes >= 1024 && selectedSuffix < suffixes.size() - 1)
-    {
-        selectedSuffix++;
+        while (numBytes >= 1024 && selectedSuffix < suffixes.size() - 1)
+        {
+                selectedSuffix++;
 
-        numBytes /= 1024;
-    }
+                numBytes /= 1024;
+        }
 
-    std::stringstream msg;
+        std::stringstream msg;
 
-    msg << std::fixed << std::setprecision(2) << numBytes << " "
-        << suffixes[selectedSuffix];
+        msg << std::fixed << std::setprecision(2) << numBytes << " "
+                << suffixes[selectedSuffix];
 
-    return msg.str();
+        return msg.str();
 }
 
 std::string unixTimeToDate(const uint64_t timestamp)
 {
-    const std::time_t time = timestamp;
-    char buffer[100];
-    std::strftime(buffer, sizeof(buffer), "%F %R", std::localtime(&time));
-    return std::string(buffer);
+        const std::time_t time = timestamp;
+        char buffer[100];
+        std::strftime(buffer, sizeof(buffer), "%F %R", std::localtime(&time));
+        return std::string(buffer);
+}
+
+bool parseAmount(const std::string& str, uint64_t& amount) {
+	std::string strAmount = str;
+	boost::algorithm::trim(strAmount);
+
+	size_t pointIndex = strAmount.find_first_of('.');
+	size_t fractionSize;
+	if (std::string::npos != pointIndex) {
+		fractionSize = strAmount.size() - pointIndex - 1;
+		while (numberOfDecimalPlaces < fractionSize && '0' == strAmount.back()) {
+			strAmount.erase(strAmount.size() - 1, 1);
+			--fractionSize;
+		}
+		if (numberOfDecimalPlaces < fractionSize) {
+			return false;
+		}
+		strAmount.erase(pointIndex, 1);
+	}
+	else {
+		fractionSize = 0;
+	}
+
+	if (strAmount.empty()) {
+		return false;
+	}
+
+	if (!std::all_of(strAmount.begin(), strAmount.end(), ::isdigit)) {
+		return false;
+	}
+
+	if (fractionSize < numberOfDecimalPlaces) {
+		strAmount.append(numberOfDecimalPlaces - fractionSize, '0');
+	}
+
+	return Common::fromString(strAmount, amount);
 }
 
 } // namespace Common

@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -69,14 +69,25 @@ public:
   virtual uint32_t getNodeHeight() const override;
   virtual uint64_t getLastLocalBlockTimestamp() const override;
   virtual uint64_t getMinimalFee() const override;
+  virtual uint64_t getNextDifficulty() const override;
+  virtual uint64_t getNextReward() const override;
+  virtual uint64_t getAlreadyGeneratedCoins() const override;
+  virtual uint64_t getTransactionsCount() const override;
+  virtual uint64_t getTransactionsPoolSize() const override;
+  virtual uint64_t getAltBlocksCount() const override;
+  virtual uint64_t getOutConnectionsCount() const override;
+  virtual uint64_t getIncConnectionsCount() const override;
+  virtual uint64_t getRpcConnectionsCount() const override;
+  virtual uint64_t getWhitePeerlistSize() const override;
+  virtual uint64_t getGreyPeerlistSize() const override;
+  virtual std::string getNodeVersion() const override;
+  virtual std::string feeAddress() const override { return std::string(); }
+  virtual uint64_t feeAmount() const override { return 0; }
 
   virtual void getBlockHashesByTimestamps(uint64_t timestampBegin, size_t secondsCount, std::vector<Crypto::Hash>& blockHashes, const Callback& callback) override;
   virtual void getTransactionHashesByPaymentId(const Crypto::Hash& paymentId, std::vector<Crypto::Hash>& transactionHashes, const Callback& callback) override;
 
   virtual BlockHeaderInfo getLastLocalBlockHeaderInfo() const override;
-
-  virtual void getFeeAddress() override;
-  virtual std::string feeAddress() const override;
 
   virtual void getNewBlocks(std::vector<Crypto::Hash>&& knownBlockIds, std::vector<RawBlock>& newBlocks, uint32_t& startHeight, const Callback& callback) override;
   virtual void getTransactionOutsGlobalIndices(const Crypto::Hash& transactionHash, std::vector<uint32_t>& outsGlobalIndices, const Callback& callback) override;
@@ -92,9 +103,12 @@ public:
   virtual void getBlocks(const std::vector<uint32_t>& blockHeights, std::vector<std::vector<BlockDetails>>& blocks, const Callback& callback) override;
   virtual void getBlocks(const std::vector<Crypto::Hash>& blockHashes, std::vector<BlockDetails>& blocks, const Callback& callback) override;
   virtual void getBlock(const uint32_t blockHeight, BlockDetails &block, const Callback& callback) override;
+  virtual void getBlockTimestamp(uint32_t height, uint64_t& timestamp, const Callback& callback) override;
+  virtual void getTransaction(const Crypto::Hash& transactionHash, CryptoNote::Transaction& transaction, const Callback& callback) override;
   virtual void getTransactions(const std::vector<Crypto::Hash>& transactionHashes, std::vector<TransactionDetails>& transactions, const Callback& callback) override;
   virtual void getTransactionsByPaymentId(const Crypto::Hash& paymentId, std::vector<TransactionDetails>& transactions, const Callback& callback) override;
   virtual void isSynchronized(bool& syncStatus, const Callback& callback) override;
+  virtual void getConnections(std::vector<p2pConnection>& connections, const Callback& callback) override;
 
 private:
   virtual void peerCountUpdated(size_t count) override;
@@ -118,10 +132,13 @@ private:
   std::error_code doGetOutputByMultisigGlobalIndex(uint64_t amount, uint32_t gindex, MultisignatureOutput& out);
   std::error_code doGetBlocks(const std::vector<uint32_t>& blockHeights, std::vector<std::vector<BlockDetails>>& blocks);
   std::error_code doGetBlocks(const std::vector<Crypto::Hash>& blockHashes, std::vector<BlockDetails>& blocks);
+  std::error_code doGetBlockTimestamp(uint32_t height, uint64_t& timestamp);
+  std::error_code doGetTransaction(const Crypto::Hash& transactionHash, CryptoNote::Transaction& transaction);
   std::error_code doGetTransactions(const std::vector<Crypto::Hash>& transactionHashes, std::vector<TransactionDetails>& transactions);
   std::error_code doGetTransactionsByPaymentId(const Crypto::Hash& paymentId, std::vector<TransactionDetails>& transactions);
   std::error_code doGetPoolSymmetricDifference(std::vector<Crypto::Hash>&& knownPoolTxIds, Crypto::Hash knownBlockId,
     bool& isBcActual, std::vector<std::unique_ptr<ITransactionReader>>& newTxs, std::vector<Crypto::Hash>& deletedTxIds);
+  std::error_code doGetConnections(std::vector<p2pConnection>& connections);
 
   bool doShutdown();
 

@@ -1,6 +1,7 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2018, The TurtleCoin Developers
-// Copyright (c) 2018-2019 The Karbo developers
+// Copyright (c) 2018-2019 The Cash2 developers
+// Copyright (c) 2016-2020 The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -59,6 +60,7 @@ struct Export {
 struct Reset {
   struct Request {
     std::string viewSecretKey;
+    uint32_t scanHeight = std::numeric_limits<uint32_t>::max();
 
     void serialize(CryptoNote::ISerializer& serializer);
   };
@@ -106,6 +108,7 @@ struct GetStatus {
     std::string lastBlockHash;
     uint32_t peerCount;
     uint64_t minimalFee;
+    std::string version;
 
     void serialize(CryptoNote::ISerializer& serializer);
   };
@@ -140,10 +143,23 @@ struct GetAddresses {
   };
 };
 
+struct GetAddressesCount {
+  struct Request {
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+
+  struct Response {
+    size_t addresses_count;
+
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+};
+
 struct CreateAddress {
   struct Request {
     std::string spendSecretKey;
     std::string spendPublicKey;
+    uint32_t scanHeight = std::numeric_limits<uint32_t>::max();
     bool reset;
 
     void serialize(CryptoNote::ISerializer& serializer);
@@ -159,6 +175,7 @@ struct CreateAddress {
 struct CreateAddressList {
   struct Request {
     std::vector<std::string> spendSecretKeys;
+    std::vector<uint32_t> scanHeights;
     bool reset;
 
     void serialize(CryptoNote::ISerializer& serializer);

@@ -1,5 +1,7 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2014-2018, The Monero project
+// Copyright (c) 2014-2018, The Forknote developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -82,5 +84,8 @@ private:
   //bool start_mining(const std::vector<std::string>& args);
   //bool stop_mining(const std::vector<std::string>& args);
   bool print_diff(const std::vector<std::string>& args);
+  bool print_ban(const std::vector<std::string>& args);
+  bool ban(const std::vector<std::string>& args);
+  bool unban(const std::vector<std::string>& args);
   bool status(const std::vector<std::string>& args);
 };

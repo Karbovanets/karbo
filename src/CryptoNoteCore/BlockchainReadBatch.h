@@ -141,6 +141,7 @@ public:
   BlockchainReadBatch& requestSpentMultisignatureOutputGlobalIndexesByBlock(uint32_t blockIndex);
   BlockchainReadBatch& requestMultisignatureOutputSpendingStatus(IBlockchainCache::Amount amount, IBlockchainCache::GlobalOutputIndex index);
   BlockchainReadBatch& requestRawBlock(uint32_t blockIndex);
+  BlockchainReadBatch& requestRawBlocks(uint64_t startHeight, uint64_t endHeight);
   BlockchainReadBatch& requestLastBlockIndex();
   BlockchainReadBatch& requestClosestTimestampBlockIndex(uint64_t timestamp);
   BlockchainReadBatch& requestKeyOutputAmountsCount();
