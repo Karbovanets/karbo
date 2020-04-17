@@ -11,8 +11,8 @@
 #include <crypto/hash.h>
 #include <crypto/random.h>
 
-constexpr inline int CHACHA8_KEY_SIZE = 32;
-constexpr inline int CHACHA8_IV_SIZE = 8;
+#define CHACHA8_KEY_SIZE 32
+#define CHACHA8_IV_SIZE 8
 
 namespace Crypto
 {

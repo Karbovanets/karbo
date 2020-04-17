@@ -11,43 +11,29 @@
 #include <system_error>
 
 #include "CryptoNote.h"
-#include "CryptoNoteCore/CachedTransaction.h"
-#include "CryptoNoteCore/Checkpoints.h"
-#include "CryptoNoteCore/Currency.h"
-#include "CryptoNoteCore/IBlockchainCache.h"
+#include "CachedTransaction.h"
+#include "Checkpoints.h"
+#include "Currency.h"
+#include "IBlockchainCache.h"
+#include "TransactionValidationResult.h"
 #include "Common/ThreadPool.h"
 
-struct TransactionValidationResult 
+namespace CryptoNote
 {
-    /* A programmatic error code of the result */
-    std::error_code errorCode;
 
-    /* An error message describing the error code */
-    std::string errorMessage;
-
-    /* Whether the transaction is valid */
-    bool valid = false;
-
-    /* The fee of the transaction */
-    uint64_t fee = 0;
-
-    /* Is this transaction a fusion transaction */
-    bool isFusionTransaction = false;
-};
-
-class ValidateTransaction
+class TransactionValidator
 {
     public:
         /////////////////
         /* CONSTRUCTOR */
         /////////////////
-        ValidateTransaction(
+        TransactionValidator(
             const CryptoNote::CachedTransaction &cachedTransaction,
             CryptoNote::TransactionValidatorState &state,
             CryptoNote::IBlockchainCache *cache,
             const CryptoNote::Currency &currency,
             const CryptoNote::Checkpoints &checkpoints,
-            Utilities::ThreadPool<bool> &threadPool,
+            Tools::ThreadPool &threadPool,
             const uint32_t blockHeight,
             const uint64_t blockSizeMedian,
             const uint64_t minFee,
@@ -56,9 +42,9 @@ class ValidateTransaction
         /////////////////////////////
         /* PUBLIC MEMBER FUNCTIONS */
         /////////////////////////////
-        TransactionValidationResult validate();
+        CryptoNote::TransactionValidationResult validate();
 
-        TransactionValidationResult revalidateAfterHeightChange();
+        CryptoNote::TransactionValidationResult revalidateAfterHeightChange();
 
     private:
         //////////////////////////////
@@ -103,10 +89,12 @@ class ValidateTransaction
 
         const bool m_isPoolTransaction;
 
-        TransactionValidationResult m_validationResult;
+        CryptoNote::TransactionValidationResult m_validationResult;
 
         uint64_t m_sumOfOutputs = 0;
         uint64_t m_sumOfInputs = 0;
 
-        Utilities::ThreadPool<bool> &m_threadPool;
+        Tools::ThreadPool &m_threadPool;
 };
+
+}

@@ -12,13 +12,15 @@
 #include "TransactionValidationErrors.h"
 #include "TransactionValidator.h"
 
-ValidateTransaction::ValidateTransaction(
+namespace CryptoNote {
+
+TransactionValidator::TransactionValidator(
     const CryptoNote::CachedTransaction &cachedTransaction,
     CryptoNote::TransactionValidatorState &state,
     CryptoNote::IBlockchainCache *cache,
     const CryptoNote::Currency &currency,
     const CryptoNote::Checkpoints &checkpoints,
-    Utilities::ThreadPool<bool> &threadPool,
+    Tools::ThreadPool &threadPool,
     const uint32_t blockHeight,
     const uint64_t blockSizeMedian,
     const uint64_t minFee,
@@ -37,7 +39,7 @@ ValidateTransaction::ValidateTransaction(
 {
 }
 
-TransactionValidationResult ValidateTransaction::validate()
+CryptoNote::TransactionValidationResult TransactionValidator::validate()
 {
     /* Validate transaction isn't too big */
     if (!validateTransactionSize())
@@ -97,7 +99,7 @@ TransactionValidationResult ValidateTransaction::validate()
 }
 
 /* Note: Does not set the .fee property */
-TransactionValidationResult ValidateTransaction::revalidateAfterHeightChange()
+CryptoNote::TransactionValidationResult TransactionValidator::revalidateAfterHeightChange()
 {
     /* Validate transaction isn't too big now that the median size has changed */
     if (!validateTransactionSize())
@@ -124,7 +126,7 @@ TransactionValidationResult ValidateTransaction::revalidateAfterHeightChange()
 }
 
 
-bool ValidateTransaction::validateTransactionSize()
+bool TransactionValidator::validateTransactionSize()
 {
     const auto maxTransactionSize = CryptoNote::parameters::MAX_TRANSACTION_SIZE_LIMIT;
 
@@ -138,7 +140,7 @@ bool ValidateTransaction::validateTransactionSize()
     return true;
 }
 
-bool ValidateTransaction::validateTransactionInputs()
+bool TransactionValidator::validateTransactionInputs()
 {
     if (m_transaction.inputs.empty())
     {
@@ -280,7 +282,7 @@ bool ValidateTransaction::validateTransactionInputs()
     return true;
 }
 
-bool ValidateTransaction::validateTransactionOutputs()
+bool TransactionValidator::validateTransactionOutputs()
 {
     uint64_t sumOfOutputs = 0;
 
@@ -307,7 +309,7 @@ bool ValidateTransaction::validateTransactionOutputs()
 
         if (output.target.type() == typeid(CryptoNote::KeyOutput))
         {
-            if (!check_key(boost::get<CryptoNote::KeyOutput>(output.target).key))
+            if (!Crypto::check_key(boost::get<CryptoNote::KeyOutput>(output.target).key))
             {
                 m_validationResult.errorCode = CryptoNote::error::TransactionValidationError::OUTPUT_INVALID_KEY;
                 m_validationResult.errorMessage = "Transaction output has an invalid output key";
@@ -360,7 +362,7 @@ bool ValidateTransaction::validateTransactionOutputs()
  * Pre-requisite - Call validateTransactionInputs() and validateTransactionOutputs()
  * to ensure m_sumOfInputs and m_sumOfOutputs is set
  */
-bool ValidateTransaction::validateTransactionFee()
+bool TransactionValidator::validateTransactionFee()
 {
     if (m_sumOfInputs == 0)
     {
@@ -405,7 +407,7 @@ bool ValidateTransaction::validateTransactionFee()
     return true;
 }
 
-bool ValidateTransaction::validateTransactionExtra()
+bool TransactionValidator::validateTransactionExtra()
 {
     // Karbo's fee per byte for Extra
     if (m_blockHeight > CryptoNote::parameters::UPGRADE_HEIGHT_FEE_PER_BYTE)
@@ -426,13 +428,13 @@ bool ValidateTransaction::validateTransactionExtra()
     return true;
 }
 
-bool ValidateTransaction::validateInputOutputRatio()
+bool TransactionValidator::validateInputOutputRatio()
 {
     // do nothing
     return true;
 }
 
-bool ValidateTransaction::validateTransactionMixin()
+bool TransactionValidator::validateTransactionMixin()
 {
     uint64_t mixin = 0;
     for (const auto &input : m_transaction.inputs)
@@ -457,7 +459,7 @@ bool ValidateTransaction::validateTransactionMixin()
     return true;
 }
 
-bool ValidateTransaction::validateTransactionInputsExpensive()
+bool TransactionValidator::validateTransactionInputsExpensive()
 {
     /* Don't need to do expensive transaction validation for transactions
      * in a checkpoints range - they are assumed valid, and the transaction
@@ -469,14 +471,14 @@ bool ValidateTransaction::validateTransactionInputsExpensive()
 
     uint64_t inputIndex = 0;
 
-    std::vector<std::future<bool>> validationResult;
+    std::vector<std::future<bool>> validationResults;
     std::atomic<bool> cancelValidation = false;
     const Crypto::Hash prefixHash = m_cachedTransaction.getTransactionPrefixHash();
 
     for (const auto &input : m_transaction.inputs)
     {
         /* Validate each input on a separate thread in our thread pool */
-        validationResult.push_back(m_threadPool.addJob([inputIndex, &input, &prefixHash, &cancelValidation, this] {
+        validationResults.emplace_back(m_threadPool.enqueue([inputIndex, &input, &prefixHash, &cancelValidation, this] {
             if (cancelValidation)
             {
               return false; // fail the validation immediately if cancel requested
@@ -587,7 +589,7 @@ bool ValidateTransaction::validateTransactionInputsExpensive()
 
     bool valid = true;
 
-    for (auto &result : validationResult)
+    for (auto &result : validationResults)
     {
         if (!result.get())
         {
@@ -597,4 +599,6 @@ bool ValidateTransaction::validateTransactionInputsExpensive()
     }
 
     return valid;
+}
+
 }

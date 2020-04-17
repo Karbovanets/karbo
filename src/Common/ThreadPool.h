@@ -1,155 +1,121 @@
-// Copyright (c) 2019, The TurtleCoin Developers
+// Copyright (c) 2012 Jakob Progsch, Václav Zeman
+// 
+// This software is provided 'as-is', without any express or implied
+// warranty.In no event will the authors be held liable for any damages
+// arising from the use of this software.
 //
-// Please see the included LICENSE file for more information.
+// Permission is granted to anyone to use this software for any purpose,
+// including commercial applications, and to alter it and redistribute it
+// freely, subject to the following restrictions :
+//
+// 1. The origin of this software must not be misrepresented; you must not
+// claim that you wrote the original software.If you use this software
+// in a product, an acknowledgment in the product documentation would be
+// appreciated but is not required.
+//
+// 2. Altered source versions must be plainly marked as such, and must not be
+// misrepresented as being the original software.
+//
+// 3. This notice may not be removed or altered from any source
+// distribution.
 
-#pragma once
+#ifndef THREAD_POOL_H
+#define THREAD_POOL_H
 
-#include <functional>
-#include <future>
-#include <mutex>
-#include <queue>
-#include <thread>
 #include <vector>
+#include <queue>
+#include <memory>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <future>
+#include <functional>
+#include <stdexcept>
 
-namespace Utilities
-{
-    template<typename ReturnValue>
-    class ThreadPool
+namespace Tools {
+  class ThreadPool {
+  public:
+    ThreadPool(size_t);
+    template<class F, class... Args>
+    auto enqueue(F&& f, Args&&... args)
+      ->std::future<typename std::result_of<F(Args...)>::type>;
+    ~ThreadPool();
+  private:
+    // need to keep track of threads so we can join them
+    std::vector< std::thread > workers;
+    // the task queue
+    std::queue< std::function<void()> > tasks;
+
+    // synchronization
+    std::mutex queue_mutex;
+    std::condition_variable condition;
+    bool stop;
+  };
+
+  // the constructor just launches some amount of workers
+  inline ThreadPool::ThreadPool(size_t threads)
+    : stop(false)
+  {
+    for (size_t i = 0; i < threads; ++i)
+      workers.emplace_back(
+        [this]
     {
-        public:
-            /////////////////
-            /* CONSTRUCTOR */
-            /////////////////
+      for (;;)
+      {
+        std::function<void()> task;
 
-            ThreadPool() : ThreadPool(std::thread::hardware_concurrency())
-            {
-            }
+        {
+          std::unique_lock<std::mutex> lock(this->queue_mutex);
+          this->condition.wait(lock,
+            [this] { return this->stop || !this->tasks.empty(); });
+          if (this->stop && this->tasks.empty())
+            return;
+          task = std::move(this->tasks.front());
+          this->tasks.pop();
+        }
 
-            ThreadPool(uint64_t threadCount) :
-                m_shouldStop(false)
-            {
-                if (threadCount == 0)
-                {
-                    threadCount = 1;
-                }
+        task();
+      }
+    }
+    );
+  }
 
-                m_threadCount = threadCount;
+  // add new work item to the pool
+  template<class F, class... Args>
+  auto ThreadPool::enqueue(F&& f, Args&&... args)
+  -> std::future<typename std::result_of<F(Args...)>::type>
+  {
+    using return_type = typename std::result_of<F(Args...)>::type;
 
-                /* Launch our worker threads */
-                for (uint64_t i = 0; i < threadCount; i++)
-                {
-                    m_threads.push_back(std::thread(&ThreadPool::waitForJob, this));
-                }
-            }
+    auto task = std::make_shared< std::packaged_task<return_type()> >(
+      std::bind(std::forward<F>(f), std::forward<Args>(args)...)
+      );
 
-            ////////////////
-            /* DESTRUCTOR */
-            ////////////////
+    std::future<return_type> res = task->get_future();
+    {
+      std::unique_lock<std::mutex> lock(queue_mutex);
 
-            ~ThreadPool()
-            {
-                /* Signal threads to stop */
-                m_shouldStop = true;
+      // don't allow enqueueing after stopping the pool
+      if (stop)
+        throw std::runtime_error("enqueue on stopped ThreadPool");
 
-                /* Wake them all up */
-                m_haveJob.notify_all();
+      tasks.emplace([task]() { (*task)(); });
+    }
+    condition.notify_one();
+    return res;
+  }
 
-                /* Wait for them to stop */
-                for (auto &thread : m_threads)
-                {
-                    thread.join();
-                }
-            }
+  // the destructor joins all threads
+  inline ThreadPool::~ThreadPool()
+  {
+    {
+      std::unique_lock<std::mutex> lock(queue_mutex);
+      stop = true;
+    }
+    condition.notify_all();
+    for (std::thread &worker : workers)
+      worker.join();
+  }
 
-            /////////////////////////////
-            /* PUBLIC MEMBER FUNCTIONS */
-            /////////////////////////////
-
-            std::future<ReturnValue> addJob(const std::function<ReturnValue()> job)
-            {
-                std::promise<ReturnValue> promise;
-
-                std::future<ReturnValue> result = promise.get_future();
-
-                /* Aquire lock */
-                std::unique_lock<std::mutex> lock(m_mutex);
-
-                /* Add job to queue */
-                m_queue.push({ job, std::move(promise) });
-
-                /* Manually unlocking here so we don't wake up and instantly
-                 * sleep upon notify_one */
-                lock.unlock();
-
-                /* Wake up a thread to process the job */
-                m_haveJob.notify_one();
-
-                return result;
-            }
-
-        private:
-
-            //////////////////////////////
-            /* PRIVATE MEMBER FUNCTIONS */
-            //////////////////////////////
-
-            void waitForJob()
-            {
-                while (!m_shouldStop)
-                {
-                    std::unique_lock<std::mutex> lock(m_mutex);
-
-                    /* Wait for data to become available or to be stopped */
-                    m_haveJob.wait(lock, [&] {
-                        if (m_shouldStop)
-                        {
-                            return true;
-                        }
-
-                        return !m_queue.empty();
-                    });
-
-                    if (m_shouldStop)
-                    {
-                        return;
-                    }
-
-                    /* Take next job from queue */
-                    auto [job, result] = std::move(m_queue.front());
-
-                    /* Remove item from queue */
-                    m_queue.pop();
-
-                    /* Undo the lock so other threads can process jobs */
-                    lock.unlock();
-
-                    /* Process job and set return value */
-                    result.set_value(job());
-                }
-            }
-
-            //////////////////////////////
-            /* PRIVATE MEMBER VARIABLES */
-            //////////////////////////////
-
-            /* The work threads */
-            std::vector<std::thread> m_threads;
-
-            /* The amount of threads to launch */
-            uint64_t m_threadCount;
-
-            /* Whether we're stopping */
-            std::atomic<bool> m_shouldStop;
-
-            /* Whether we have a new job to process */
-            std::condition_variable m_haveJob;
-
-            /* Mutex to serialize access to job queue */
-            std::mutex m_mutex;
-
-            /* The queue of job functions and job results */
-            std::queue<
-                std::tuple<std::function<ReturnValue()>, std::promise<ReturnValue>>
-            > m_queue;
-    };
 }
+#endif

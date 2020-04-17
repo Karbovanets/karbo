@@ -42,6 +42,7 @@
 #include "CryptoNoteCore/TransactionPool.h"
 #include "CryptoNoteCore/TransactionPoolCleaner.h"
 #include "CryptoNoteCore/UpgradeManager.h"
+#include "CryptoNoteCore/TransactionValidationResult.h"
 #include "CryptoNoteCore/TransactionValidator.h"
 #include "CryptoNoteProtocol/CryptoNoteProtocolHandlerCommon.h"
 
@@ -1363,8 +1364,8 @@ bool Core::extractTransactions(const std::vector<BinaryArray>& rawTransactions,
 }
 
 std::error_code Core::validateTransaction(const CachedTransaction& cachedTransaction, TransactionValidatorState& state, IBlockchainCache* cache,
-                                          Utilities::ThreadPool<bool> &threadPool, uint64_t& fee, uint64_t minFee, uint32_t blockIndex, const bool isPoolTransaction) {
-  ValidateTransaction txValidator(
+                                          Tools::ThreadPool &threadPool, uint64_t& fee, uint64_t minFee, uint32_t blockIndex, const bool isPoolTransaction) {
+  TransactionValidator txValidator(
     cachedTransaction,
     state,
     cache,
@@ -1376,7 +1377,7 @@ std::error_code Core::validateTransaction(const CachedTransaction& cachedTransac
     minFee,
     isPoolTransaction
   );
-  const auto result = txValidator.validate();
+  const CryptoNote::TransactionValidationResult result = txValidator.validate();
   fee = result.fee;
   return result.errorCode;
 }
