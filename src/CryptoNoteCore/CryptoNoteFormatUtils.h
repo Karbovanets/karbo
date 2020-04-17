@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -22,7 +22,7 @@
 
 #include "CryptoNoteBasic.h"
 #include "CryptoNoteSerialization.h"
-
+#include "ITransfersContainer.h"
 #include "Serialization/BinaryOutputStreamSerializer.h"
 #include "Serialization/BinaryInputStreamSerializer.h"
 
@@ -65,7 +65,8 @@ bool is_out_to_acc(const AccountKeys& acc, const KeyOutput& out_key, const Crypt
 bool lookup_acc_outs(const AccountKeys& acc, const Transaction& tx, const Crypto::PublicKey& tx_pub_key, std::vector<size_t>& outs, uint64_t& money_transfered);
 bool lookup_acc_outs(const AccountKeys& acc, const Transaction& tx, std::vector<size_t>& outs, uint64_t& money_transfered);
 bool get_tx_fee(const Transaction& tx, uint64_t & fee);
-uint64_t get_tx_fee(const Transaction& tx);
+bool getTransactionProof(const Crypto::Hash& transactionHash, const CryptoNote::AccountPublicAddress& destinationAddress, const Crypto::SecretKey& transactionKey, std::string& transactionProof, Logging::ILogger& log);
+bool getReserveProof(const std::vector<TransactionOutputInformation>& selectedTransfers, const CryptoNote::AccountKeys& accountKeys, const uint64_t& amount, const std::string& message, std::string& reserveProof, Logging::ILogger& log);
 bool generate_key_image_helper(const AccountKeys& ack, const Crypto::PublicKey& tx_public_key, size_t real_output_index, KeyPair& in_ephemeral, Crypto::KeyImage& ki);
 bool getInputsMoneyAmount(const Transaction& tx, uint64_t& money);
 bool checkInputTypesSupported(const TransactionPrefix& tx);
@@ -75,6 +76,7 @@ bool checkMoneyOverflow(const TransactionPrefix &tx);
 bool checkInputsOverflow(const TransactionPrefix &tx);
 bool checkOutsOverflow(const TransactionPrefix& tx);
 uint64_t get_outs_money_amount(const Transaction& tx);
+uint64_t get_tx_fee(const Transaction& tx);
 std::string short_hash_str(const Crypto::Hash& h);
 
 std::vector<uint32_t> relativeOutputOffsetsToAbsolute(const std::vector<uint32_t>& off);
