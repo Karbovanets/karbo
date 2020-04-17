@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -112,6 +112,10 @@ bool ConfigurationManager::init(int argc, char** argv) {
 
   if (cmdOptions["local"].as<bool>()) {
     startInprocess = true;
+  }
+
+  if (gateConfiguration.containerFile.empty()) {
+    throw ConfigurationError("Сontainer file not set");
   }
 
   return true;
