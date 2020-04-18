@@ -4,6 +4,27 @@ project(Karbo)
 # Required for finding Threads on ARM
 enable_language(C)
 enable_language(CXX)
+
+# Assert our compiler is good
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    # GCC 7.0 or higher
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7)
+        message(FATAL_ERROR "GCC/G++ 7.0 or greater is required to compile. Please check the README.md for detailed compilation instructions.")
+    endif ()
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    # Clang 6.0 or higher
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 6)
+        message(FATAL_ERROR "Clang 6.0 or greater is required to compile. Please check the README.md for detailed compilation instructions.")
+    endif ()
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    # Visual Studio 15 2017 or higher
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 19.10)
+        message(FATAL_ERROR "MSVC 19.10 or greater is required to compile (Latest Visual Studio 15 2017 should suffice). Please check the README.md for detailed compilation instructions.")
+    endif ()
+else ()
+    message(WARNING "You are using an unsupported compiler. The compilation is very likely to fail. God speed.")
+endif ()
+
 find_package(Threads)
 
 set(VERSION "0.1")
@@ -16,8 +37,6 @@ set(CMAKE_SKIP_INSTALL_RULES OFF FORCE)
 set(CMAKE_SKIP_PACKAGE_ALL_DEPENDENCY ON FORCE)
 set(CMAKE_SUPPRESS_REGENERATION ON)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
-
-set(FIND_BOOST_VERSION 1.55)
 
 ## This section is specifically for RocksDB build options that we've disabled for maximum portability
 set(ENABLE_AVX OFF CACHE STRING "Enable RocksDB AVX/AVX2? Defaults to OFF")
@@ -266,7 +285,7 @@ endif()
 ## Go get us some static BOOST libraries
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_STATIC_RUNTIME ON)
-find_package(Boost ${FIND_BOOST_VERSION} REQUIRED COMPONENTS system filesystem thread date_time chrono regex serialization program_options coroutine context atomic)
+find_package(Boost REQUIRED COMPONENTS system filesystem thread date_time chrono regex serialization program_options coroutine context atomic)
 message(STATUS "Boost Found: ${Boost_INCLUDE_DIRS}")
 include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
 if(APPLE OR OPENBSD OR ANDROID)
@@ -278,6 +297,7 @@ endif()
 find_package(Rocksdb 5.15.10)
 
 add_subdirectory(external)
+add_subdirectory(include)
 add_subdirectory(src)
 
 ## We need to setup the RocksDB build environment to match our system
@@ -290,4 +310,3 @@ if (NOT ROCKSDB_FOUND)
     set_directory_properties(PROPERTIES ADDITIONAL_MAKE_CLEAN_FILES "${PROJECT_BINARY_DIR}/rocksdb/librocksdb.a")
   endif()
 endif()
-
