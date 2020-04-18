@@ -75,6 +75,7 @@ public:
     uint32_t& startIndex, uint32_t& currentIndex, uint32_t& fullOffset, std::vector<BlockShortInfo>& entries) const override;
 
   virtual bool hasTransaction(const Crypto::Hash& transactionHash) const override;
+  virtual bool getTransaction(const Crypto::Hash& transactionHash, BinaryArray& transaction) const override;
   virtual void getTransactions(const std::vector<Crypto::Hash>& transactionHashes, std::vector<BinaryArray>& transactions, std::vector<Crypto::Hash>& missedHashes) const override;
 
   virtual Difficulty getBlockDifficulty(uint32_t blockIndex) const override;
@@ -95,6 +96,7 @@ public:
   virtual bool addTransactionToPool(const BinaryArray& transactionBinaryArray) override;
 
   virtual std::vector<Crypto::Hash> getPoolTransactionHashes() const override;
+  virtual bool getPoolTransaction(const Crypto::Hash& transactionHash, BinaryArray& transaction) const override;
   virtual bool getPoolChanges(const Crypto::Hash& lastBlockHash, const std::vector<Crypto::Hash>& knownHashes, std::vector<BinaryArray>& addedTransactions,
     std::vector<Crypto::Hash>& deletedTransactions) const override;
   virtual bool getPoolChangesLite(const Crypto::Hash& lastBlockHash, const std::vector<Crypto::Hash>& knownHashes, std::vector<TransactionPrefixInfo>& addedTransactions,
