@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -16,6 +16,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Karbo.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <assert.h>
 #include <new>
 
 #include "hash.h"
@@ -42,13 +43,13 @@ namespace Crypto {
   cn_context::cn_context() {
     data = VirtualAlloc(nullptr, MAP_SIZE, MEM_COMMIT, PAGE_READWRITE);
     if (data == nullptr) {
-      throw bad_alloc();
+      throw std::bad_alloc();
     }
   }
 
   cn_context::~cn_context() {
     if (!VirtualFree(data, 0, MEM_RELEASE)) {
-      std::terminate();
+      assert(false);
     }
   }
 
@@ -61,13 +62,14 @@ namespace Crypto {
     data = mmap(nullptr, MAP_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
 #endif
     if (data == MAP_FAILED) {
-      throw bad_alloc();
+      throw std::bad_alloc();
     }
     mlock(data, MAP_SIZE);
   }
 
   cn_context::~cn_context() {
     if (munmap(data, MAP_SIZE) != 0) {
+      assert(false);
       std::terminate();
     }
   }

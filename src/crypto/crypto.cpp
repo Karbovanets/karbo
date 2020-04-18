@@ -30,14 +30,11 @@
 
 #include "Common/Varint.h"
 #include "crypto.h"
+#include "crypto-ops.h"
 #include "hash.h"
 #include "random.h"
 
 namespace Crypto {
-
-  extern "C" {
-#include "crypto-ops.h"
-  }
 
   static inline unsigned char *operator &(EllipticCurvePoint &point) {
     return &reinterpret_cast<unsigned char &>(point);
@@ -62,7 +59,7 @@ namespace Crypto {
     memcpy(&res, tmp, 32);
   }
 
-  static inline void hash_to_scalar(const void *data, size_t length, EllipticCurveScalar &res) {
+  void hash_to_scalar(const void *data, size_t length, EllipticCurveScalar &res) {
     cn_fast_hash(data, length, reinterpret_cast<Hash &>(res));
     sc_reduce32(reinterpret_cast<unsigned char*>(&res));
   }
@@ -105,6 +102,20 @@ namespace Crypto {
   bool crypto_ops::check_key(const PublicKey &key) {
     ge_p3 point;
     return ge_frombytes_vartime(&point, reinterpret_cast<const unsigned char*>(&key)) == 0;
+  }
+
+  bool crypto_ops::secret_key_mult_public_key(const SecretKey &sec, const PublicKey &pub, PublicKey &result) {
+    if (sc_check(&sec) != 0) {
+      return false;
+    }
+    ge_p3 point;
+    if (ge_frombytes_vartime(&point, &pub) != 0) {
+      return false;
+    }
+    ge_p2 point2;
+    ge_scalarmult(&point2, &sec, &point);
+    ge_tobytes(reinterpret_cast<unsigned char*>(&result), &point2);
+    return true;
   }
 
   bool crypto_ops::secret_key_to_public_key(const SecretKey &sec, PublicKey &pub) {

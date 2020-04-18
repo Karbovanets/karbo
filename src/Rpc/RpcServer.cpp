@@ -1,7 +1,7 @@
-// Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2014-2018, The Monero Project
 // Copyright (c) 2016, The Forknote developers
-// Copyright (c) 2016-2018, The Karbowanec developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -52,8 +52,6 @@ using namespace Crypto;
 using namespace Common;
 
 const uint64_t BLOCK_LIST_MAX_COUNT = 1000;
-
-static const Crypto::SecretKey I = { { 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } };
 
 namespace CryptoNote {
 
@@ -1367,7 +1365,7 @@ bool RpcServer::onCheckTxProof(const COMMAND_RPC_CHECK_TX_PROOF::request& req, C
 
     // obtain key derivation by multiplying scalar 1 to the pubkey r*A included in the signature
     Crypto::KeyDerivation derivation;
-    if (!Crypto::generate_key_derivation(rA, I, derivation)) {
+    if (!Crypto::generate_key_derivation(rA, Crypto::EllipticCurveScalar2SecretKey(Crypto::I), derivation)) {
       throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Failed to generate key derivation" };
     }
 
@@ -1486,7 +1484,7 @@ bool RpcServer::onCheckReserveProof(const COMMAND_RPC_CHECK_RESERVE_PROOF::reque
 
     // check if the address really received the fund
     Crypto::KeyDerivation derivation;
-    if (!Crypto::generate_key_derivation(proof.shared_secret, I, derivation)) {
+    if (!Crypto::generate_key_derivation(proof.shared_secret, Crypto::EllipticCurveScalar2SecretKey(Crypto::I), derivation)) {
       throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Failed to generate key derivation" };
     }
     try {

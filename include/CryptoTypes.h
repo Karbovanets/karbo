@@ -1,5 +1,5 @@
-// Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2012-2018, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -22,36 +22,57 @@
 #include <algorithm>
 #include <iterator>
 #include <Common/StringTools.h>
+#include <crypto/crypto-util.h>
 #include "json.hpp"
 
 using namespace Common;
 
 namespace Crypto {
 
+#pragma pack(push, 1)
+struct EllipticCurvePoint {
+  uint8_t data[32];
+};
+
+struct EllipticCurveScalar {
+  uint8_t data[32];
+};
+
 struct Hash {
   uint8_t data[32];
 };
 
-struct PublicKey {
-  uint8_t data[32];
+struct PublicKey : public EllipticCurvePoint {};
+
+struct SecretKey : public EllipticCurveScalar {
+  ~SecretKey() { sodium_memzero(data, sizeof(data)); }
 };
 
-struct SecretKey {
-  uint8_t data[32];
-};
+struct KeyDerivation : public EllipticCurvePoint {};
 
-struct KeyDerivation {
-  uint8_t data[32];
-};
-
-struct KeyImage {
-  uint8_t data[32];
-};
+struct KeyImage : public EllipticCurvePoint {};
 
 struct Signature {
-  uint8_t data[64];
+  EllipticCurveScalar c, r;
 };
+#pragma pack(pop)
 
+static_assert(sizeof(EllipticCurvePoint) == 32 && sizeof(EllipticCurveScalar) == 32, "Invalid structure size");
+
+static_assert(sizeof(Hash) == 32 && sizeof(PublicKey) == 32 && sizeof(SecretKey) == 32 && sizeof(KeyDerivation) == 32 &&
+  sizeof(KeyImage) == 32 && sizeof(Signature) == 64, "Invalid structure size");
+
+// identity (a zero elliptic curve point)
+const struct EllipticCurveScalar I = { { 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } };
+
+// curve order
+const struct EllipticCurveScalar L = { { 0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58, 0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10 } };
+
+// zero scalar
+const struct EllipticCurveScalar Z = { { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } };
+
+// curve basepoint
+const struct EllipticCurveScalar G = { { 0x58, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66 } };
 
 inline void from_json(const nlohmann::json &j, Crypto::Hash &h)
 {
