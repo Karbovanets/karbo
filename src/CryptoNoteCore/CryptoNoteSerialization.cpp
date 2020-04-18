@@ -1,6 +1,6 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2018-2019, The TurtleCoin developers
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -288,6 +288,10 @@ void serialize(MultisignatureInput& multisignature, ISerializer& serializer) {
   serializer(multisignature.amount, "amount");
   serializer(multisignature.signatureCount, "signatures");
   serializer(multisignature.outputIndex, "outputIndex");
+}
+
+void serialize(TransactionInputs & inputs, ISerializer & serializer) {
+  serializer(inputs, "vin");
 }
 
 void serialize(TransactionOutput& output, ISerializer& serializer) {

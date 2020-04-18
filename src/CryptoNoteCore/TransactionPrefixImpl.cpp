@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -39,6 +39,7 @@ public:
 
   virtual Hash getTransactionHash() const override;
   virtual Hash getTransactionPrefixHash() const override;
+  virtual Hash getTransactionInputsHash() const override;
   virtual PublicKey getTransactionPublicKey() const override;
   virtual uint64_t getUnlockTime() const override;
 
@@ -53,6 +54,7 @@ public:
   virtual TransactionTypes::InputType getInputType(size_t index) const override;
   virtual void getInput(size_t index, KeyInput& input) const override;
   virtual void getInput(size_t index, MultisignatureInput& input) const override;
+  virtual std::vector<TransactionInput> getInputs() const override;
 
   // outputs
   virtual size_t getOutputCount() const override;
@@ -72,6 +74,8 @@ public:
 
   // serialized transaction
   virtual BinaryArray getTransactionData() const override;
+
+  virtual TransactionPrefix getTransactionPrefix() const override;
 
   virtual bool getTransactionSecretKey(SecretKey& key) const override;
 
@@ -97,6 +101,10 @@ Hash TransactionPrefixImpl::getTransactionHash() const {
 
 Hash TransactionPrefixImpl::getTransactionPrefixHash() const {
   return getObjectHash(m_txPrefix);
+}
+
+Hash TransactionPrefixImpl::getTransactionInputsHash() const {
+  return getObjectHash(m_txPrefix.inputs);
 }
 
 PublicKey TransactionPrefixImpl::getTransactionPublicKey() const {
@@ -159,6 +167,10 @@ void TransactionPrefixImpl::getInput(size_t index, MultisignatureInput& input) c
   input = boost::get<MultisignatureInput>(getInputChecked(m_txPrefix, index, TransactionTypes::InputType::Multisignature));
 }
 
+std::vector<TransactionInput> TransactionPrefixImpl::getInputs() const {
+  return m_txPrefix.inputs;
+}
+
 size_t TransactionPrefixImpl::getOutputCount() const {
   return m_txPrefix.outputs.size();
 }
@@ -214,10 +226,13 @@ BinaryArray TransactionPrefixImpl::getTransactionData() const {
   return toBinaryArray(m_txPrefix);
 }
 
+TransactionPrefix TransactionPrefixImpl::getTransactionPrefix() const {
+  return m_txPrefix;
+}
+
 bool TransactionPrefixImpl::getTransactionSecretKey(SecretKey& key) const {
   return false;
 }
-
 
 std::unique_ptr<ITransactionReader> createTransactionPrefix(const TransactionPrefix& prefix, const Hash& transactionHash) {
   return std::unique_ptr<ITransactionReader> (new TransactionPrefixImpl(prefix, transactionHash));

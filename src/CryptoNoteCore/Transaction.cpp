@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -55,10 +55,11 @@ namespace CryptoNote {
     TransactionImpl();
     TransactionImpl(const BinaryArray& txblob);
     TransactionImpl(const CryptoNote::Transaction& tx);
-  
+
     // ITransactionReader
     virtual Hash getTransactionHash() const override;
     virtual Hash getTransactionPrefixHash() const override;
+    virtual Hash getTransactionInputsHash() const override;
     virtual PublicKey getTransactionPublicKey() const override;
     virtual uint64_t getUnlockTime() const override;
     virtual bool getPaymentId(Hash& hash) const override;
@@ -71,6 +72,7 @@ namespace CryptoNote {
     virtual TransactionTypes::InputType getInputType(size_t index) const override;
     virtual void getInput(size_t index, KeyInput& input) const override;
     virtual void getInput(size_t index, MultisignatureInput& input) const override;
+    virtual std::vector<TransactionInput> getInputs() const override;
 
     // outputs
     virtual size_t getOutputCount() const override;
@@ -89,6 +91,8 @@ namespace CryptoNote {
 
     // get serialized transaction
     virtual BinaryArray getTransactionData() const override;
+
+    TransactionPrefix getTransactionPrefix() const override;
 
     // ITransactionWriter
 
@@ -158,7 +162,7 @@ namespace CryptoNote {
     return std::unique_ptr<ITransaction>(new TransactionImpl(tx));
   }
 
-  TransactionImpl::TransactionImpl() {   
+  TransactionImpl::TransactionImpl() {
     CryptoNote::KeyPair txKeys(CryptoNote::generateKeyPair());
 
     TransactionExtraPublicKey pk = { txKeys.publicKey };
@@ -175,7 +179,7 @@ namespace CryptoNote {
     if (!fromBinaryArray(transaction, ba)) {
       throw std::runtime_error("Invalid transaction data");
     }
-    
+
     extra.parse(transaction.extra);
     transactionHash = getBinaryArrayHash(ba); // avoid serialization if we already have blob
   }
@@ -195,11 +199,15 @@ namespace CryptoNote {
       transactionHash = getObjectHash(transaction);
     }
 
-    return transactionHash.get();   
+    return transactionHash.get();
   }
 
   Hash TransactionImpl::getTransactionPrefixHash() const {
     return getObjectHash(*static_cast<const TransactionPrefix*>(&transaction));
+  }
+
+  Hash TransactionImpl::getTransactionInputsHash() const {
+    return getObjectHash(transaction.inputs);
   }
 
   PublicKey TransactionImpl::getTransactionPublicKey() const {
@@ -296,7 +304,7 @@ namespace CryptoNote {
     MultisignatureOutput outMsig;
     outMsig.requiredSignatureCount = requiredSignatures;
     outMsig.keys.resize(to.size());
-    
+
     for (size_t i = 0; i < to.size(); ++i) {
       derivePublicKey(to[i], txKey, outputIndex, outMsig.keys[i]);
     }
@@ -403,6 +411,10 @@ namespace CryptoNote {
     return toBinaryArray(transaction);
   }
 
+  TransactionPrefix TransactionImpl::getTransactionPrefix() const {
+    return transaction;
+  }
+
   void TransactionImpl::setPaymentId(const Hash& hash) {
     checkIfSigning();
     BinaryArray paymentIdBlob;
@@ -468,6 +480,10 @@ namespace CryptoNote {
 
   void TransactionImpl::getInput(size_t index, MultisignatureInput& input) const {
     input = boost::get<MultisignatureInput>(getInputChecked(transaction, index, TransactionTypes::InputType::Multisignature));
+  }
+
+  std::vector<TransactionInput> TransactionImpl::getInputs() const {
+    return transaction.inputs;
   }
 
   size_t TransactionImpl::getOutputCount() const {

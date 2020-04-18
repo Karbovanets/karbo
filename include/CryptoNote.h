@@ -24,6 +24,7 @@
 
 #include "android.h"
 #include "json.hpp"
+#include "BinaryArray.hpp"
 #include "CryptoTypes.h"
 #include <Common/StringTools.h>
 
@@ -63,10 +64,12 @@ struct TransactionOutput {
   TransactionOutputTarget target;
 };
 
+using TransactionInputs = std::vector<TransactionInput>;
+
 struct TransactionPrefix {
   uint8_t version;
   uint64_t unlockTime;
-  std::vector<TransactionInput> inputs;
+  TransactionInputs inputs;
   std::vector<TransactionOutput> outputs;
   std::vector<uint8_t> extra;
 };
@@ -117,8 +120,6 @@ struct KeyPair {
   Crypto::PublicKey publicKey;
   Crypto::SecretKey secretKey;
 };
-
-using BinaryArray = std::vector<uint8_t>;
 
 struct RawBlock {
   BinaryArray block; //BlockTemplate

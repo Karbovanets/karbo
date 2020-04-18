@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -52,6 +52,8 @@ void serialize(TransactionOutput& in, ISerializer& serializer);
 void serialize(BaseInput& gen, ISerializer& serializer);
 void serialize(KeyInput& key, ISerializer& serializer);
 void serialize(MultisignatureInput& multisignature, ISerializer& serializer);
+
+void serialize(TransactionInputs & inputs, ISerializer & serializer);
 
 void serialize(TransactionOutput& output, ISerializer& serializer);
 void serialize(TransactionOutputTarget& output, ISerializer& serializer);
