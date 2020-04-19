@@ -716,7 +716,6 @@ bool RpcServer::onSendRawTx(const COMMAND_RPC_SEND_RAW_TX::request& req, COMMAND
 
   m_protocol.relayTransactions(transactions);
 
-  //TODO: make sure that tx has reached other nodes here, probably wait to receive reflections from other nodes
   res.status = CORE_RPC_STATUS_OK;
   return true;
 }

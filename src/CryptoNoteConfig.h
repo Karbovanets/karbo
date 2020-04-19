@@ -70,6 +70,11 @@ const uint64_t MAX_EXTRA_SIZE                                = 1024;
 
 const uint64_t MAX_TRANSACTION_SIZE_LIMIT                    = CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_CURRENT / 4 - CRYPTONOTE_COINBASE_BLOB_RESERVED_SIZE;
 
+const size_t   DANDELION_EPOCH                               = 600;
+const size_t   DANDELION_STEMS                               = 2;
+const size_t   DANDELION_STEM_EMBARGO                        = 173;
+const uint8_t  DANDELION_STEM_TX_PROPAGATION_PROBABILITY     = 90;
+
 const size_t   DIFFICULTY_WINDOW                             = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY; // blocks
 const size_t   DIFFICULTY_WINDOW_V2                          = 17;  // blocks
 const size_t   DIFFICULTY_WINDOW_V3                          = 60;  // blocks

@@ -636,12 +636,18 @@ std::string print_banlist_to_string(std::map<uint32_t, time_t> list) {
   //-----------------------------------------------------------------------------------
   
   bool NodeServer::run() {
-    logger(INFO) << "Starting node_server";
+    logger(INFO) << "Starting NodeServer...";
 
     m_workingContextGroup.spawn(std::bind(&NodeServer::acceptLoop, this));
     m_workingContextGroup.spawn(std::bind(&NodeServer::onIdle, this));
     m_workingContextGroup.spawn(std::bind(&NodeServer::timedSyncLoop, this));
     m_workingContextGroup.spawn(std::bind(&NodeServer::timeoutLoop, this));
+
+    // Get initial stems after 10 s. delay (should suffice to establish connections)
+    auto tr = std::async(std::launch::async, [&] {
+      std::this_thread::sleep_for(std::chrono::seconds(10));
+      return m_payload_handler.select_dandelion_stem();
+    });
 
     m_stopEvent.wait();
 
@@ -1584,6 +1590,7 @@ std::string print_banlist_to_string(std::map<uint32_t, time_t> list) {
     while (!m_stop) {
       try {
         idle_worker();
+        m_payload_handler.on_idle();
         m_idleTimer.sleep(std::chrono::seconds(1));
       } catch (System::InterruptedException&) {
         logger(DEBUGGING) << "onIdle() is interrupted";
