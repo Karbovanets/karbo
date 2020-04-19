@@ -60,6 +60,7 @@ namespace CryptoNote
   /************************************************************************/
   struct NOTIFY_NEW_TRANSACTIONS_request
   {
+    bool stem = false;
     std::vector<BinaryArray> txs;
   };
 

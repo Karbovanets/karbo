@@ -24,6 +24,7 @@
 #include <Common/ObserverManager.h>
 
 #include "CryptoNoteCore/ICore.h"
+#include "CryptoNoteCore/OnceInInterval.h"
 
 #include "CryptoNoteProtocol/CryptoNoteProtocolDefinitions.h"
 #include "CryptoNoteProtocol/CryptoNoteProtocolHandlerCommon.h"
@@ -43,6 +44,64 @@ namespace System {
 namespace CryptoNote
 {
   class Currency;
+
+  class StemPool {
+  public:
+
+    size_t getTransactionsCount() {
+      std::lock_guard<std::recursive_mutex> lk(m_stempool_mutex);
+      return m_stempool.size();
+    }
+
+    bool hasTransactions() {
+      std::lock_guard<std::recursive_mutex> lk(m_stempool_mutex);
+      return m_stempool.empty();
+    }
+
+    bool hasTransaction(const Crypto::Hash& txid) {
+      std::lock_guard<std::recursive_mutex> lk(m_stempool_mutex);
+      return m_stempool.find(txid) != m_stempool.end();
+    }
+
+    bool addTransaction(const Crypto::Hash& txid, BinaryArray tx_blob) {
+      std::lock_guard<std::recursive_mutex> lk(m_stempool_mutex);
+      auto r = m_stempool.insert(tx_blob_by_hash::value_type(txid, tx_blob));
+
+      return true;
+    }
+
+    bool removeTransaction(const Crypto::Hash& txid) {
+      std::lock_guard<std::recursive_mutex> lk(m_stempool_mutex);
+
+      if (m_stempool.find(txid) != m_stempool.end()) {
+        m_stempool.erase(txid);
+        return true;
+      }
+
+      return false;
+    }
+
+    std::vector<std::pair<Crypto::Hash, BinaryArray>> getTransactions() {
+      std::lock_guard<std::recursive_mutex> lk(m_stempool_mutex);
+      std::vector<std::pair<Crypto::Hash, BinaryArray>> txs;
+      for (const auto & s : m_stempool) {
+        txs.push_back(std::make_pair(s.first, s.second));
+      }
+
+      return txs;
+    }
+
+    void clearStemPool() {
+      std::lock_guard<std::recursive_mutex> lk(m_stempool_mutex);
+
+      m_stempool.clear();
+    }
+
+  private:
+    typedef std::unordered_map<Crypto::Hash, BinaryArray> tx_blob_by_hash;
+    tx_blob_by_hash m_stempool;
+    std::recursive_mutex m_stempool_mutex;
+  };
 
   class CryptoNoteProtocolHandler : public ICryptoNoteProtocolHandler
   {
@@ -64,6 +123,7 @@ namespace CryptoNote
     // Interface t_payload_net_handler, where t_payload_net_handler is template argument of nodetool::node_server
     void stop();
     bool start_sync(CryptoNoteConnectionContext& context);
+    bool on_idle();
     void onConnectionOpened(CryptoNoteConnectionContext& context);
     void onConnectionClosed(CryptoNoteConnectionContext& context);
     CoreStatistics getStatistics();
@@ -73,6 +133,8 @@ namespace CryptoNote
     virtual size_t getPeerCount() const override;
     virtual uint32_t getObservedHeight() const override;
     void requestMissingPoolTransactions(const CryptoNoteConnectionContext& context);
+    bool select_dandelion_stem();
+    bool fluffStemPool();
 
   private:
     //----------------- commands handlers ----------------------------------------------
@@ -116,5 +178,11 @@ namespace CryptoNote
 
     std::atomic<size_t> m_peersCount;
     Tools::ObserverManager<ICryptoNoteProtocolObserver> m_observerManager;
+
+    OnceInInterval m_dandelionStemSelectInterval;
+    OnceInInterval m_dandelionStemFluffInterval;
+    std::vector<CryptoNoteConnectionContext> m_dandelion_stem;
+
+    StemPool m_stemPool;
   };
 }
