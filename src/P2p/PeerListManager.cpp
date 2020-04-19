@@ -211,6 +211,7 @@ bool PeerlistManager::set_peer_just_seen(PeerIdType peer, const NetworkAddress& 
     ple.last_seen = time(NULL);
     return append_with_peer_white(ple);
   } catch (std::exception&) {
+    return false;
   }
 
   return false;
@@ -232,6 +233,7 @@ bool PeerlistManager::append_with_peer_anchor(const AnchorPeerlistEntry& ple)
     return true;
   }
   catch (std::exception&) {
+    return false;
   }
   return false;
 }
@@ -260,6 +262,7 @@ bool PeerlistManager::append_with_peer_white(const PeerlistEntry& ple)
     }
     return true;
   } catch (std::exception&) {
+    return false;
   }
   return false;
 }
@@ -290,6 +293,7 @@ bool PeerlistManager::append_with_peer_gray(const PeerlistEntry& ple)
     }
     return true;
   } catch (std::exception&) {
+    return false;
   }
   return false;
 }
@@ -297,6 +301,9 @@ bool PeerlistManager::append_with_peer_gray(const PeerlistEntry& ple)
 //--------------------------------------------------------------------------------------------------
 bool PeerlistManager::get_and_empty_anchor_peerlist(std::vector<AnchorPeerlistEntry>& apl)
 {
+  if (m_peers_anchor.empty())
+    return false;
+
   try {
     auto begin = m_peers_anchor.get<by_time>().begin();
     auto end = m_peers_anchor.get<by_time>().end();
@@ -309,6 +316,7 @@ bool PeerlistManager::get_and_empty_anchor_peerlist(std::vector<AnchorPeerlistEn
     return true;
   }
   catch (std::exception&) {
+    return false;
   }
   return false;
 }
@@ -325,6 +333,7 @@ bool PeerlistManager::remove_from_peer_anchor(const NetworkAddress& addr)
     return true;
   }
   catch (std::exception&) {
+    return false;
   }
   return false;
 }

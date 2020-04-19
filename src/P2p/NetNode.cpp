@@ -1009,6 +1009,11 @@ std::string print_banlist_to_string(std::map<uint32_t, time_t> list) {
   //-----------------------------------------------------------------------------------
   bool NodeServer::make_new_connection_from_anchor_peerlist(const std::vector<AnchorPeerlistEntry>& anchor_peerlist)
   {
+    if (anchor_peerlist.empty()) {
+      logger(DEBUGGING) << "Anchor peer list is empty";
+      return false;
+    }
+
     for (const auto& pe : anchor_peerlist) {
       logger(DEBUGGING) << "Considering connecting (out) to peer: " << pe.id << " " << Common::ipAddressToString(pe.adr.ip) << ":" << boost::lexical_cast<std::string>(pe.adr.port);
 
@@ -1042,7 +1047,7 @@ std::string print_banlist_to_string(std::map<uint32_t, time_t> list) {
   //-----------------------------------------------------------------------------------
   bool NodeServer::connections_maker()
   {
-    if (!connect_to_peerlist(m_exclusive_peers)) {
+    if (!m_exclusive_peers.empty() && !connect_to_peerlist(m_exclusive_peers)) {
       return false;
     }
 
@@ -1067,7 +1072,7 @@ std::string print_banlist_to_string(std::map<uint32_t, time_t> list) {
       }
     }
 
-    if (!connect_to_peerlist(m_priority_peers)) return false;
+    if (!m_priority_peers.empty() && !connect_to_peerlist(m_priority_peers)) return false;
 
     size_t expected_white_connections = (m_config.m_net_config.connections_count * CryptoNote::P2P_DEFAULT_WHITELIST_CONNECTIONS_PERCENT) / 100;
 
