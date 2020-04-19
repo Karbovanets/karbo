@@ -494,7 +494,7 @@ std::string print_banlist_to_string(std::map<uint32_t, time_t> list) {
       for(const std::string& pr_str: peers)
       {
         PeerlistEntry pe = boost::value_initialized<PeerlistEntry>();
-        pe.id = Random::randomValue<uint64_t>();
+        pe.id = Random::randomValue<size_t>();
         bool r = parse_peer_from_string(pe.adr, pr_str);
         if (!(r)) { logger(ERROR, BRIGHT_RED) << "Failed to parse address from string: " << pr_str; return false; }
         m_command_line_peers.push_back(pe);
@@ -604,7 +604,9 @@ std::string print_banlist_to_string(std::map<uint32_t, time_t> list) {
     //only in case if we really sure that we have external visible ip
     m_have_address = true;
     m_ip_address = 0;
+#ifdef ALLOW_DEBUG_COMMANDS
     m_last_stat_request_time = 0;
+#endif
 
     //configure self
     // m_net_server.get_config_object().m_pcommands_handler = this;
@@ -1038,27 +1040,6 @@ std::string print_banlist_to_string(std::map<uint32_t, time_t> list) {
   }
 
   //-----------------------------------------------------------------------------------
-  bool NodeServer::connect_to_seed()
-  {
-      size_t try_count = 0;
-      size_t current_index = Random::randomValue<size_t>() % m_seed_nodes.size();
-
-      while(true) {
-        if(try_to_connect_and_handshake_with_new_peer(m_seed_nodes[current_index], true))
-          break;
-
-        if(++try_count > m_seed_nodes.size()) {
-          logger(ERROR) << "Failed to connect to any of seed peers, continuing without seeds";
-          break;
-        }
-        if(++current_index >= m_seed_nodes.size())
-          current_index = 0;
-      }
-      
-      return true;
-  }
-
-  //-----------------------------------------------------------------------------------
   bool NodeServer::connections_maker()
   {
     if (!connect_to_peerlist(m_exclusive_peers)) {
@@ -1069,10 +1050,21 @@ std::string print_banlist_to_string(std::map<uint32_t, time_t> list) {
       return true;
     }
 
-    size_t start_conn_count = get_outgoing_connections_count();
-    if(!m_peerlist.get_white_peers_count() && m_seed_nodes.size()) {
-      if (!connect_to_seed())
-        return false;
+    if (!m_peerlist.get_white_peers_count() && m_seed_nodes.size()) {
+      size_t try_count = 0;
+      size_t current_index = Random::randomValue<size_t>() % m_seed_nodes.size();
+
+      while (true) {
+        if (try_to_connect_and_handshake_with_new_peer(m_seed_nodes[current_index], true))
+          break;
+
+        if (++try_count > m_seed_nodes.size()) {
+          logger(ERROR) << "Failed to connect to any of seed peers, continuing without seeds";
+          break;
+        }
+        if (++current_index >= m_seed_nodes.size())
+          current_index = 0;
+      }
     }
 
     if (!connect_to_peerlist(m_priority_peers)) return false;
@@ -1080,36 +1072,29 @@ std::string print_banlist_to_string(std::map<uint32_t, time_t> list) {
     size_t expected_white_connections = (m_config.m_net_config.connections_count * CryptoNote::P2P_DEFAULT_WHITELIST_CONNECTIONS_PERCENT) / 100;
 
     size_t conn_count = get_outgoing_connections_count();
-    if(conn_count < m_config.m_net_config.connections_count)
+    if (conn_count < m_config.m_net_config.connections_count)
     {
-      if(conn_count < expected_white_connections)
+      if (conn_count < expected_white_connections)
       {
         //start from anchor list
         if (!make_expected_connections_count(anchor, P2P_DEFAULT_ANCHOR_CONNECTIONS_COUNT))
           return false;
         //start from white list
-        if(!make_expected_connections_count(white, expected_white_connections))
+        if (!make_expected_connections_count(white, expected_white_connections))
           return false;
         //and then do grey list
-        if(!make_expected_connections_count(gray, m_config.m_net_config.connections_count))
+        if (!make_expected_connections_count(gray, m_config.m_net_config.connections_count))
           return false;
-      } 
+      }
       else
       {
         //start from grey list
-        if(!make_expected_connections_count(gray, m_config.m_net_config.connections_count))
+        if (!make_expected_connections_count(gray, m_config.m_net_config.connections_count))
           return false;
         //and then do white list
-        if(!make_expected_connections_count(white, m_config.m_net_config.connections_count))
+        if (!make_expected_connections_count(white, m_config.m_net_config.connections_count))
           return false;
       }
-    }
-
-    if (start_conn_count == get_outgoing_connections_count() && start_conn_count < m_config.m_net_config.connections_count && m_seed_nodes.size())
-    {
-      logger(Logging::DEBUGGING) << "Failed to connect to any peers, trying seeds";
-      if (!connect_to_seed())
-        return false;
     }
 
     return true;

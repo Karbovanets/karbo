@@ -205,7 +205,6 @@ namespace CryptoNote
 
     bool fix_time_delta(std::list<PeerlistEntry>& local_peerlist, time_t local_time, int64_t& delta);
 
-    bool connect_to_seed();
     bool connections_maker();
     bool make_new_connection_from_peerlist(bool use_white_list);
     bool make_new_connection_from_anchor_peerlist(const std::vector<AnchorPeerlistEntry>& anchor_peerlist);
