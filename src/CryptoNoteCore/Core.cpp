@@ -643,7 +643,10 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
 
   for (const auto& transaction : transactions) {
     uint64_t fee = 0;
-    auto transactionValidationResult = validateTransaction(transaction, validatorState, cache, m_transactionValidationThreadPool, fee, getMinimalFee(blockIndex), previousBlockIndex, false);
+    // Skip expensive fee validation (due to a dynamic minimal fee calculation)
+    // for transactions in a checkpoints range - they are assumed valid.
+    const uint64_t minFee = checkpoints.isInCheckpointZone(blockIndex) ? 0 : getMinimalFee(blockIndex);
+    auto transactionValidationResult = validateTransaction(transaction, validatorState, cache, m_transactionValidationThreadPool, fee, minFee, previousBlockIndex, false);
     if (transactionValidationResult) {
       logger(Logging::DEBUGGING) << "Failed to validate transaction " << transaction.getTransactionHash() << ": " << transactionValidationResult.message();
       return transactionValidationResult;
@@ -2367,15 +2370,16 @@ Difficulty Core::getAvgDifficulty(uint32_t height, uint32_t window) const {
   IBlockchainCache* mainChain = chainsLeaves[0];
   height = std::min<uint32_t>(height, getTopBlockIndex());
 
-  if (height == window) {
-    return mainChain->getCurrentCumulativeDifficulty(height) / height;
-  }
+  if (height <= 1)
+    return 1;
 
-  uint32_t offset;
-  offset = height - std::min<uint32_t>(height, std::min<uint32_t>(mainChain->getTopBlockIndex(), window));
-  if (offset == 0) {
+  if (height <= window)
+    return mainChain->getCurrentCumulativeDifficulty(height) / height;
+
+  uint32_t offset = height - std::min<uint32_t>(height, window);
+
+  if (offset == 0)
     ++offset;
-  }
 
   return (mainChain->getCurrentCumulativeDifficulty(height) - mainChain->getCurrentCumulativeDifficulty(offset)) / std::min<uint32_t>(mainChain->getTopBlockIndex(), window);
 }
@@ -2387,31 +2391,26 @@ uint64_t Core::getMinimalFee() {
 uint64_t Core::getMinimalFee(uint32_t height) {
   IBlockchainCache* mainChain = chainsLeaves[0];
   uint32_t currentIndex = mainChain->getTopBlockIndex();
-  if (height < 3 || currentIndex <= 1) {
+  if (height < 3 || currentIndex <= 1)
     return 0;
-  }
-  if (height > currentIndex) {
-    height = currentIndex;
-  }
+  
+  if (height > currentIndex)
+      height = currentIndex;
+ 
   uint32_t window = std::min(height, std::min<uint32_t>(currentIndex, static_cast<uint32_t>(currency.expectedNumberOfBlocksPerDay())));
-  if (window == 0) {
+  if (window == 0)
     ++window;
-  }
-  uint32_t offset = height - window;
-  if (offset == 0) {
-    ++offset;
-  }
 
   // calculate average difficulty for ~last month
-  uint64_t avgDifficultyCurrent = getAvgDifficulty(height, window * 7 * 4);
+  uint64_t avgCurrentDifficulty = getAvgDifficulty(height, window * 7 * 4);
   // historical reference trailing average difficulty
-  uint64_t avgDifficultyHistorical = mainChain->getCurrentCumulativeDifficulty(height) / height;
-  // calculate average reward for ~last day (base, excluding fees)
-  uint64_t avgRewardCurrent = (mainChain->getAlreadyGeneratedCoins(height) - mainChain->getAlreadyGeneratedCoins(offset)) / window;
+  uint64_t avgReferenceDifficulty = mainChain->getCurrentCumulativeDifficulty(height) / height;
+  // calculate current base reward
+  uint64_t currentReward = currency.calculateReward(mainChain->getAlreadyGeneratedCoins(height));
   // historical reference trailing average reward
-  uint64_t avgRewardHistorical = mainChain->getAlreadyGeneratedCoins(height) / height;
+  uint64_t avgReferenceReward = mainChain->getAlreadyGeneratedCoins(height) / height;
 
-  return currency.getMinimalFee(avgDifficultyCurrent, avgRewardCurrent, avgDifficultyHistorical, avgRewardHistorical, height);
+  return currency.getMinimalFee(avgCurrentDifficulty, currentReward, avgReferenceDifficulty, avgReferenceReward, height);
 }
 
 uint64_t Core::calculateReward(uint64_t alreadyGeneratedCoins) const {
