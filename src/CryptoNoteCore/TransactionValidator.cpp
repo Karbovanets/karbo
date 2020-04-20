@@ -130,8 +130,8 @@ CryptoNote::TransactionValidationResult TransactionValidator::revalidateAfterHei
 bool TransactionValidator::validateTransactionSize()
 {
     const auto maxTransactionSize = CryptoNote::parameters::MAX_TRANSACTION_SIZE_LIMIT;
-
-    if (m_cachedTransaction.getTransactionBinaryArray().size() > maxTransactionSize)
+    if (m_blockHeight > CryptoNote::parameters::UPGRADE_HEIGHT_V4 &&
+        m_cachedTransaction.getTransactionBinaryArray().size() > maxTransactionSize)
     {
         m_validationResult.errorCode = CryptoNote::error::TransactionValidationError::SIZE_TOO_LARGE;
         m_validationResult.errorMessage = "Transaction is too large (in bytes)";
