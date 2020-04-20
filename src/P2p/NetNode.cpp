@@ -1039,9 +1039,11 @@ std::string print_banlist_to_string(std::map<uint32_t, time_t> list) {
         logger(DEBUGGING) << "Handshake failed";
         continue;
       }
+
+      return true;
     }
 
-    return true;
+    return false;
   }
 
   //-----------------------------------------------------------------------------------
