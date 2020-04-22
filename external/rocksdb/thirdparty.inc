@@ -200,6 +200,7 @@ if (ZSTD)
   set(WITH_ZSTD ON)
 endif ()
 
+set(WITH_ZSTD ON)
 if (WITH_ZSTD)
   message(STATUS "ZSTD library is enabled")
 
