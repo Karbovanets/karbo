@@ -1539,7 +1539,7 @@ std::error_code Core::validateBlock(const CachedBlock& cachedBlock, IBlockchainC
     minerReward += output.amount;
   }
 
-  if (previousBlockIndex + 1 > CryptoNote::parameters::UPGRADE_HEIGHT_FEE_PER_BYTE 
+  if (previousBlockIndex + 1 > CryptoNote::parameters::UPGRADE_HEIGHT_V4_2 
     && (uint64_t)block.baseTransaction.extra.size() > CryptoNote::parameters::MAX_EXTRA_SIZE) {
     return error::TransactionValidationError::EXTRA_TOO_LARGE;
   }

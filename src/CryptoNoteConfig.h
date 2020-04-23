@@ -107,10 +107,10 @@ const uint32_t KEY_IMAGE_CHECKING_BLOCK_INDEX                = 0;
 
 const uint32_t UPGRADE_HEIGHT_V2                             = 60000;
 const uint32_t UPGRADE_HEIGHT_V3                             = 216000;
-const uint32_t UPGRADE_HEIGHT_MIN_FEE_V2_MAX_MIXIN           = 216394;
+const uint32_t UPGRADE_HEIGHT_V3_1                           = 216394;
 const uint32_t UPGRADE_HEIGHT_V4                             = 266000;
-const uint32_t UPGRADE_HEIGHT_LWMA3                          = 300000;
-const uint32_t UPGRADE_HEIGHT_FEE_PER_BYTE                   = 500000;
+const uint32_t UPGRADE_HEIGHT_V4_1                           = 300000;
+const uint32_t UPGRADE_HEIGHT_V4_2                           = 500000;
 const uint32_t UPGRADE_HEIGHT_V5                             = 4294967294;
 
 const unsigned UPGRADE_VOTING_THRESHOLD                      = 90;               // percent

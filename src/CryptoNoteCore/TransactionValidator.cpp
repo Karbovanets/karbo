@@ -379,9 +379,9 @@ bool TransactionValidator::validateTransactionFee()
 
     if (!isFusion)
     {
-        if (m_blockHeight < CryptoNote::parameters::UPGRADE_HEIGHT_MIN_FEE_V2_MAX_MIXIN && fee < CryptoNote::parameters::MINIMUM_FEE_V1
+        if (m_blockHeight <= CryptoNote::parameters::UPGRADE_HEIGHT_V3_1 && fee < CryptoNote::parameters::MINIMUM_FEE_V1
             ||
-            m_blockHeight > CryptoNote::parameters::UPGRADE_HEIGHT_MIN_FEE_V2_MAX_MIXIN && m_blockHeight < CryptoNote::parameters::UPGRADE_HEIGHT_V4 && fee < CryptoNote::parameters::MINIMUM_FEE_V2
+            m_blockHeight > CryptoNote::parameters::UPGRADE_HEIGHT_V3_1 && m_blockHeight <= CryptoNote::parameters::UPGRADE_HEIGHT_V4 && fee < CryptoNote::parameters::MINIMUM_FEE_V2
             ||
             m_blockHeight > CryptoNote::parameters::UPGRADE_HEIGHT_V4 && (fee < (m_minFee - (m_minFee * 20 / 100))))
         {
@@ -399,7 +399,7 @@ bool TransactionValidator::validateTransactionFee()
 bool TransactionValidator::validateTransactionExtra()
 {
     // Karbo's fee per byte for Extra
-    if (m_blockHeight > CryptoNote::parameters::UPGRADE_HEIGHT_FEE_PER_BYTE)
+    if (m_blockHeight > CryptoNote::parameters::UPGRADE_HEIGHT_V4_2)
     {
         uint64_t min = m_minFee;
         uint64_t extraSize = (uint64_t)m_transaction.extra.size();
@@ -438,7 +438,7 @@ bool TransactionValidator::validateTransactionMixin()
         }
     }
 
-    if ((m_blockHeight > CryptoNote::parameters::UPGRADE_HEIGHT_MIN_FEE_V2_MAX_MIXIN && mixin > m_currency.maxMixin()) ||
+    if ((m_blockHeight > CryptoNote::parameters::UPGRADE_HEIGHT_V3_1 && mixin > m_currency.maxMixin()) ||
         (m_blockHeight > m_currency.upgradeHeightV4() && mixin < m_currency.minMixin() && mixin != 1))
     {
          m_validationResult.errorCode = CryptoNote::error::TransactionValidationError::INVALID_MIXIN;

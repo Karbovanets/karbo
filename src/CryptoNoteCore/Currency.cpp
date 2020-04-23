@@ -421,8 +421,7 @@ uint64_t Currency::getMinimalFee(uint64_t avgCurrentDifficulty, uint64_t current
   uint64_t avgReferenceDifficulty, uint64_t avgReferenceReward, uint32_t height) const {
   uint64_t minimumFee(0);
   double minFee(0.0);
-  const double baseFee = height <= CryptoNote::parameters::UPGRADE_HEIGHT_FEE_PER_BYTE ? 
-    static_cast<double>(250000000000) : static_cast<double>(50000000000);
+  const double baseFee = static_cast<double>(250000000000);
   const uint64_t blocksInTwoYears = expectedNumberOfBlocksPerDay() * 365 * 2;
   double currentDifficultyMoore = static_cast<double>(avgCurrentDifficulty) /
     pow(2, static_cast<double>(height) / static_cast<double>(blocksInTwoYears));
@@ -435,7 +434,7 @@ uint64_t Currency::getMinimalFee(uint64_t avgCurrentDifficulty, uint64_t current
 
   minimumFee = static_cast<uint64_t>(minFee);
 
-  if (height > CryptoNote::parameters::UPGRADE_HEIGHT_FEE_PER_BYTE) {
+  if (height > CryptoNote::parameters::UPGRADE_HEIGHT_V4_2) {
     // Make all insignificant digits zero
     uint64_t i = 1000000000;
     while (i > 1) {
@@ -669,7 +668,7 @@ Difficulty Currency::nextDifficultyV4(uint32_t height, uint8_t blockMajorVersion
 
 	int64_t max_TS, prev_max_TS;
 	prev_max_TS = timestamps[0];
-	uint32_t lwma3_height = CryptoNote::parameters::UPGRADE_HEIGHT_LWMA3;
+	uint32_t lwma3_height = CryptoNote::parameters::UPGRADE_HEIGHT_V4_1;
 
 	for (int64_t i = 1; i <= N; i++) {
 		if (height < lwma3_height) { // LWMA-2
