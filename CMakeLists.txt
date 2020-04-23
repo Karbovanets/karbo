@@ -297,7 +297,6 @@ endif()
 find_package(Rocksdb 5.15.10)
 
 add_subdirectory(external)
-add_subdirectory(include)
 add_subdirectory(src)
 
 ## We need to setup the RocksDB build environment to match our system
