@@ -1,6 +1,6 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2016, The Forknote developers
-// Copyright (c) 2016-2018, The Karbowanec developers
+// Copyright (c) 2016-2020, The Karbowanec developers
 //
 // This file is part of Karbo.
 //
@@ -73,6 +73,11 @@ private:
   bool onGetPoolChanges(const COMMAND_RPC_GET_POOL_CHANGES::request& req, COMMAND_RPC_GET_POOL_CHANGES::response& rsp);
   bool onGetPoolChangesLite(const COMMAND_RPC_GET_POOL_CHANGES_LITE::request& req, COMMAND_RPC_GET_POOL_CHANGES_LITE::response& rsp);
 
+  // http handlers
+  bool onGetIndex(const COMMAND_HTTP::request& req, COMMAND_HTTP::response& res);
+  bool onGetSupply(const COMMAND_HTTP::request& req, COMMAND_HTTP::response& res);
+  bool onGeneratePaymentId(const COMMAND_HTTP::request& req, COMMAND_HTTP::response& res);
+
   // json handlers
   bool onGetBlocksDetailsByHeights(const COMMAND_RPC_GET_BLOCKS_DETAILS_BY_HEIGHTS::request& req, COMMAND_RPC_GET_BLOCKS_DETAILS_BY_HEIGHTS::response& rsp);
   bool onGetBlocksDetailsByHashes(const COMMAND_RPC_GET_BLOCKS_DETAILS_BY_HASHES::request& req, COMMAND_RPC_GET_BLOCKS_DETAILS_BY_HASHES::response& rsp);
@@ -90,8 +95,7 @@ private:
   bool onGetFeeAddress(const COMMAND_RPC_GET_FEE_ADDRESS::request& req, COMMAND_RPC_GET_FEE_ADDRESS::response& res);
   bool onGetPeerList(const COMMAND_RPC_GET_PEER_LIST::request& req, COMMAND_RPC_GET_PEER_LIST::response& res);
   bool onGetConnections(const COMMAND_RPC_GET_CONNECTIONS::request& req, COMMAND_RPC_GET_CONNECTIONS::response& res);
-  bool onGeneratePaymentId(const COMMAND_RPC_GEN_PAYMENT_ID::request& req, COMMAND_RPC_GEN_PAYMENT_ID::response& res);
-  
+    
   // json rpc
   bool onGetBlockCount(const COMMAND_RPC_GETBLOCKCOUNT::request& req, COMMAND_RPC_GETBLOCKCOUNT::response& res);
   bool onGetBlockHash(const COMMAND_RPC_GETBLOCKHASH::request& req, COMMAND_RPC_GETBLOCKHASH::response& res);

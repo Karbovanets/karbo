@@ -47,6 +47,12 @@ struct STATUS_STRUCT {
   }
 };
 
+struct COMMAND_HTTP {
+  typedef EMPTY_STRUCT request;
+
+  typedef std::string response;
+};
+
 struct COMMAND_RPC_GET_HEIGHT {
   typedef EMPTY_STRUCT request;
 
@@ -840,7 +846,7 @@ struct COMMAND_RPC_GET_BLOCKS_HASHES_BY_TIMESTAMPS {
 
 struct COMMAND_RPC_GET_TRANSACTION_HASHES_BY_PAYMENT_ID {
   struct request {
-    Crypto::Hash paymentId;
+    std::string paymentId;
 
     void serialize(ISerializer &s) {
       KV_MEMBER(paymentId)
@@ -880,7 +886,7 @@ struct COMMAND_RPC_GET_TRANSACTION_DETAILS_BY_HASHES {
 
 struct COMMAND_RPC_GET_TRANSACTION_DETAILS_BY_HASH {
   struct request {
-    Crypto::Hash hash;
+    std::string hash;
 
     void serialize(ISerializer &s) {
       KV_MEMBER(hash);

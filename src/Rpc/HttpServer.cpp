@@ -1,6 +1,6 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2014-2016, XDN developers
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -97,17 +97,16 @@ void HttpServer::acceptLoop() {
     for (;;) {
       HttpRequest req;
       HttpResponse resp;
-	  resp.addHeader("Access-Control-Allow-Origin", "*");
-	  resp.addHeader("content-type", "application/json");
-	
+      resp.addHeader("Access-Control-Allow-Origin", "*");
+
       parser.receiveRequest(stream, req);
-				if (authenticate(req)) {
-					processRequest(req, resp);
-				}
-				else {
-					logger(WARNING) << "Authorization required " << addr.first.toDottedDecimal() << ":" << addr.second;
-					fillUnauthorizedResponse(resp);
-				}
+      if (authenticate(req)) {
+        processRequest(req, resp);
+      }
+      else {
+        logger(WARNING) << "Authorization required " << addr.first.toDottedDecimal() << ":" << addr.second;
+        fillUnauthorizedResponse(resp);
+      }
 
       stream << resp;
       stream.flush();
