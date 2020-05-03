@@ -181,9 +181,11 @@ bool TransactionValidator::validateTransactionInputs()
             }
 
             /* outputIndexes are packed here, first is absolute, others are offsets to previous,
-             * so first can be zero, others can't
-             * Fix discovered by Monero Lab and suggested by "fluffypony" (bitcointalk.org) */
-            if (!(scalarmultKey(in.keyImage, Crypto::EllipticCurveScalar2KeyImage(Crypto::L)) == Crypto::EllipticCurveScalar2KeyImage(Crypto::I)))
+             * so first can be zero, others can't.
+             * Fix discovered by Monero Lab and suggested by "fluffypony" (bitcointalk.org).
+             * Skip this expensive validation in checkpoints zone. */
+            if (!m_checkpoints.isInCheckpointZone(m_blockHeight + 1) && 
+              !(scalarmultKey(in.keyImage, Crypto::EllipticCurveScalar2KeyImage(Crypto::L)) == Crypto::EllipticCurveScalar2KeyImage(Crypto::I)))
             {
                 m_validationResult.errorCode = CryptoNote::error::TransactionValidationError::INPUT_INVALID_DOMAIN_KEYIMAGES;
                 m_validationResult.errorMessage = "Transaction contains key images in an invalid domain";
