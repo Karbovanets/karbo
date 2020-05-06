@@ -36,10 +36,13 @@ const uint64_t READ_BUFFER_MB_DEFAULT_SIZE      = 128; // Mb
 const uint32_t DEFAULT_MAX_OPEN_FILES           = 128; // Nr of files
 const uint16_t DEFAULT_BACKGROUND_THREADS_COUNT = 4;   // DB threads
 
+const uint64_t LEVELDB_MAX_FILE_SIZE            = 1024; // 1GB
+
 const uint64_t MEGABYTE = 1024 * 1024;
 
 const command_line::arg_descriptor<uint16_t>    argBackgroundThreadsCount = { "db-threads", "Nuber of background threads used for compaction and flush", DEFAULT_BACKGROUND_THREADS_COUNT};
 const command_line::arg_descriptor<uint32_t>    argMaxOpenFiles = { "db-max-open-files", "Number of open files that can be used by the DB", DEFAULT_MAX_OPEN_FILES};
+const command_line::arg_descriptor<uint64_t>    argMaxFileSize = { "db-max-file-size", "Max file size that can be used by the DB", LEVELDB_MAX_FILE_SIZE};
 const command_line::arg_descriptor<uint64_t>    argWriteBufferSize = { "db-write-buffer-size", "Size of data base write buffer in megabytes", WRITE_BUFFER_MB_DEFAULT_SIZE};
 const command_line::arg_descriptor<uint64_t>    argReadCacheSize = { "db-read-cache-size", "Size of data base read cache in megabytes", READ_BUFFER_MB_DEFAULT_SIZE};
 
@@ -48,6 +51,7 @@ const command_line::arg_descriptor<uint64_t>    argReadCacheSize = { "db-read-ca
 void DataBaseConfig::initOptions(boost::program_options::options_description& desc) {
   command_line::add_arg(desc, argBackgroundThreadsCount);
   command_line::add_arg(desc, argMaxOpenFiles);
+  command_line::add_arg(desc, argMaxFileSize);
   command_line::add_arg(desc, argWriteBufferSize);
   command_line::add_arg(desc, argReadCacheSize);
 }
@@ -56,6 +60,7 @@ DataBaseConfig::DataBaseConfig() :
   dataDir(Tools::getDefaultDataDirectory()),
   backgroundThreadsCount(DEFAULT_BACKGROUND_THREADS_COUNT),
   maxOpenFiles(DEFAULT_MAX_OPEN_FILES),
+  maxFileSize(LEVELDB_MAX_FILE_SIZE),
   writeBufferSize(WRITE_BUFFER_MB_DEFAULT_SIZE * MEGABYTE),
   readCacheSize(READ_BUFFER_MB_DEFAULT_SIZE * MEGABYTE),
   testnet(false),
@@ -71,6 +76,10 @@ bool DataBaseConfig::init(const boost::program_options::variables_map& vm) {
     maxOpenFiles = command_line::get_arg(vm, argMaxOpenFiles);
   }
 
+  if (vm.count(argMaxFileSize.name) != 0 && (!vm[argMaxFileSize.name].defaulted() || maxFileSize == 0)) {
+    maxFileSize = command_line::get_arg(vm, argMaxFileSize);
+  }
+  
   if (vm.count(argWriteBufferSize.name) != 0 && (!vm[argWriteBufferSize.name].defaulted() || writeBufferSize == 0)) {
     writeBufferSize = command_line::get_arg(vm, argWriteBufferSize) *  MEGABYTE;
   }
@@ -104,6 +113,10 @@ uint32_t DataBaseConfig::getMaxOpenFiles() const {
   return maxOpenFiles;
 }
 
+uint64_t DataBaseConfig::getMaxFileSize() const {
+  return maxFileSize;
+}
+
 uint64_t DataBaseConfig::getWriteBufferSize() const {
   return writeBufferSize;
 }
@@ -130,6 +143,10 @@ void DataBaseConfig::setBackgroundThreadsCount(uint16_t backgroundThreadsCount) 
 
 void DataBaseConfig::setMaxOpenFiles(uint32_t maxOpenFiles) {
   this->maxOpenFiles = maxOpenFiles;
+}
+
+void DataBaseConfig::setMaxFileSize(uint64_t maxFileSize) {
+  this->maxFileSize = maxFileSize;
 }
 
 void DataBaseConfig::setWriteBufferSize(uint64_t writeBufferSize) {

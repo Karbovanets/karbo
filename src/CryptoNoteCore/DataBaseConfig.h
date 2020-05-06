@@ -37,6 +37,7 @@ public:
   std::string getDataDir() const;
   uint16_t getBackgroundThreadsCount() const;
   uint32_t getMaxOpenFiles() const;
+  uint64_t getMaxFileSize() const;
   uint64_t getWriteBufferSize() const; //Bytes
   uint64_t getReadCacheSize() const; //Bytes
   bool getTestnet() const;
@@ -46,6 +47,7 @@ public:
   void setDataDir(const std::string& dataDir);
   void setBackgroundThreadsCount(uint16_t backgroundThreadsCount);
   void setMaxOpenFiles(uint32_t maxOpenFiles);
+  void setMaxFileSize(uint64_t maxFileSize);
   void setWriteBufferSize(uint64_t writeBufferSize); //Bytes
   void setReadCacheSize(uint64_t readCacheSize); //Bytes
   void setTestnet(bool testnet);
@@ -55,6 +57,7 @@ private:
   std::string dataDir;
   uint16_t backgroundThreadsCount;
   uint32_t maxOpenFiles;
+  uint64_t maxFileSize;
   uint64_t writeBufferSize;
   uint64_t readCacheSize;
   bool testnet;
