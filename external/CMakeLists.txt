@@ -5,10 +5,11 @@ set(WITH_MD_LIBRARY OFF CACHE BOOL "Code Generation for static library")
 
 add_subdirectory(miniupnpc)
 add_subdirectory(zstd)
+add_subdirectory(snappy)
 
 if(MSVC)
   add_subdirectory(rocksDB EXCLUDE_FROM_ALL)
-dd_subdirectory(levelDB EXCLUDE_FROM_ALL)
+  add_subdirectory(levelDB EXCLUDE_FROM_ALL)
   set_property(TARGET upnpc-static rocksdb leveldb snappy zstd PROPERTY FOLDER "external")
 elseif(NOT MSVC)
   set_property(TARGET upnpc-static snappy zstd PROPERTY FOLDER "external")
