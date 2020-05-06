@@ -264,7 +264,8 @@ rocksdb::Options RocksDBWrapper::getDBOptions(const DataBaseConfig &config) {
     }
   }
 
-
+  fOptions.bottommost_compression = config.getCompressionEnabled() ? rocksdb::kZSTD : rocksdb::kNoCompression;;
+  
   rocksdb::BlockBasedTableOptions tableOptions;
   tableOptions.block_cache = rocksdb::NewLRUCache(config.getReadCacheSize());
   std::shared_ptr<rocksdb::TableFactory> tfp(NewBlockBasedTableFactory(tableOptions));
