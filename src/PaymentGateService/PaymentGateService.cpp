@@ -31,9 +31,12 @@
 #include "Logging/LoggerRef.h"
 #include "PaymentGate/PaymentServiceJsonRpcServer.h"
 #include "CryptoNoteCore/Core.h"
+#include <IDataBase.h>
+#include "CryptoNoteCore/DatabaseBlockchainCache.h"
 #include "CryptoNoteCore/DatabaseBlockchainCache.h"
 #include "CryptoNoteCore/DatabaseBlockchainCacheFactory.h"
 #include "CryptoNoteCore/DataBaseConfig.h"
+#include "cryptonotecore/LevelDBWrapper.h"
 #include "CryptoNoteCore/RocksDBWrapper.h"
 #include "CryptoNoteProtocol/CryptoNoteProtocolHandler.h"
 #include "P2p/NetNode.h"
@@ -174,6 +177,7 @@ void PaymentGateService::runInProcess(Logging::LoggerRef& log) {
   dbConfig.setConfigFolderDefaulted(true);
   dbConfig.setDataDir(config.dataDir);
   dbConfig.setMaxOpenFiles(100);
+  dbConfig.setMaxFileSize(125);
   dbConfig.setReadCacheSize(128*1024*1024);
   dbConfig.setWriteBufferSize(128*1024*1024);
   dbConfig.setTestnet(false);
@@ -189,16 +193,27 @@ void PaymentGateService::runInProcess(Logging::LoggerRef& log) {
     }
   }
 
-  CryptoNote::RocksDBWrapper database(logger, dbConfig);
-  database.init();
-  Tools::ScopeExit dbShutdownOnExit([&database] () { database.shutdown(); });
+  std::shared_ptr<CryptoNote::IDataBase> database;
 
-  if (!CryptoNote::DatabaseBlockchainCache::checkDBSchemeVersion(database, logger))
+  if (config.levelDB)
+  {
+    database = std::make_shared<CryptoNote::LevelDBWrapper>(logger, dbConfig);
+  }
+  else
+  {
+    database = std::make_shared<CryptoNote::RocksDBWrapper>(logger, dbConfig);
+  }
+
+  database->init();
+  Tools::ScopeExit dbShutdownOnExit([&database]() { database->shutdown(); });
+
+
+  if (!CryptoNote::DatabaseBlockchainCache::checkDBSchemeVersion(*database, logger))
   {
     dbShutdownOnExit.cancel();
-    database.shutdown();
-    database.destroy();
-    database.init();
+    database->shutdown();
+    database->destroy();
+    database->init();
     dbShutdownOnExit.resume();
   }
 
@@ -218,7 +233,7 @@ void PaymentGateService::runInProcess(Logging::LoggerRef& log) {
     logger,
     std::move(checkpoints),
     *dispatcher,
-    std::unique_ptr<CryptoNote::IBlockchainCacheFactory>(new CryptoNote::DatabaseBlockchainCacheFactory(database, log.getLogger())),
+    std::unique_ptr<CryptoNote::IBlockchainCacheFactory>(new CryptoNote::DatabaseBlockchainCacheFactory(*database, log.getLogger())),
     transactionValidationThreads);
 
   core.load();

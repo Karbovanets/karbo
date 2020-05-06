@@ -42,6 +42,7 @@
 #include "CryptoNoteCore/DatabaseBlockchainCache.h"
 #include "CryptoNoteCore/DatabaseBlockchainCacheFactory.h"
 #include "CryptoNoteCore/MinerConfig.h"
+#include "cryptonotecore/LevelDBWrapper.h"
 #include "CryptoNoteCore/RocksDBWrapper.h"
 #include "CryptoNoteProtocol/CryptoNoteProtocolHandler.h"
 #include "P2p/NetNode.h"
@@ -77,6 +78,7 @@ namespace
   const command_line::arg_descriptor<std::string>              arg_load_checkpoints    = { "load-checkpoints", "<filename> Load checkpoints from csv file.", "" };
   const command_line::arg_descriptor<bool>                     arg_disable_checkpoints = { "without-checkpoints", "Synchronize without checkpoints" };
   const command_line::arg_descriptor<std::string>              arg_rollback            = { "rollback", "Rollback blockchain to <height>", "", true };
+  const command_line::arg_descriptor<bool>                     arg_level_db            = { "level-db", "Use LevelDB instead of RocksDB" };
 }
 
 bool command_line_preprocessor(const boost::program_options::variables_map& vm, LoggerRef& logger);
@@ -136,6 +138,7 @@ int main(int argc, char* argv[])
     command_line::add_arg(desc_cmd_sett, arg_load_checkpoints);
     command_line::add_arg(desc_cmd_sett, arg_disable_checkpoints);
     command_line::add_arg(desc_cmd_sett, arg_rollback);
+    command_line::add_arg(desc_cmd_sett, arg_level_db);
 
     RpcServerConfig::initOptions(desc_cmd_sett);
     NetNodeConfig::initOptions(desc_cmd_sett);
@@ -278,6 +281,9 @@ int main(int argc, char* argv[])
       return 1;
     }
 
+    // db
+    bool enableLevelDB = command_line::get_arg(vm, arg_level_db);
+
     DataBaseConfig dbConfig;
     dbConfig.init(vm);
 
@@ -291,15 +297,25 @@ int main(int argc, char* argv[])
       }
     }
 
-    RocksDBWrapper database(logManager, dbConfig);
-    database.init();
-    Tools::ScopeExit dbShutdownOnExit([&database] () { database.shutdown(); });
+    std::shared_ptr<IDataBase> database;
 
-    if (!DatabaseBlockchainCache::checkDBSchemeVersion(database, logManager)) {
+    if (enableLevelDB)
+    {
+      database = std::make_shared<LevelDBWrapper>(logManager, dbConfig);
+    }
+    else
+    {
+      database = std::make_shared<RocksDBWrapper>(logManager, dbConfig);
+    }
+
+    database->init();
+    Tools::ScopeExit dbShutdownOnExit([&database]() { database->shutdown(); });
+
+    if (!DatabaseBlockchainCache::checkDBSchemeVersion(*database, logManager)) {
       dbShutdownOnExit.cancel();
-      database.shutdown();
-      database.destroy();
-      database.init();
+      database->shutdown();
+      database->destroy();
+      database->init();
       dbShutdownOnExit.resume();
     }
 
@@ -313,7 +329,7 @@ int main(int argc, char* argv[])
       logManager,
       std::move(checkpoints),
       dispatcher,
-      std::unique_ptr<IBlockchainCacheFactory>(new DatabaseBlockchainCacheFactory(database, logger.getLogger())),
+      std::unique_ptr<IBlockchainCacheFactory>(new DatabaseBlockchainCacheFactory(*database, logger.getLogger())),
       transactionValidationThreads);
     ccore.load();
     logger(INFO) << "Core initialized OK";

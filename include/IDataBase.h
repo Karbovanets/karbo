@@ -29,11 +29,17 @@ namespace CryptoNote {
 class IDataBase {
 public:
   virtual ~IDataBase() {}
+  
+  virtual void init() = 0;
+  virtual void shutdown() = 0;
+  virtual void destroy() = 0;
 
   virtual std::error_code write(IWriteBatch& batch) = 0;
   virtual std::error_code writeSync(IWriteBatch& batch) = 0;
 
   virtual std::error_code read(IReadBatch& batch) = 0;
+#if !defined (USE_LEVELDB)
   virtual std::error_code readThreadSafe(IReadBatch &batch) = 0;
+#endif 
 };
 }

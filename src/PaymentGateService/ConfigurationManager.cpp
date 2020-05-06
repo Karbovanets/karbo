@@ -43,10 +43,12 @@ bool ConfigurationManager::init(int argc, char** argv) {
   confGeneralOptions.add(cmdGeneralOptions).add_options()
       ("testnet", po::bool_switch(), "")
       ("local", po::bool_switch(), "");
+      ("level-db", po::bool_switch(), "use LevelDB instead of RocksDB");
 
   cmdGeneralOptions.add_options()
       ("help,h", "produce this help message and exit")
       ("local", po::bool_switch(), "start with local node (remote is default)")
+      ("level-db", po::bool_switch(), "use LevelDB instead of RocksDB")
       ("testnet", po::bool_switch(), "testnet mode")
       ("version", "Output version information");
 
@@ -98,6 +100,7 @@ bool ConfigurationManager::init(int argc, char** argv) {
 
     netNodeConfig.setTestnet(confOptions["testnet"].as<bool>());
     startInprocess = confOptions["local"].as<bool>();
+    levelDB = confOptions["level-db"].as<bool>();
   }
 
   //command line options should override options from config file
