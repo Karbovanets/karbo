@@ -1,13 +1,10 @@
 
 add_definitions(-DSTATICLIB)
 
-if (ROCKSDB_FOUND)
-  include_directories(${ROCKSDB_INCLUDE_DIR})
-else()
-  include_directories(${CMAKE_SOURCE_DIR}/external/rocksdb/include)
-endif()
-
+include_directories(${CMAKE_SOURCE_DIR}/external/leveldb/include)
 include_directories(${CMAKE_SOURCE_DIR}/external/linenoise)
+include_directories(${CMAKE_SOURCE_DIR}/external/rocksdb/include)
+include_directories(${CMAKE_SOURCE_DIR}/external/snappy)
 include_directories(${CMAKE_SOURCE_DIR}/external/zstd)
 
 file(GLOB_RECURSE BlockchainExplorer BlockchainExplorer/*)
@@ -123,11 +120,11 @@ else()
 endif()
 
 if (MSVC AND NOT ROCKSDB_FOUND)
-  target_link_libraries(Daemon rocksdb zstd)
-  target_link_libraries(PaymentGateService rocksdb zstd)
+  target_link_libraries(Daemon rocksdb zstd leveldb snappy)
+  target_link_libraries(PaymentGateService rocksdb zstd leveldb snappy)
 elseif(UNIX AND NOT ROCKSDB_FOUND)
-  target_link_libraries(Daemon rocksdblib zstd)
-  target_link_libraries(PaymentGateService rocksdblib zstd)
+  target_link_libraries(Daemon rocksdblib zstd leveldblib snappy)
+  target_link_libraries(PaymentGateService rocksdblib zstd leveldblib snappy)
 else()
   target_link_libraries(Daemon ${ROCKSDB_LIBRARIES} zstd)
   target_link_libraries(PaymentGateService ${ROCKSDB_LIBRARIES} zstd)
