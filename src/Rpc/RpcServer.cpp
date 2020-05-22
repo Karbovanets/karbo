@@ -629,9 +629,14 @@ bool RpcServer::onGetTransactionHashesByPaymentId(const COMMAND_RPC_GET_TRANSACT
 }
 
 bool RpcServer::onGetInfo(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RPC_GET_INFO::response& res) {
-  res.height = m_core.getTopBlockIndex() + 1;
+  uint32_t topIndex = m_core.getTopBlockIndex();
+  res.height = topIndex + 1;
   res.difficulty = m_core.getDifficultyForNextBlock();
-  res.transactions_count = m_core.getBlockchainTransactionsCount() - res.height; //without coinbase
+  res.cumulative_difficulty = m_core.getBlockCumulativeDifficulty(topIndex);
+  Crypto::Hash last_block_hash = m_core.getTopBlockHash();
+  res.top_block_hash = Common::podToHex(last_block_hash);
+  res.block_major_version = m_core.getBlockMajorVersionForHeight(m_core.getTopBlockIndex());
+  res.transactions_count = m_core.getBlockchainTransactionsCount() - res.height; //without coinbase (incl. genesis)
   res.transactions_pool_size = m_core.getPoolTransactionsCount();
   res.alt_blocks_count = m_core.getAlternativeBlocksCount();
   uint64_t total_conn = m_p2p.get_connections_count();
@@ -641,16 +646,14 @@ bool RpcServer::onGetInfo(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RPC_
   res.white_peerlist_size = m_p2p.getPeerlistManager().get_white_peers_count();
   res.grey_peerlist_size = m_p2p.getPeerlistManager().get_gray_peers_count();
   res.last_known_block_index = std::max(static_cast<uint32_t>(1), m_protocol.getObservedHeight() - 1);
-  Crypto::Hash last_block_hash = m_core.getTopBlockHash();
-  res.top_block_hash = Common::podToHex(last_block_hash);
-  res.version = PROJECT_VERSION_LONG;
   res.fee_address = m_fee_address.empty() ? std::string() : m_fee_address;
   res.contact = m_contact_info.empty() ? std::string() : m_contact_info;
   res.min_fee = m_core.getMinimalFee();
+  uint64_t alreadyGeneratedCoins = m_core.getTotalGeneratedAmount();
+  res.already_generated_coins = m_core.getCurrency().formatAmount(alreadyGeneratedCoins); // that large uint64_t number is unsafe in JavaScript environment and therefore as a JSON value so we display it as a formatted string
+  res.next_reward = m_core.calculateReward(alreadyGeneratedCoins);
   res.start_time = (uint64_t)m_core.getStartTime();
-  res.already_generated_coins = m_core.getCurrency().formatAmount(m_core.getTotalGeneratedAmount()); // that large uint64_t number is unsafe in JavaScript environment and therefore as a JSON value so we display it as a formatted string
-  res.block_major_version = m_core.getBlockMajorVersionForHeight(m_core.getTopBlockIndex());
-
+  res.version = PROJECT_VERSION_LONG;
   res.status = CORE_RPC_STATUS_OK;
   return true;
 }
