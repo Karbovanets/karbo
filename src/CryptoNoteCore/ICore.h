@@ -134,6 +134,7 @@ public:
   virtual size_t getPoolTransactionsCount() const = 0;
   virtual size_t getBlockchainTransactionsCount() const = 0;
   virtual size_t getAlternativeBlocksCount() const = 0;
+  virtual std::vector<Crypto::Hash> getAlternativeBlocksHashes() const = 0;
   virtual uint64_t getTotalGeneratedAmount() const = 0;
   virtual uint32_t getCurrentBlockchainHeight() const = 0;
 

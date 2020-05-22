@@ -114,6 +114,7 @@ public:
   virtual size_t getAlternativeBlocksCount() const override;
   virtual uint64_t getTotalGeneratedAmount() const override;
   virtual std::vector<BlockTemplate> getAlternativeBlocks() const override;
+  virtual std::vector<Crypto::Hash> getAlternativeBlocksHashes() const override;
   virtual std::vector<Transaction> getPoolTransactions() const override;
   virtual std::vector<std::pair<Transaction, uint64_t>> getPoolTransactionsWithReceiveTime() const override;
   boost::optional<std::pair<MultisignatureOutput, uint64_t>>

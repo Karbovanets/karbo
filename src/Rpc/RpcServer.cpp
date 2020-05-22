@@ -218,6 +218,7 @@ bool RpcServer::processJsonRpcRequest(const HttpRequest& request, HttpResponse& 
     jsonResponse.setId(jsonRequest.getId()); // copy id
 
     static std::unordered_map<std::string, RpcServer::RpcHandler<JsonMemberMethod>> jsonRpcHandlers = {
+
       { "getblockcount", { makeMemberMethod(&RpcServer::onGetBlockCount), true } },
       { "getblockhash", { makeMemberMethod(&RpcServer::onGetBlockHash), false } },
       { "getblocktemplate", { makeMemberMethod(&RpcServer::onGetBlockTemplate), false } },
@@ -230,6 +231,7 @@ bool RpcServer::processJsonRpcRequest(const HttpRequest& request, HttpResponse& 
       { "getblocksbyhashes", { makeMemberMethod(&RpcServer::onGetBlocksDetailsByHashes), false } },
       { "getblockshashesbytimestamps", { makeMemberMethod(&RpcServer::onGetBlocksHashesByTimestamps), false } },
       { "getblockslist", { makeMemberMethod(&RpcServer::onGetBocksList), false } },
+      { "getaltblockslist", { makeMemberMethod(&RpcServer::onGetAltBlocksList), true } },
       { "getlastblockheader", { makeMemberMethod(&RpcServer::onGetLastBlockHeader), false } },
       { "gettransaction", { makeMemberMethod(&RpcServer::onGetTransactionDetailsByHash), false } },
       { "gettransactionspool", { makeMemberMethod(&RpcServer::onGetTransactionsPool), false } },
@@ -244,6 +246,7 @@ bool RpcServer::processJsonRpcRequest(const HttpRequest& request, HttpResponse& 
       { "validateaddress", { makeMemberMethod(&RpcServer::onValidateAddress), false } },
       { "verifymessage", { makeMemberMethod(&RpcServer::onVerifyMessage), false } },
       { "submitblock", { makeMemberMethod(&RpcServer::onSubmitBlock), false } }
+
     };
 
     auto it = jsonRpcHandlers.find(jsonRequest.getMethod());
@@ -856,6 +859,31 @@ bool RpcServer::onGetBocksList(const COMMAND_RPC_GET_BLOCKS_LIST::request& req, 
 
     if (i == 0)
       break;
+  }
+
+  res.status = CORE_RPC_STATUS_OK;
+  return true;
+}
+
+bool RpcServer::onGetAltBlocksList(const COMMAND_RPC_GET_ALT_BLOCKS_LIST::request& req, COMMAND_RPC_GET_ALT_BLOCKS_LIST::response& res) {
+  std::vector<Crypto::Hash> altBlocksHashes = m_core.getAlternativeBlocksHashes();
+
+  if (!altBlocksHashes.empty()) {
+    for (const auto & h : altBlocksHashes) {
+      
+      BlockDetailsShort b = m_core.getBlockDetailsLite(h);
+
+      block_short_response block_short;
+      block_short.cumulative_size = b.blockSize;
+      block_short.timestamp = b.timestamp;
+      block_short.height = b.index;
+      block_short.hash = Common::podToHex(b.hash);
+      block_short.transactions_count = b.transactionsCount;
+      block_short.difficulty = b.difficulty;
+      block_short.min_fee = m_core.getMinimalFee(b.index);
+
+      res.alt_blocks.push_back(block_short);
+    }
   }
 
   res.status = CORE_RPC_STATUS_OK;

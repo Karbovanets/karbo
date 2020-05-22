@@ -1345,6 +1345,21 @@ std::vector<BlockTemplate> Core::getAlternativeBlocks() const {
   return alternativeBlocks;
 }
 
+std::vector<Crypto::Hash> Core::getAlternativeBlocksHashes() const {
+  throwIfNotInitialized();
+
+  std::vector<Crypto::Hash> alternativeBlocksHashes;
+  for (auto& cache : chainsStorage) {
+    if (mainChainSet.count(cache.get()))
+      continue;
+    for (auto index = cache->getStartBlockIndex(); index <= cache->getTopBlockIndex(); ++index) {
+      alternativeBlocksHashes.push_back(cache->getBlockHash(index));
+    }
+  }
+
+  return alternativeBlocksHashes;
+}
+
 std::vector<Transaction> Core::getPoolTransactions() const {
   throwIfNotInitialized();
 
