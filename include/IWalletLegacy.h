@@ -154,8 +154,8 @@ public:
   virtual std::vector<TransactionOutputInformation> getTransactionOutputs(const Crypto::Hash& transactionHash, uint32_t flags = ITransfersContainer::IncludeDefault) const = 0;
   virtual std::vector<TransactionOutputInformation> getTransactionInputs(const Crypto::Hash& transactionHash, uint32_t flags) const = 0;
 
-  virtual std::string sign_message(const std::string &data) = 0;
-  virtual bool verify_message(const std::string &data, const CryptoNote::AccountPublicAddress &address, const std::string &signature) = 0;
+  virtual std::string sign_message(const std::string &message) = 0;
+  virtual bool verify_message(const std::string &message, const CryptoNote::AccountPublicAddress &address, const std::string &signature) = 0;
 
   virtual bool isTrackingWallet() = 0;
 };

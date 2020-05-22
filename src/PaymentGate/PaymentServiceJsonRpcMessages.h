@@ -122,7 +122,7 @@ struct ValidateAddress {
   };
 
   struct Response {
-    bool isvalid;
+    bool isValid;
     std::string address;
     std::string spendPublicKey;
     std::string viewPublicKey;
@@ -389,6 +389,38 @@ struct GetReserveProof {
 
   struct Response {
     std::string reserveProof;
+
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+};
+
+struct SignMessage {
+  struct Request {
+    std::string address;
+    std::string message;
+
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+
+  struct Response {
+    std::string address;
+    std::string signature;
+
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+};
+
+struct VerifyMessage {
+  struct Request {
+    std::string address;
+    std::string message;
+    std::string signature;
+
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+
+  struct Response {
+    bool isValid;
 
     void serialize(CryptoNote::ISerializer& serializer);
   };

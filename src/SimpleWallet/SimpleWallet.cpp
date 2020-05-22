@@ -1506,13 +1506,6 @@ bool simple_wallet::new_wallet(const std::string &wallet_file, const std::string
       fail_msg_writer() << "failed to save new wallet: " << e.what();
       throw;
     }
-
-    AccountKeys keys;
-    m_wallet->getAccountKeys(keys);
-
-    logger(INFO, BRIGHT_WHITE) <<
-      "Generated new wallet: " << m_wallet->getAddress() << std::endl <<
-      "view key: " << Common::podToHex(keys.viewSecretKey);
   }
   catch (const std::exception& e)
   {
@@ -1520,10 +1513,17 @@ bool simple_wallet::new_wallet(const std::string &wallet_file, const std::string
     return false;
   }
 
+  AccountKeys keys;
+  m_wallet->getAccountKeys(keys);
+
+  logger(INFO, BRIGHT_WHITE) << "Generated new wallet: "
+                             << m_wallet->getAddress()
+                             << std::endl
+                             << "view key: "
+                             << Common::podToHex(keys.viewSecretKey);
+
   if (!two_random)
   {
-    AccountKeys keys;
-    m_wallet->getAccountKeys(keys);
     // convert rng value to electrum-style word list
     std::string electrum_words;
     Crypto::ElectrumWords::bytes_to_words(keys.spendSecretKey, electrum_words, "English");
@@ -2420,26 +2420,12 @@ bool simple_wallet::verify_message(const std::vector<std::string> &args) {
     fail_msg_writer() << "failed to parse address " << address_string;
     return true;
   }
-  const size_t header_len = strlen("SigV1");
-  if (signature.size() < header_len || signature.substr(0, header_len) != "SigV1") {
-    fail_msg_writer() << ("Signature header check error");
-    return false;
-  }
-  std::string decoded;
-  if (!Tools::Base58::decode(signature.substr(header_len), decoded)) {
-    fail_msg_writer() << ("Signature decoding error");
-    return false;
-  }
-  if (sizeof(Crypto::Signature) != decoded.size()) {
-    fail_msg_writer() << ("Signature decoding error");
-    return false;
-  }
+  
   bool r = m_wallet->verify_message(message, address, signature);
   if (!r) {
     fail_msg_writer() << "Invalid signature from " << address_string;
-  }
-  else {
-    success_msg_writer() << "Valid signature from " << address_string;
+  } else {
+    success_msg_writer(true) << "Valid signature from " << address_string;
   }
   return true;
 }

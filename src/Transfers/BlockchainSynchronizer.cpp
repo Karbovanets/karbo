@@ -553,6 +553,11 @@ void BlockchainSynchronizer::processBlocks(GetBlocksResponse& response) {
         std::max(m_node.getKnownBlockCount(), m_node.getLocalBlockCount()));
       break;
     }
+
+    if (!blocks.empty()) {
+      lastBlockId = blocks.back().blockHash;
+      m_logger(DEBUGGING) << "Last block hash " << lastBlockId;
+    }
   }
 
   if (checkIfShouldStop()) { //Sic!

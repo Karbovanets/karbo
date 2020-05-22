@@ -489,11 +489,11 @@ namespace Tools {
   {
     AccountPublicAddress acc = boost::value_initialized<AccountPublicAddress>();
     bool r = m_currency.parseAccountAddressString(req.address, acc);
-    res.isvalid = r;
+    res.is_valid = r;
     if (r) {
       res.address = m_currency.accountAddressAsString(acc);
-      res.spendPublicKey = Common::podToHex(acc.spendPublicKey);
-      res.viewPublicKey = Common::podToHex(acc.viewPublicKey);
+      res.spend_public_key = Common::podToHex(acc.spendPublicKey);
+      res.view_public_key = Common::podToHex(acc.viewPublicKey);
     }
     res.status = CORE_RPC_STATUS_OK;
     return true;
@@ -542,16 +542,19 @@ namespace Tools {
     if (!m_currency.parseAccountAddressString(req.address, address)) {
       throw JsonRpc::JsonRpcError(WALLET_RPC_ERROR_CODE_WRONG_ADDRESS, std::string("Failed to parse address"));
     }
-    const size_t header_len = strlen("SigV1");
-    if (req.signature.size() < header_len || req.signature.substr(0, header_len) != "SigV1") {
-      throw JsonRpc::JsonRpcError(WALLET_RPC_ERROR_CODE_WRONG_SIGNATURE, std::string("Signature header check error"));
-    }
+
     std::string decoded;
     Crypto::Signature s;
-    if (!Tools::Base58::decode(req.signature.substr(header_len), decoded) || sizeof(s) != decoded.size()) {
+    uint64_t prefix;
+    if (!Tools::Base58::decode_addr(req.signature, prefix, decoded) || prefix != CryptoNote::parameters::CRYPTONOTE_KEYS_SIGNATURE_BASE58_PREFIX) {
       throw JsonRpc::JsonRpcError(WALLET_RPC_ERROR_CODE_WRONG_SIGNATURE, std::string("Signature decoding error"));
+    }
+
+    if (sizeof(s) != decoded.size()) {
+      throw JsonRpc::JsonRpcError(WALLET_RPC_ERROR_CODE_WRONG_SIGNATURE, std::string("Signature size wrong"));
       return false;
     }
+
     res.good = m_wallet.verify_message(req.message, address, req.signature);
     return true;
   }
