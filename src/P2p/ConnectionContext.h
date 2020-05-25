@@ -27,7 +27,7 @@
 #include <boost/optional.hpp>
 #include "crypto/hash.h"
 #include "Common/StringTools.h"
-#include "p2p/PendingLiteBlock.h"
+#include "P2p/PendingLiteBlock.h"
 
 namespace CryptoNote {
 
