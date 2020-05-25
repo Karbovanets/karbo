@@ -463,14 +463,14 @@ bool TransactionValidator::validateTransactionInputsExpensive()
     uint64_t inputIndex = 0;
 
     std::vector<std::future<bool>> validationResults;
-    std::atomic<bool> cancelValidation = false;
+    std::atomic<bool> cancelValidation(false);
     const Crypto::Hash prefixHash = m_cachedTransaction.getTransactionPrefixHash();
 
     for (const auto &input : m_transaction.inputs)
     {
         /* Validate each input on a separate thread in our thread pool */
         validationResults.emplace_back(m_threadPool.enqueue([inputIndex, &input, &prefixHash, &cancelValidation, this] {
-            if (cancelValidation)
+            if (cancelValidation.load())
             {
               return false; // fail the validation immediately if cancel requested
             }
@@ -585,7 +585,7 @@ bool TransactionValidator::validateTransactionInputsExpensive()
         if (!result.get())
         {
             valid = false;
-            cancelValidation = true;
+            cancelValidation.store(true);
         }
     }
 
