@@ -25,7 +25,7 @@
 #include "CachedBlock.h"
 #include "CachedTransaction.h"
 #include "Currency.h"
-#include "Checkpoints.h"
+#include "Checkpoints/Checkpoints.h"
 #include "IBlockchainCache.h"
 #include "IBlockchainCacheFactory.h"
 #include "ICore.h"

@@ -12,10 +12,10 @@
 
 #include "CryptoNote.h"
 #include "CachedTransaction.h"
-#include "Checkpoints.h"
 #include "Currency.h"
 #include "IBlockchainCache.h"
 #include "TransactionValidationResult.h"
+#include "Checkpoints/Checkpoints.h"
 #include "Common/ThreadPool.h"
 
 namespace CryptoNote
