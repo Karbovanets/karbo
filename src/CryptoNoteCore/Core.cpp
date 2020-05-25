@@ -2057,7 +2057,7 @@ BlockDetails Core::getBlockDetails(const Crypto::Hash& blockHash) const {
     auto lastBlocksSizes = segment->getLastBlocksSizes(currency.rewardBlocksWindow(), blockDetails.index - 1, addGenesisBlock);
     blockDetails.sizeMedian = Common::medianValue(lastBlocksSizes);
     size_t blockGrantedFullRewardZone = CryptoNote::parameters::CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE;
-    blockDetails.effectiveSizeMedian = std::max(blockDetails.sizeMedian, blockGrantedFullRewardZone);
+    blockDetails.effectiveSizeMedian = std::max<uint64_t>(blockDetails.sizeMedian, blockGrantedFullRewardZone);
     prevBlockGeneratedCoins = segment->getAlreadyGeneratedCoins(blockDetails.index - 1);
   }
 
