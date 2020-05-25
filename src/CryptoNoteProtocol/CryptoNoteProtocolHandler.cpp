@@ -425,7 +425,7 @@ int CryptoNoteProtocolHandler::handle_notify_new_transactions(int command, NOTIF
       << " Pending lite block detected, handling request as missing lite block transactions response";
     return doPushLiteBlock(context.m_pending_lite_block->request, context, std::move(arg.txs));
   } else {
-    const auto it = std::remove_if(arg.txs.begin(), arg.txs.end(), [this, &arg, &txHashes, &context](const auto &tx) {
+    const auto it = std::remove_if(arg.txs.begin(), arg.txs.end(), [this, &arg, &txHashes, &context](const BinaryArray &tx) {
       bool failed = !this->m_core.addTransactionToPool(tx);
 
       Crypto::Hash transactionHash = Crypto::cn_fast_hash(tx.data(), tx.size());
