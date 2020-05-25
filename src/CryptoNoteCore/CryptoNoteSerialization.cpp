@@ -483,7 +483,7 @@ void serialize(RawBlock& rawBlock, ISerializer& serializer) {
   serializer.binary(rawBlock.block.data(), rawBlock.block.size(), "block");
 
   if (serializer.type() == ISerializer::INPUT) {
-    uint64_t txCount;
+    size_t txCount;
     serializer(txCount, "tx_count");
     rawBlock.transactions.resize(static_cast<uint64_t>(txCount));
 
@@ -500,7 +500,7 @@ void serialize(RawBlock& rawBlock, ISerializer& serializer) {
 
     serializer.endArray();
   } else {
-    uint64_t txCount = rawBlock.transactions.size();
+    size_t txCount = rawBlock.transactions.size();
     serializer(txCount, "tx_count");
 
     serializer.beginArray(txCount, "transactions");
