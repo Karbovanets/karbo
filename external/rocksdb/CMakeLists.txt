@@ -34,9 +34,6 @@
 
 cmake_minimum_required(VERSION 3.5.1)
 
-include_directories(${CMAKE_SOURCE_DIR}/external/zstd/lib)
-include_directories(${CMAKE_SOURCE_DIR}/external/zstd/lib/dictBuilder)
-
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/modules/")
 include(ReadVersion)
 get_rocksdb_version(rocksdb_VERSION)
@@ -145,10 +142,14 @@ else()
   endif()
 
   if(WITH_ZSTD)
-    find_package(zstd REQUIRED)
+    SET(ZSTD_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../zstd")
+    SET(ZSTD_LIBRARIES zstd)
     add_definitions(-DZSTD)
     include_directories(${ZSTD_INCLUDE_DIR})
-    list(APPEND THIRDPARTY_LIBS zstd::zstd)
+    include_directories("${ZSTD_INCLUDE_DIR}/lib/dictBuilder")
+    include_directories("${ZSTD_INCLUDE_DIR}/lib")
+    include_directories("${ZSTD_INCLUDE_DIR}/common")
+    list(APPEND THIRDPARTY_LIBS ${ZSTD_LIBRARIES})
   endif()
 endif()
 
