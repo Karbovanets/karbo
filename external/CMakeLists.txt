@@ -9,7 +9,7 @@ add_subdirectory(zstd)
 if (NOT ROCKSDB_FOUND)
   if(MSVC)
     add_subdirectory(rocksDB EXCLUDE_FROM_ALL)
-    set_property(TARGET upnpc-static zstd rocksdb PROPERTY FOLDER "external")
+    set_property(TARGET upnpc-static rocksdb zstd PROPERTY FOLDER "external")
   elseif(NOT MSVC)
     set_property(TARGET upnpc-static zstd PROPERTY FOLDER "external")
     add_custom_target(
