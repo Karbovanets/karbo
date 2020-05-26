@@ -23,8 +23,7 @@
 #undef GetCurrentTime
 #endif
 
-
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 class DBWithTTLImpl : public DBWithTTL {
  public:
@@ -103,8 +102,8 @@ class DBWithTTLImpl : public DBWithTTL {
   void SetTtl(ColumnFamilyHandle *h, int32_t ttl) override;
 
  private:
-   // remember whether the Close completes or not
-   bool closed_;
+  // remember whether the Close completes or not
+  bool closed_;
 };
 
 class TtlIterator : public Iterator {
@@ -358,5 +357,5 @@ class TtlMergeOperator : public MergeOperator {
   std::shared_ptr<MergeOperator> user_merge_op_;
   Env* env_;
 };
-}
+}  // namespace ROCKSDB_NAMESPACE
 #endif  // ROCKSDB_LITE

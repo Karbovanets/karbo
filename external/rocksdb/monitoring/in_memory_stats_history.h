@@ -10,7 +10,7 @@
 
 #include "rocksdb/stats_history.h"
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 // InMemoryStatsHistoryIterator can be used to access stats history that was
 // stored by an in-memory two level std::map(DBImpl::stats_history_). It keeps
@@ -34,6 +34,13 @@ class InMemoryStatsHistoryIterator final : public StatsHistoryIterator {
         db_impl_(db_impl) {
     AdvanceIteratorByTime(start_time_, end_time_);
   }
+  // no copying allowed
+  InMemoryStatsHistoryIterator(const InMemoryStatsHistoryIterator&) = delete;
+  void operator=(const InMemoryStatsHistoryIterator&) = delete;
+  InMemoryStatsHistoryIterator(InMemoryStatsHistoryIterator&&) = delete;
+  InMemoryStatsHistoryIterator& operator=(InMemoryStatsHistoryIterator&&) =
+      delete;
+
   ~InMemoryStatsHistoryIterator() override;
   bool Valid() const override;
   Status status() const override;
@@ -55,13 +62,6 @@ class InMemoryStatsHistoryIterator final : public StatsHistoryIterator {
   // between [start_time, end_time)
   void AdvanceIteratorByTime(uint64_t start_time, uint64_t end_time);
 
-  // No copying allowed
-  InMemoryStatsHistoryIterator(const InMemoryStatsHistoryIterator&) = delete;
-  void operator=(const InMemoryStatsHistoryIterator&) = delete;
-  InMemoryStatsHistoryIterator(InMemoryStatsHistoryIterator&&) = delete;
-  InMemoryStatsHistoryIterator& operator=(InMemoryStatsHistoryIterator&&) =
-      delete;
-
   uint64_t time_;
   uint64_t start_time_;
   uint64_t end_time_;
@@ -71,4 +71,4 @@ class InMemoryStatsHistoryIterator final : public StatsHistoryIterator {
   DBImpl* db_impl_;
 };
 
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE

@@ -12,6 +12,7 @@
 #include <string>
 #include <utility>
 
+#include "db/version_edit.h"
 #include "port/port.h"
 #include "rocksdb/comparator.h"
 #include "rocksdb/table.h"
@@ -23,13 +24,11 @@
 #include "util/kv_map.h"
 #include "util/mutexlock.h"
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 namespace mock {
 
 stl_wrappers::KVMap MakeMockFile(
     std::initializer_list<std::pair<const std::string, std::string>> l = {});
-stl_wrappers::KVMap MakeMockFile(
-    std::vector<std::pair<const std::string, std::string>> l);
 
 struct MockTableFileSystem {
   port::Mutex mutex;
@@ -44,7 +43,7 @@ class MockTableReader : public TableReader {
                                 const SliceTransform* prefix_extractor,
                                 Arena* arena, bool skip_filters,
                                 TableReaderCaller caller,
-                              size_t compaction_readahead_size = 0) override;
+                                size_t compaction_readahead_size = 0) override;
 
   Status Get(const ReadOptions& readOptions, const Slice& key,
              GetContext* get_context, const SliceTransform* prefix_extractor,
@@ -155,10 +154,18 @@ class MockTableBuilder : public TableBuilder {
     return TableProperties();
   }
 
+  // Get file checksum
+  const std::string& GetFileChecksum() const override { return file_checksum_; }
+  // Get file checksum function name
+  const char* GetFileChecksumFuncName() const override {
+    return kUnknownFileChecksumFuncName.c_str();
+  }
+
  private:
   uint32_t id_;
   MockTableFileSystem* file_system_;
   stl_wrappers::KVMap table_;
+  std::string file_checksum_ = kUnknownFileChecksum;
 };
 
 class MockTableFactory : public TableFactory {
@@ -194,12 +201,6 @@ class MockTableFactory : public TableFactory {
   // contents are equal to file_contents
   void AssertSingleFile(const stl_wrappers::KVMap& file_contents);
   void AssertLatestFile(const stl_wrappers::KVMap& file_contents);
-  stl_wrappers::KVMap output() {
-    assert(!file_system_.files.empty());
-    auto latest = file_system_.files.end();
-    --latest;
-    return latest->second;
-  }
 
  private:
   uint32_t GetAndWriteNextID(WritableFileWriter* file) const;
@@ -210,4 +211,4 @@ class MockTableFactory : public TableFactory {
 };
 
 }  // namespace mock
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE

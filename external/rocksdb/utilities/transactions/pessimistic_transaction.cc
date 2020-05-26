@@ -25,7 +25,7 @@
 #include "utilities/transactions/pessimistic_transaction_db.h"
 #include "utilities/transactions/transaction_util.h"
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 struct WriteOptions;
 
@@ -473,10 +473,11 @@ Status PessimisticTransaction::LockBatch(WriteBatch* batch,
     void RecordKey(uint32_t column_family_id, const Slice& key) {
       std::string key_str = key.ToString();
 
-      auto iter = (keys_)[column_family_id].find(key_str);
-      if (iter == (keys_)[column_family_id].end()) {
+      auto& cfh_keys = keys_[column_family_id];
+      auto iter = cfh_keys.find(key_str);
+      if (iter == cfh_keys.end()) {
         // key not yet seen, store it.
-        (keys_)[column_family_id].insert({std::move(key_str)});
+        cfh_keys.insert({std::move(key_str)});
       }
     }
 
@@ -717,6 +718,6 @@ Status PessimisticTransaction::SetName(const TransactionName& name) {
   return s;
 }
 
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE
 
 #endif  // ROCKSDB_LITE

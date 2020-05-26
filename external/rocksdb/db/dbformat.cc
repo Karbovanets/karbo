@@ -8,14 +8,14 @@
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 #include "db/dbformat.h"
 
-#include <cinttypes>
 #include <stdio.h>
+#include <cinttypes>
 #include "monitoring/perf_context_imp.h"
 #include "port/port.h"
 #include "util/coding.h"
 #include "util/string_util.h"
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 // kValueTypeForSeek defines the ValueType that should be passed when
 // constructing a ParsedInternalKey object for seeking to a particular
@@ -194,4 +194,4 @@ void IterKey::EnlargeBuffer(size_t key_size) {
   buf_ = new char[key_size];
   buf_size_ = key_size;
 }
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE

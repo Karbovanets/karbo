@@ -16,7 +16,7 @@
 #include "rocksdb/utilities/write_batch_with_index.h"
 #include "util/string_util.h"
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 Status TransactionUtil::CheckKeyForConflicts(
     DBImpl* db_impl, ColumnFamilyHandle* column_family, const std::string& key,
@@ -75,8 +75,8 @@ Status TransactionUtil::CheckKey(DBImpl* db_impl, SuperVersion* sv,
 
     if (cache_only) {
       result = Status::TryAgain(
-          "Transaction ould not check for conflicts as the MemTable does not "
-          "countain a long enough history to check write at SequenceNumber: ",
+          "Transaction could not check for conflicts as the MemTable does not "
+          "contain a long enough history to check write at SequenceNumber: ",
           ToString(snap_seq));
     }
   } else if (snap_seq < earliest_seq || min_uncommitted <= earliest_seq) {
@@ -177,7 +177,6 @@ Status TransactionUtil::CheckKeysForConflicts(DBImpl* db_impl,
   return result;
 }
 
-
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE
 
 #endif  // ROCKSDB_LITE

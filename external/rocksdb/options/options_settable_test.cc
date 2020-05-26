@@ -21,7 +21,7 @@ using GFLAGS_NAMESPACE::ParseCommandLineFlags;
 DEFINE_bool(enable_print, false, "Print options generated to console.");
 #endif  // GFLAGS
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 // Verify options are settable from options strings.
 // We take the approach that depends on compiler behavior that copy constructor
@@ -181,6 +181,8 @@ TEST_F(OptionsSettableTest, BlockBasedTableOptionsAllFieldsSettable) {
 TEST_F(OptionsSettableTest, DBOptionsAllFieldsSettable) {
   const OffsetGap kDBOptionsBlacklist = {
       {offsetof(struct DBOptions, env), sizeof(Env*)},
+      {offsetof(struct DBOptions, file_system),
+       sizeof(std::shared_ptr<FileSystem>)},
       {offsetof(struct DBOptions, rate_limiter),
        sizeof(std::shared_ptr<RateLimiter>)},
       {offsetof(struct DBOptions, sst_file_manager),
@@ -197,6 +199,8 @@ TEST_F(OptionsSettableTest, DBOptionsAllFieldsSettable) {
        sizeof(std::vector<std::shared_ptr<EventListener>>)},
       {offsetof(struct DBOptions, row_cache), sizeof(std::shared_ptr<Cache>)},
       {offsetof(struct DBOptions, wal_filter), sizeof(const WalFilter*)},
+      {offsetof(struct DBOptions, sst_file_checksum_func),
+       sizeof(std::shared_ptr<FileChecksumFunc>)},
   };
 
   char* options_ptr = new char[sizeof(DBOptions)];
@@ -229,6 +233,7 @@ TEST_F(OptionsSettableTest, DBOptionsAllFieldsSettable) {
                              "delete_obsolete_files_period_micros=4294967758;"
                              "WAL_ttl_seconds=4295008036;"
                              "WAL_size_limit_MB=4295036161;"
+                             "max_write_batch_group_size_bytes=1048576;"
                              "wal_dir=path/to/wal_dir;"
                              "db_write_buffer_size=2587;"
                              "max_subcompactions=64330;"
@@ -245,6 +250,7 @@ TEST_F(OptionsSettableTest, DBOptionsAllFieldsSettable) {
                              "new_table_reader_for_compaction_inputs=false;"
                              "keep_log_file_num=4890;"
                              "skip_stats_update_on_db_open=false;"
+                             "skip_checking_sst_file_sizes_on_db_open=false;"
                              "max_manifest_file_size=4295009941;"
                              "db_log_dir=path/to/db_log_dir;"
                              "skip_log_error_on_recovery=true;"
@@ -296,7 +302,8 @@ TEST_F(OptionsSettableTest, DBOptionsAllFieldsSettable) {
                              "seq_per_batch=false;"
                              "atomic_flush=false;"
                              "avoid_unnecessary_blocking_io=false;"
-                             "log_readahead_size=0",
+                             "log_readahead_size=0;"
+                             "write_dbid_to_manifest=false",
                              new_options));
 
   ASSERT_EQ(unset_bytes_base, NumUnsetBytes(new_options_ptr, sizeof(DBOptions),
@@ -351,10 +358,10 @@ TEST_F(OptionsSettableTest, ColumnFamilyOptionsAllFieldsSettable) {
        sizeof(std::shared_ptr<CompactionFilterFactory>)},
       {offset_of(&ColumnFamilyOptions::prefix_extractor),
        sizeof(std::shared_ptr<const SliceTransform>)},
+      {offset_of(&ColumnFamilyOptions::snap_refresh_nanos), sizeof(uint64_t)},
       {offset_of(&ColumnFamilyOptions::table_factory),
        sizeof(std::shared_ptr<TableFactory>)},
-      {offset_of(&ColumnFamilyOptions::cf_paths),
-       sizeof(std::vector<DbPath>)},
+      {offset_of(&ColumnFamilyOptions::cf_paths), sizeof(std::vector<DbPath>)},
       {offset_of(&ColumnFamilyOptions::compaction_thread_limiter),
        sizeof(std::shared_ptr<ConcurrentTaskLimiter>)},
   };
@@ -414,7 +421,6 @@ TEST_F(OptionsSettableTest, ColumnFamilyOptionsAllFieldsSettable) {
       "kBZip2Compression:kNoCompression:kZlibCompression:kBZip2Compression:"
       "kSnappyCompression;"
       "max_bytes_for_level_base=986;"
-      "snap_refresh_nanos=1000000000;"
       "bloom_locality=8016;"
       "target_file_size_base=4294976376;"
       "memtable_huge_page_size=2557;"
@@ -475,7 +481,7 @@ TEST_F(OptionsSettableTest, ColumnFamilyOptionsAllFieldsSettable) {
 #endif  // OS_LINUX || OS_WIN
 #endif  // !ROCKSDB_LITE
 
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
