@@ -21,19 +21,18 @@
 #include <functional>
 #include <future>
 #include <boost/utility/value_init.hpp>
-#include <CryptoNoteCore/TransactionApi.h>
 
 #include <System/RemoteContext.h>
 
 #include "CryptoNoteConfig.h"
 #include "Common/Math.h"
-#include "Common/StringTools.h"
 #include "Common/ScopeExit.h"
+#include "Common/StringTools.h"
 #include "CryptoNoteCore/CryptoNoteTools.h"
+#include "CryptoNoteCore/TransactionApi.h"
 #include "CryptoNoteCore/VerificationContext.h"
 #include "CryptoNoteProtocol/CryptoNoteProtocolHandlerCommon.h"
 #include "InProcessNodeErrors.h"
-#include "Common/StringTools.h"
 #include "P2p/ConnectionContext.h"
 #include "version.h"
 
