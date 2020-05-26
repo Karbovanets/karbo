@@ -34,6 +34,9 @@
 
 cmake_minimum_required(VERSION 3.5.1)
 
+include_directories(${CMAKE_SOURCE_DIR}/external/zstd/lib)
+include_directories(${CMAKE_SOURCE_DIR}/external/zstd/lib/dictBuilder)
+
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/modules/")
 include(ReadVersion)
 get_rocksdb_version(rocksdb_VERSION)
@@ -65,7 +68,7 @@ option(WITH_JEMALLOC "build with JeMalloc" OFF)
 option(WITH_SNAPPY "build with SNAPPY" OFF)
 option(WITH_LZ4 "build with lz4" OFF)
 option(WITH_ZLIB "build with zlib" OFF)
-option(WITH_ZSTD "build with zstd" OFF)
+option(WITH_ZSTD "build with zstd" ON)
 option(WITH_WINDOWS_UTF8_FILENAMES "use UTF8 as characterset for opening files, regardles of the system code page" OFF)
 if (WITH_WINDOWS_UTF8_FILENAMES)
   add_definitions(-DROCKSDB_WINDOWS_UTF8_FILENAMES)
