@@ -294,7 +294,7 @@ add_subdirectory(external)
 add_subdirectory(src)
 
 ## We need to setup the RocksDB build environment to match our system
-include_directories(${CMAKE_SOURCE_DIR}/external/zstd)
+include_directories(${CMAKE_SOURCE_DIR}/external/zstd/lib)
 if (NOT ROCKSDB_FOUND)
   if(NOT MSVC)
     execute_process(
