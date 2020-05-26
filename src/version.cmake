@@ -1,5 +1,4 @@
 # Read project version from git tag.
-cmake_policy(SET CMP0007 OLD)
 find_package(Git)
 message(STATUS "Found Git: ${GIT_FOUND}")
 if(GIT_FOUND)
@@ -51,7 +50,7 @@ if(GIT_FOUND)
   endif()
 
   execute_process(
-    COMMAND "${GIT_EXECUTABLE}" rev-list --count ${PROJECT_GIT_COMMIT_ID}
+    COMMAND "${GIT_EXECUTABLE}" rev-list --count HEAD
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     OUTPUT_VARIABLE PROJECT_GIT_COMMIT_COUNT
     OUTPUT_STRIP_TRAILING_WHITESPACE)

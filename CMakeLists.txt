@@ -112,7 +112,12 @@ else()
   find_package(Git QUIET)
   if(Git_FOUND OR GIT_FOUND)
     message(STATUS "Found Git: ${GIT_EXECUTABLE}")
-    add_custom_target(version ALL "${CMAKE_COMMAND}" "-D" "VERSION=${VERSION}" "-D" "GIT=${GIT_EXECUTABLE}" "-D" "TO=${CMAKE_CURRENT_BINARY_DIR}/version/version.h" "-P" "${CMAKE_CURRENT_SOURCE_DIR}/src/version.cmake" WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+    add_custom_target(version ALL "${CMAKE_COMMAND}"
+                      "-D" "VERSION=${VERSION}"
+                      "-D" "GIT=${GIT_EXECUTABLE}"
+                      "-D" "TO=${CMAKE_CURRENT_BINARY_DIR}/version/version.h"
+                      "-D" "BUILD_REMARK=${BUILD_REMARK}"
+                      "-P" "${CMAKE_CURRENT_SOURCE_DIR}/src/version.cmake" WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
   else()
     message(STATUS "WARNING: Git was not found!")
     set(VERSION "${VERSION}-unknown")
@@ -120,6 +125,7 @@ else()
     add_custom_target(version ALL)
   endif()
 endif()
+
 include_directories(include "${CMAKE_CURRENT_BINARY_DIR}/version" src external)
 
 ## Platform specific code base information is applied here
