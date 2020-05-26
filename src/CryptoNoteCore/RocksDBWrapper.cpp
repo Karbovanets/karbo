@@ -48,6 +48,8 @@ void RocksDBWrapper::init() {
     throw std::system_error(make_error_code(CryptoNote::error::DataBaseErrorCodes::ALREADY_INITIALIZED));
   }
   
+  logger(INFO) << "RocksDB v. " << ROCKSDB_MAJOR << "." << ROCKSDB_MINOR << "." << ROCKSDB_PATCH;
+
   std::string dataDir = getDataDir(m_config);
 
   logger(INFO) << "Opening DB in " << dataDir;
