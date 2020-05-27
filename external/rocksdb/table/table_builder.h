@@ -15,13 +15,13 @@
 #include <vector>
 #include "db/dbformat.h"
 #include "db/table_properties_collector.h"
+#include "file/writable_file_writer.h"
 #include "options/cf_options.h"
 #include "rocksdb/options.h"
 #include "rocksdb/table_properties.h"
 #include "trace_replay/block_cache_tracer.h"
-#include "util/file_reader_writer.h"
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 class Slice;
 class Status;
@@ -159,6 +159,12 @@ class TableBuilder {
 
   // Returns table properties
   virtual TableProperties GetTableProperties() const = 0;
+
+  // Return file checksum
+  virtual const std::string& GetFileChecksum() const = 0;
+
+  // Return file checksum function name
+  virtual const char* GetFileChecksumFuncName() const = 0;
 };
 
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE

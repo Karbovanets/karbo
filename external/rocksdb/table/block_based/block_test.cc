@@ -27,7 +27,7 @@
 #include "test_util/testutil.h"
 #include "util/random.h"
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 static std::string RandomString(Random *rnd, int len) {
   std::string r;
@@ -292,7 +292,7 @@ TEST_F(BlockTest, BlockReadAmpBitmap) {
 
   Random rnd(301);
   for (size_t block_size : block_sizes) {
-    std::shared_ptr<Statistics> stats = rocksdb::CreateDBStatistics();
+    std::shared_ptr<Statistics> stats = ROCKSDB_NAMESPACE::CreateDBStatistics();
     BlockReadAmpBitmap read_amp_bitmap(block_size, kBytesPerBit, stats.get());
     BlockReadAmpBitmapSlowAndAccurate read_amp_slow_and_accurate;
 
@@ -370,7 +370,7 @@ TEST_F(BlockTest, BlockWithReadAmpBitmap) {
 
   // Read the block sequentially using Next()
   {
-    std::shared_ptr<Statistics> stats = rocksdb::CreateDBStatistics();
+    std::shared_ptr<Statistics> stats = ROCKSDB_NAMESPACE::CreateDBStatistics();
 
     // create block reader
     BlockContents contents;
@@ -403,7 +403,7 @@ TEST_F(BlockTest, BlockWithReadAmpBitmap) {
 
   // Read the block sequentially using Seek()
   {
-    std::shared_ptr<Statistics> stats = rocksdb::CreateDBStatistics();
+    std::shared_ptr<Statistics> stats = ROCKSDB_NAMESPACE::CreateDBStatistics();
 
     // create block reader
     BlockContents contents;
@@ -438,7 +438,7 @@ TEST_F(BlockTest, BlockWithReadAmpBitmap) {
 
   // Read the block randomly
   {
-    std::shared_ptr<Statistics> stats = rocksdb::CreateDBStatistics();
+    std::shared_ptr<Statistics> stats = ROCKSDB_NAMESPACE::CreateDBStatistics();
 
     // create block reader
     BlockContents contents;
@@ -477,20 +477,20 @@ TEST_F(BlockTest, BlockWithReadAmpBitmap) {
 }
 
 TEST_F(BlockTest, ReadAmpBitmapPow2) {
-  std::shared_ptr<Statistics> stats = rocksdb::CreateDBStatistics();
-  ASSERT_EQ(BlockReadAmpBitmap(100, 1, stats.get()).GetBytesPerBit(), 1);
-  ASSERT_EQ(BlockReadAmpBitmap(100, 2, stats.get()).GetBytesPerBit(), 2);
-  ASSERT_EQ(BlockReadAmpBitmap(100, 4, stats.get()).GetBytesPerBit(), 4);
-  ASSERT_EQ(BlockReadAmpBitmap(100, 8, stats.get()).GetBytesPerBit(), 8);
-  ASSERT_EQ(BlockReadAmpBitmap(100, 16, stats.get()).GetBytesPerBit(), 16);
-  ASSERT_EQ(BlockReadAmpBitmap(100, 32, stats.get()).GetBytesPerBit(), 32);
+  std::shared_ptr<Statistics> stats = ROCKSDB_NAMESPACE::CreateDBStatistics();
+  ASSERT_EQ(BlockReadAmpBitmap(100, 1, stats.get()).GetBytesPerBit(), 1u);
+  ASSERT_EQ(BlockReadAmpBitmap(100, 2, stats.get()).GetBytesPerBit(), 2u);
+  ASSERT_EQ(BlockReadAmpBitmap(100, 4, stats.get()).GetBytesPerBit(), 4u);
+  ASSERT_EQ(BlockReadAmpBitmap(100, 8, stats.get()).GetBytesPerBit(), 8u);
+  ASSERT_EQ(BlockReadAmpBitmap(100, 16, stats.get()).GetBytesPerBit(), 16u);
+  ASSERT_EQ(BlockReadAmpBitmap(100, 32, stats.get()).GetBytesPerBit(), 32u);
 
-  ASSERT_EQ(BlockReadAmpBitmap(100, 3, stats.get()).GetBytesPerBit(), 2);
-  ASSERT_EQ(BlockReadAmpBitmap(100, 7, stats.get()).GetBytesPerBit(), 4);
-  ASSERT_EQ(BlockReadAmpBitmap(100, 11, stats.get()).GetBytesPerBit(), 8);
-  ASSERT_EQ(BlockReadAmpBitmap(100, 17, stats.get()).GetBytesPerBit(), 16);
-  ASSERT_EQ(BlockReadAmpBitmap(100, 33, stats.get()).GetBytesPerBit(), 32);
-  ASSERT_EQ(BlockReadAmpBitmap(100, 35, stats.get()).GetBytesPerBit(), 32);
+  ASSERT_EQ(BlockReadAmpBitmap(100, 3, stats.get()).GetBytesPerBit(), 2u);
+  ASSERT_EQ(BlockReadAmpBitmap(100, 7, stats.get()).GetBytesPerBit(), 4u);
+  ASSERT_EQ(BlockReadAmpBitmap(100, 11, stats.get()).GetBytesPerBit(), 8u);
+  ASSERT_EQ(BlockReadAmpBitmap(100, 17, stats.get()).GetBytesPerBit(), 16u);
+  ASSERT_EQ(BlockReadAmpBitmap(100, 33, stats.get()).GetBytesPerBit(), 32u);
+  ASSERT_EQ(BlockReadAmpBitmap(100, 35, stats.get()).GetBytesPerBit(), 32u);
 }
 
 class IndexBlockTest
@@ -619,7 +619,7 @@ INSTANTIATE_TEST_CASE_P(P, IndexBlockTest,
                                           std::make_tuple(true, false),
                                           std::make_tuple(true, true)));
 
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE
 
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);

@@ -19,7 +19,7 @@
 
 #ifndef ROCKSDB_LITE
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 // A helper function that ensures the table properties returned in
 // `GetPropertiesOfAllTablesTest` is correct.
@@ -230,7 +230,7 @@ TEST_F(DBTablePropertiesTest, GetColumnFamilyNameProperty) {
 
   // Create one table per CF, then verify it was created with the column family
   // name property.
-  for (int cf = 0; cf < 2; ++cf) {
+  for (uint32_t cf = 0; cf < 2; ++cf) {
     Put(cf, "key", "val");
     Flush(cf);
 
@@ -325,12 +325,12 @@ TEST_F(DBTablePropertiesTest, DeletionTriggeredCompactionMarking) {
 
 }
 
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE
 
 #endif  // ROCKSDB_LITE
 
 int main(int argc, char** argv) {
-  rocksdb::port::InstallStackTraceHandler();
+  ROCKSDB_NAMESPACE::port::InstallStackTraceHandler();
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

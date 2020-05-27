@@ -45,7 +45,7 @@
 #include <System/TcpListener.h>
 #include <System/TcpConnector.h>
  
-#include "version.h"
+#include "cnVersion.h"
 #include "Common/StdInputStream.h"
 #include "Common/StdOutputStream.h"
 #include "Common/Util.h"

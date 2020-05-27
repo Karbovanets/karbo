@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "db/dbformat.h"
+#include "file/writable_file_writer.h"
 #include "rocksdb/env.h"
 #include "rocksdb/table.h"
 #include "table/block_based/block_builder.h"
@@ -20,11 +21,10 @@
 #include "table/format.h"
 #include "table/meta_blocks.h"
 #include "util/autovector.h"
-#include "util/file_reader_writer.h"
 #include "util/random.h"
 #include "util/string_util.h"
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 const std::string CuckooTablePropertyNames::kEmptyKey =
       "rocksdb.cuckoo.bucket.empty.key";
 const std::string CuckooTablePropertyNames::kNumHashFunc =
@@ -387,6 +387,10 @@ Status CuckooTableBuilder::Finish() {
   std::string footer_encoding;
   footer.EncodeTo(&footer_encoding);
   s = file_->Append(footer_encoding);
+
+  if (file_ != nullptr) {
+    file_checksum_ = file_->GetFileChecksum();
+  }
   return s;
 }
 
@@ -512,5 +516,13 @@ bool CuckooTableBuilder::MakeSpaceForKey(
   return null_found;
 }
 
-}  // namespace rocksdb
+const char* CuckooTableBuilder::GetFileChecksumFuncName() const {
+  if (file_ != nullptr) {
+    return file_->GetFileChecksumFuncName();
+  } else {
+    return kUnknownFileChecksumFuncName.c_str();
+  }
+}
+
+}  // namespace ROCKSDB_NAMESPACE
 #endif  // ROCKSDB_LITE

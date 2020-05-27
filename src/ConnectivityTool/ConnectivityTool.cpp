@@ -38,7 +38,7 @@
 #include "Rpc/CoreRpcServerCommandsDefinitions.h"
 #include "Rpc/HttpClient.h"
 #include "Serialization/SerializationTools.h"
-#include "version.h"
+#include "cnVersion.h"
 
 namespace po = boost::program_options;
 using namespace CryptoNote;

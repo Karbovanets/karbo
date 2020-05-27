@@ -30,7 +30,7 @@
 #include "CryptoNoteCore/Core.h"
 #include "CryptoNoteProtocol/CryptoNoteProtocolHandler.h"
 #include "Serialization/SerializationTools.h"
-#include "version.h"
+#include "cnVersion.h"
 
 namespace {
 template <typename T>

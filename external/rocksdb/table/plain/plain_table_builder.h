@@ -9,16 +9,17 @@
 #include <stdint.h>
 #include <string>
 #include <vector>
+#include "db/version_edit.h"
 #include "rocksdb/options.h"
 #include "rocksdb/status.h"
 #include "rocksdb/table.h"
 #include "rocksdb/table_properties.h"
-#include "table/bloom_block.h"
+#include "table/plain/plain_table_bloom.h"
 #include "table/plain/plain_table_index.h"
 #include "table/plain/plain_table_key_coding.h"
 #include "table/table_builder.h"
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 class BlockBuilder;
 class BlockHandle;
@@ -45,6 +46,9 @@ class PlainTableBuilder: public TableBuilder {
       const std::string& column_family_name, uint32_t num_probes = 6,
       size_t huge_page_tlb_size = 0, double hash_table_ratio = 0,
       bool store_index_in_file = false);
+  // No copying allowed
+  PlainTableBuilder(const PlainTableBuilder&) = delete;
+  void operator=(const PlainTableBuilder&) = delete;
 
   // REQUIRES: Either Finish() or Abandon() has been called.
   ~PlainTableBuilder();
@@ -80,6 +84,12 @@ class PlainTableBuilder: public TableBuilder {
 
   bool SaveIndexInFile() const { return store_index_in_file_; }
 
+  // Get file checksum
+  const std::string& GetFileChecksum() const override { return file_checksum_; }
+
+  // Get file checksum function name
+  const char* GetFileChecksumFuncName() const override;
+
  private:
   Arena arena_;
   const ImmutableCFOptions& ioptions_;
@@ -104,6 +114,9 @@ class PlainTableBuilder: public TableBuilder {
   bool closed_ = false;  // Either Finish() or Abandon() has been called.
 
   const SliceTransform* prefix_extractor_;
+
+  // Store file checksum. If checksum is disabled, its value is "0".
+  std::string file_checksum_ = kUnknownFileChecksum;
 
   Slice GetPrefix(const Slice& target) const {
     assert(target.size() >= 8);  // target is internal key
@@ -131,12 +144,8 @@ class PlainTableBuilder: public TableBuilder {
   }
 
   bool IsTotalOrderMode() const { return (prefix_extractor_ == nullptr); }
-
-  // No copying allowed
-  PlainTableBuilder(const PlainTableBuilder&) = delete;
-  void operator=(const PlainTableBuilder&) = delete;
 };
 
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE
 
 #endif  // ROCKSDB_LITE

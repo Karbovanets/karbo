@@ -5,6 +5,7 @@
 
 #pragma once
 #include <algorithm>
+#include <array>
 #include <string>
 #include "db/lookup_key.h"
 #include "db/merge_context.h"
@@ -13,7 +14,7 @@
 #include "rocksdb/types.h"
 #include "util/autovector.h"
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 class GetContext;
 
 struct KeyContext {
@@ -21,6 +22,7 @@ struct KeyContext {
   LookupKey* lkey;
   Slice ukey;
   Slice ikey;
+  ColumnFamilyHandle* column_family;
   Status* s;
   MergeContext merge_context;
   SequenceNumber max_covering_tombstone_seq;
@@ -29,9 +31,11 @@ struct KeyContext {
   PinnableSlice* value;
   GetContext* get_context;
 
-  KeyContext(const Slice& user_key, PinnableSlice* val, Status* stat)
+  KeyContext(ColumnFamilyHandle* col_family, const Slice& user_key,
+             PinnableSlice* val, Status* stat)
       : key(&user_key),
         lkey(nullptr),
+        column_family(col_family),
         s(stat),
         max_covering_tombstone_seq(0),
         key_exists(false),
@@ -85,14 +89,11 @@ class MultiGetContext {
   // htat need to be performed
   static const int MAX_BATCH_SIZE = 32;
 
-  MultiGetContext(KeyContext** sorted_keys, size_t num_keys,
-                  SequenceNumber snapshot)
-      : sorted_keys_(sorted_keys),
-        num_keys_(num_keys),
+  MultiGetContext(autovector<KeyContext*, MAX_BATCH_SIZE>* sorted_keys,
+                  size_t begin, size_t num_keys, SequenceNumber snapshot)
+      : num_keys_(num_keys),
         value_mask_(0),
         lookup_key_ptr_(reinterpret_cast<LookupKey*>(lookup_key_stack_buf)) {
-    int index = 0;
-
     if (num_keys > MAX_LOOKUP_KEYS_ON_STACK) {
       lookup_key_heap_buf.reset(new char[sizeof(LookupKey) * num_keys]);
       lookup_key_ptr_ = reinterpret_cast<LookupKey*>(
@@ -100,11 +101,12 @@ class MultiGetContext {
     }
 
     for (size_t iter = 0; iter != num_keys_; ++iter) {
-      sorted_keys_[iter]->lkey = new (&lookup_key_ptr_[index])
+      // autovector may not be contiguous storage, so make a copy
+      sorted_keys_[iter] = (*sorted_keys)[begin + iter];
+      sorted_keys_[iter]->lkey = new (&lookup_key_ptr_[iter])
           LookupKey(*sorted_keys_[iter]->key, snapshot);
       sorted_keys_[iter]->ukey = sorted_keys_[iter]->lkey->user_key();
       sorted_keys_[iter]->ikey = sorted_keys_[iter]->lkey->internal_key();
-      index++;
     }
   }
 
@@ -118,7 +120,7 @@ class MultiGetContext {
   static const int MAX_LOOKUP_KEYS_ON_STACK = 16;
   alignas(alignof(LookupKey))
     char lookup_key_stack_buf[sizeof(LookupKey) * MAX_LOOKUP_KEYS_ON_STACK];
-  KeyContext** sorted_keys_;
+  std::array<KeyContext*, MAX_BATCH_SIZE> sorted_keys_;
   size_t num_keys_;
   uint64_t value_mask_;
   std::unique_ptr<char[]> lookup_key_heap_buf;
@@ -229,6 +231,16 @@ class MultiGetContext {
       return ctx_->value_mask_ & (1ull << iter.index_);
     }
 
+    uint64_t KeysLeft() {
+      uint64_t new_val = skip_mask_ | ctx_->value_mask_;
+      uint64_t count = 0;
+      while (new_val) {
+        new_val = new_val & (new_val - 1);
+        count++;
+      }
+      return end_ - count;
+    }
+
    private:
     friend MultiGetContext;
     MultiGetContext* ctx_;
@@ -244,4 +256,4 @@ class MultiGetContext {
   Range GetMultiGetRange() { return Range(this, num_keys_); }
 };
 
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE

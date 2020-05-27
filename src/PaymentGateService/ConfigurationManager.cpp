@@ -23,7 +23,7 @@
 
 #include "Common/CommandLine.h"
 #include "Common/Util.h"
-#include "version.h"
+#include "cnVersion.h"
 
 namespace PaymentService {
 

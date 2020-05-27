@@ -10,7 +10,7 @@
 #include "rocksdb/write_buffer_manager.h"
 #include "test_util/testharness.h"
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 class WriteBufferManagerTest : public testing::Test {};
 
@@ -51,8 +51,12 @@ TEST_F(WriteBufferManagerTest, ShouldFlush) {
 }
 
 TEST_F(WriteBufferManagerTest, CacheCost) {
+  LRUCacheOptions co;
   // 1GB cache
-  std::shared_ptr<Cache> cache = NewLRUCache(1024 * 1024 * 1024, 4);
+  co.capacity = 1024 * 1024 * 1024;
+  co.num_shard_bits = 4;
+  co.metadata_charge_policy = kDontChargeCacheMetadata;
+  std::shared_ptr<Cache> cache = NewLRUCache(co);
   // A write buffer manager of size 50MB
   std::unique_ptr<WriteBufferManager> wbf(
       new WriteBufferManager(50 * 1024 * 1024, cache));
@@ -143,7 +147,7 @@ TEST_F(WriteBufferManagerTest, NoCapCacheCost) {
   ASSERT_LT(cache->GetPinnedUsage(), 1024 * 1024 + 10000);
 }
 #endif  // ROCKSDB_LITE
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
