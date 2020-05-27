@@ -20,6 +20,7 @@
 #include "db/db_test_util.h"
 #include "db/log_format.h"
 #include "db/version_set.h"
+#include "env/composite_env_wrapper.h"
 #include "file/filename.h"
 #include "rocksdb/cache.h"
 #include "rocksdb/convenience.h"
@@ -32,7 +33,7 @@
 #include "test_util/testutil.h"
 #include "util/string_util.h"
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 static const int kValueSize = 1000;
 
@@ -97,7 +98,7 @@ class CorruptionTest : public testing::Test {
   void RepairDB() {
     delete db_;
     db_ = nullptr;
-    ASSERT_OK(::rocksdb::RepairDB(dbname_, options_));
+    ASSERT_OK(::ROCKSDB_NAMESPACE::RepairDB(dbname_, options_));
   }
 
   void Build(int n, int flush_every = 0) {
@@ -189,6 +190,7 @@ class CorruptionTest : public testing::Test {
     ASSERT_TRUE(s.ok()) << s.ToString();
     Options options;
     EnvOptions env_options;
+    options.file_system.reset(new LegacyFileSystemWrapper(options.env));
     ASSERT_NOK(VerifySstFileChecksum(options, env_options, fname));
   }
 
@@ -369,6 +371,13 @@ TEST_F(CorruptionTest, VerifyChecksumReadahead) {
   ASSERT_GE(senv.random_read_counter_.Read(), 213);
   ASSERT_LE(senv.random_read_counter_.Read(), 447);
 
+  // Test readahead shouldn't break mmap mode (where it should be
+  // disabled).
+  options.allow_mmap_reads = true;
+  Reopen(&options);
+  dbi = static_cast<DBImpl*>(db_);
+  ASSERT_OK(dbi->VerifyChecksum(ro));
+
   CloseDb();
 }
 
@@ -384,12 +393,16 @@ TEST_F(CorruptionTest, TableFileIndexData) {
 
   // corrupt an index block of an entire file
   Corrupt(kTableFile, -2000, 500);
-  Reopen();
+  options.paranoid_checks = false;
+  Reopen(&options);
   dbi = reinterpret_cast<DBImpl*>(db_);
   // one full file may be readable, since only one was corrupted
   // the other file should be fully non-readable, since index was corrupted
   Check(0, 5000);
   ASSERT_NOK(dbi->VerifyChecksum());
+
+  // In paranoid mode, the db cannot be opened due to the corrupted file.
+  ASSERT_TRUE(TryReopen().IsCorruption());
 }
 
 TEST_F(CorruptionTest, MissingDescriptor) {
@@ -532,7 +545,8 @@ TEST_F(CorruptionTest, RangeDeletionCorrupted) {
   std::unique_ptr<RandomAccessFile> file;
   ASSERT_OK(options_.env->NewRandomAccessFile(filename, &file, EnvOptions()));
   std::unique_ptr<RandomAccessFileReader> file_reader(
-      new RandomAccessFileReader(std::move(file), filename));
+      new RandomAccessFileReader(NewLegacyRandomAccessFileWrapper(file),
+                                 filename));
 
   uint64_t file_size;
   ASSERT_OK(options_.env->GetFileSize(filename, &file_size));
@@ -544,13 +558,7 @@ TEST_F(CorruptionTest, RangeDeletionCorrupted) {
 
   ASSERT_OK(TryReopen());
   CorruptFile(filename, static_cast<int>(range_del_handle.offset()), 1);
-  // The test case does not fail on TryReopen because failure to preload table
-  // handlers is not considered critical.
-  ASSERT_OK(TryReopen());
-  std::string val;
-  // However, it does fail on any read involving that file since that file
-  // cannot be opened with a corrupt range deletion meta-block.
-  ASSERT_TRUE(db_->Get(ReadOptions(), "a", &val).IsCorruption());
+  ASSERT_TRUE(TryReopen().IsCorruption());
 }
 
 TEST_F(CorruptionTest, FileSystemStateCorrupted) {
@@ -575,18 +583,19 @@ TEST_F(CorruptionTest, FileSystemStateCorrupted) {
       env_.NewWritableFile(filename, &file, EnvOptions());
       file->Append(Slice("corrupted sst"));
       file.reset();
+      Status x = TryReopen(&options);
+      ASSERT_TRUE(x.IsCorruption());
     } else {  // delete the file
       env_.DeleteFile(filename);
+      Status x = TryReopen(&options);
+      ASSERT_TRUE(x.IsPathNotFound());
     }
 
-    Status x = TryReopen(&options);
-    ASSERT_TRUE(x.IsCorruption());
     DestroyDB(dbname_, options_);
-    Reopen(&options);
   }
 }
 
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);

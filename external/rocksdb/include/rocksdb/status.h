@@ -19,7 +19,7 @@
 #include <string>
 #include "rocksdb/slice.h"
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 class Status {
  public:
@@ -77,6 +77,7 @@ class Status {
     kSpaceLimit = 8,
     kPathNotFound = 9,
     KMergeOperandsInsufficientCapacity = 10,
+    kManualCompactionPaused = 11,
     kMaxSubCode
   };
 
@@ -295,11 +296,17 @@ class Status {
     return (code() == kIOError) && (subcode() == kPathNotFound);
   }
 
+  // Returns true iff the status indicates manual compaction paused. This
+  // is caused by a call to PauseManualCompaction
+  bool IsManualCompactionPaused() const {
+    return (code() == kIncomplete) && (subcode() == kManualCompactionPaused);
+  }
+
   // Return a string representation of this status suitable for printing.
   // Returns the string "OK" for success.
   std::string ToString() const;
 
- private:
+ protected:
   // A nullptr state_ (which is always the case for OK) means the message
   // is empty.
   // of the following form:
@@ -376,4 +383,4 @@ inline bool Status::operator!=(const Status& rhs) const {
   return !(*this == rhs);
 }
 
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE

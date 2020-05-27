@@ -5,17 +5,18 @@
 
 #include "options/cf_options.h"
 
-#include <cinttypes>
 #include <cassert>
+#include <cinttypes>
 #include <limits>
 #include <string>
 #include "options/db_options.h"
 #include "port/port.h"
-#include "rocksdb/env.h"
-#include "rocksdb/options.h"
 #include "rocksdb/concurrent_task_limiter.h"
+#include "rocksdb/env.h"
+#include "rocksdb/file_system.h"
+#include "rocksdb/options.h"
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 ImmutableCFOptions::ImmutableCFOptions(const Options& options)
     : ImmutableCFOptions(ImmutableDBOptions(options), options) {}
@@ -42,6 +43,7 @@ ImmutableCFOptions::ImmutableCFOptions(const ImmutableDBOptions& db_options,
       rate_limiter(db_options.rate_limiter.get()),
       info_log_level(db_options.info_log_level),
       env(db_options.env),
+      fs(db_options.fs.get()),
       allow_mmap_reads(db_options.allow_mmap_reads),
       allow_mmap_writes(db_options.allow_mmap_writes),
       db_paths(db_options.db_paths),
@@ -75,7 +77,8 @@ ImmutableCFOptions::ImmutableCFOptions(const ImmutableDBOptions& db_options,
       memtable_insert_with_hint_prefix_extractor(
           cf_options.memtable_insert_with_hint_prefix_extractor.get()),
       cf_paths(cf_options.cf_paths),
-      compaction_thread_limiter(cf_options.compaction_thread_limiter) {}
+      compaction_thread_limiter(cf_options.compaction_thread_limiter),
+      sst_file_checksum_func(db_options.sst_file_checksum_func.get()) {}
 
 // Multiple two operands. If they overflow, return op1.
 uint64_t MultiplyCheckOverflow(uint64_t op1, double op2) {
@@ -167,8 +170,6 @@ void MutableCFOptions::Dump(Logger* log) const {
                  target_file_size_multiplier);
   ROCKS_LOG_INFO(log, "                 max_bytes_for_level_base: %" PRIu64,
                  max_bytes_for_level_base);
-  ROCKS_LOG_INFO(log, "                       snap_refresh_nanos: %" PRIu64,
-                 snap_refresh_nanos);
   ROCKS_LOG_INFO(log, "           max_bytes_for_level_multiplier: %f",
                  max_bytes_for_level_multiplier);
   ROCKS_LOG_INFO(log, "                                      ttl: %" PRIu64,
@@ -227,4 +228,4 @@ void MutableCFOptions::Dump(Logger* log) const {
 MutableCFOptions::MutableCFOptions(const Options& options)
     : MutableCFOptions(ColumnFamilyOptions(options)) {}
 
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE

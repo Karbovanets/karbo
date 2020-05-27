@@ -34,7 +34,7 @@
 #include "CryptoNoteProtocol/CryptoNoteProtocolHandlerCommon.h"
 #include "InProcessNodeErrors.h"
 #include "P2p/ConnectionContext.h"
-#include "version.h"
+#include "cnVersion.h"
 
 using namespace Crypto;
 using namespace Common;

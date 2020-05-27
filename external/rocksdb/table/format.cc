@@ -13,6 +13,7 @@
 #include <string>
 
 #include "block_fetcher.h"
+#include "file/random_access_file_reader.h"
 #include "logging/logging.h"
 #include "memory/memory_allocator.h"
 #include "monitoring/perf_context_imp.h"
@@ -24,12 +25,10 @@
 #include "util/coding.h"
 #include "util/compression.h"
 #include "util/crc32c.h"
-#include "util/file_reader_writer.h"
 #include "util/stop_watch.h"
 #include "util/string_util.h"
-#include "util/xxhash.h"
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 extern const uint64_t kLegacyBlockBasedTableMagicNumber;
 extern const uint64_t kBlockBasedTableMagicNumber;
@@ -268,14 +267,16 @@ std::string Footer::ToString() const {
     result.append("metaindex handle: " + metaindex_handle_.ToString() + "\n  ");
     result.append("index handle: " + index_handle_.ToString() + "\n  ");
     result.append("table_magic_number: " +
-                  rocksdb::ToString(table_magic_number_) + "\n  ");
+                  ROCKSDB_NAMESPACE::ToString(table_magic_number_) + "\n  ");
   } else {
-    result.append("checksum: " + rocksdb::ToString(checksum_) + "\n  ");
+    result.append("checksum: " + ROCKSDB_NAMESPACE::ToString(checksum_) +
+                  "\n  ");
     result.append("metaindex handle: " + metaindex_handle_.ToString() + "\n  ");
     result.append("index handle: " + index_handle_.ToString() + "\n  ");
-    result.append("footer version: " + rocksdb::ToString(version_) + "\n  ");
+    result.append("footer version: " + ROCKSDB_NAMESPACE::ToString(version_) +
+                  "\n  ");
     result.append("table_magic_number: " +
-                  rocksdb::ToString(table_magic_number_) + "\n  ");
+                  ROCKSDB_NAMESPACE::ToString(table_magic_number_) + "\n  ");
   }
   return result;
 }
@@ -461,4 +462,4 @@ Status UncompressBlockContents(const UncompressionInfo& uncompression_info,
                                                    ioptions, allocator);
 }
 
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE

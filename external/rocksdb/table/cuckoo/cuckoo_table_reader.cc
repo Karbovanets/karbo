@@ -24,7 +24,7 @@
 #include "table/meta_blocks.h"
 #include "util/coding.h"
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 namespace {
 const uint64_t CACHE_LINE_MASK = ~((uint64_t)CACHE_LINE_SIZE - 1);
 const uint32_t kInvalidIndex = std::numeric_limits<uint32_t>::max();
@@ -197,6 +197,9 @@ void CuckooTableReader::Prepare(const Slice& key) {
 class CuckooTableIterator : public InternalIterator {
  public:
   explicit CuckooTableIterator(CuckooTableReader* reader);
+  // No copying allowed
+  CuckooTableIterator(const CuckooTableIterator&) = delete;
+  void operator=(const Iterator&) = delete;
   ~CuckooTableIterator() override {}
   bool Valid() const override;
   void SeekToFirst() override;
@@ -248,9 +251,6 @@ class CuckooTableIterator : public InternalIterator {
   uint32_t curr_key_idx_;
   Slice curr_value_;
   IterKey curr_key_;
-  // No copying allowed
-  CuckooTableIterator(const CuckooTableIterator&) = delete;
-  void operator=(const Iterator&) = delete;
 };
 
 CuckooTableIterator::CuckooTableIterator(CuckooTableReader* reader)
@@ -395,5 +395,5 @@ InternalIterator* CuckooTableReader::NewIterator(
 
 size_t CuckooTableReader::ApproximateMemoryUsage() const { return 0; }
 
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE
 #endif

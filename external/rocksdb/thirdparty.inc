@@ -8,6 +8,7 @@
 # or change the paths below to reflect where the libraries actually reside
 #
 set (THIRDPARTY_LIBS "")         # Initialization, don't touch
+set (THIRDPARTY_HOME ${CMAKE_SOURCE_DIR}/external)
 
 #
 # Defaults
@@ -91,10 +92,10 @@ endif ()
 #
 # Edit these 4 lines to define paths to LZ4
 #
-#set(LZ4_HOME $ENV{THIRDPARTY_HOME}/LZ4.Library)
-#set(LZ4_INCLUDE ${LZ4_HOME}/build/native/inc/inc)
-#set(LZ4_LIB_DEBUG ${LZ4_HOME}/lib/native/debug/amd64/lz4.lib)
-#set(LZ4_LIB_RELEASE ${LZ4_HOME}/lib/native/retail/amd64/lz4.lib)
+set(LZ4_HOME $ENV{THIRDPARTY_HOME}/LZ4.Library)
+set(LZ4_INCLUDE ${LZ4_HOME}/build/native/inc/inc)
+set(LZ4_LIB_DEBUG ${LZ4_HOME}/lib/native/debug/amd64/lz4.lib)
+set(LZ4_LIB_RELEASE ${LZ4_HOME}/lib/native/retail/amd64/lz4.lib)
 
 
 # For compatibility
@@ -190,10 +191,10 @@ endif ()
 #
 # Edit these 4 lines to define paths to ZSTD
 #
-#set(ZSTD_HOME $ENV{THIRDPARTY_HOME}/ZSTD.Library)
-#set(ZSTD_INCLUDE ${ZSTD_HOME}/build/native/inc)
-#set(ZSTD_LIB_DEBUG ${ZSTD_HOME}/lib/native/debug/amd64/libzstd_static.lib)
-#set(ZSTD_LIB_RELEASE ${ZSTD_HOME}/lib/native/retail/amd64/libzstd_static.lib)
+set(ZSTD_HOME $ENV{THIRDPARTY_HOME}/zstd)
+set(ZSTD_INCLUDE ${ZSTD_HOME}/lib)
+set(ZSTD_LIB_DEBUG zstd)
+set(ZSTD_LIB_RELEASE zstd) #zstd.lib
 
 # For compatibility
 if (ZSTD)

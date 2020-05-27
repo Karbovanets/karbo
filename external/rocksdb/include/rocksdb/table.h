@@ -28,7 +28,7 @@
 #include "rocksdb/options.h"
 #include "rocksdb/status.h"
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 // -- Block-based Table
 class FlushBlockPolicyFactory;
@@ -269,6 +269,9 @@ struct BlockBasedTableOptions {
   // probably use this as it would reduce the index size.
   // This option only affects newly written tables. When reading existing
   // tables, the information about version is read from the footer.
+  // 5 -- Can be read by RocksDB's versions since 6.6.0. Full and partitioned
+  // filters use a generally faster and more accurate Bloom filter
+  // implementation, with a different schema.
   uint32_t format_version = 2;
 
   // Store index blocks on disk in compressed format. Changing this option to
@@ -601,4 +604,4 @@ extern TableFactory* NewAdaptiveTableFactory(
 
 #endif  // ROCKSDB_LITE
 
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE

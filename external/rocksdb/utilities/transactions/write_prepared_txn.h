@@ -30,7 +30,7 @@
 #include "utilities/transactions/transaction_base.h"
 #include "utilities/transactions/transaction_util.h"
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 class WritePreparedTxnDB;
 
@@ -42,6 +42,9 @@ class WritePreparedTxn : public PessimisticTransaction {
  public:
   WritePreparedTxn(WritePreparedTxnDB* db, const WriteOptions& write_options,
                    const TransactionOptions& txn_options);
+  // No copying allowed
+  WritePreparedTxn(const WritePreparedTxn&) = delete;
+  void operator=(const WritePreparedTxn&) = delete;
 
   virtual ~WritePreparedTxn() {}
 
@@ -58,7 +61,7 @@ class WritePreparedTxn : public PessimisticTransaction {
                         ColumnFamilyHandle* column_family,
                         const size_t num_keys, const Slice* keys,
                         PinnableSlice* values, Status* statuses,
-                        bool sorted_input = false) override;
+                        const bool sorted_input = false) override;
 
   // Note: The behavior is undefined in presence of interleaved writes to the
   // same transaction.
@@ -106,15 +109,11 @@ class WritePreparedTxn : public PessimisticTransaction {
 
   virtual Status RebuildFromWriteBatch(WriteBatch* src_batch) override;
 
-  // No copying allowed
-  WritePreparedTxn(const WritePreparedTxn&);
-  void operator=(const WritePreparedTxn&);
-
   WritePreparedTxnDB* wpt_db_;
   // Number of sub-batches in prepare
   size_t prepare_batch_cnt_ = 0;
 };
 
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE
 
 #endif  // ROCKSDB_LITE

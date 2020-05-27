@@ -9,11 +9,11 @@
 #include <algorithm>
 #include <string>
 #include "db/dbformat.h"
+#include "file/writable_file_writer.h"
 #include "table/plain/plain_table_factory.h"
 #include "table/plain/plain_table_reader.h"
-#include "util/file_reader_writer.h"
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 enum PlainTableEntryType : unsigned char {
   kFullKey = 0,
@@ -494,5 +494,5 @@ Status PlainTableKeyDecoder::NextKeyNoValue(uint32_t start_offset,
   }
 }
 
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE
 #endif  // ROCKSDB_LIT

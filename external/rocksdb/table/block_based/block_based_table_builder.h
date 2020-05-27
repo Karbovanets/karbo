@@ -14,6 +14,7 @@
 #include <utility>
 #include <vector>
 
+#include "db/version_edit.h"
 #include "rocksdb/flush_block_policy.h"
 #include "rocksdb/listener.h"
 #include "rocksdb/options.h"
@@ -22,7 +23,7 @@
 #include "table/table_builder.h"
 #include "util/compression.h"
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 class BlockBuilder;
 class BlockHandle;
@@ -47,16 +48,17 @@ class BlockBasedTableBuilder : public TableBuilder {
       const CompressionType compression_type,
       const uint64_t sample_for_compression,
       const CompressionOptions& compression_opts, const bool skip_filters,
-      const std::string& column_family_name, const uint64_t creation_time = 0,
-      const uint64_t oldest_key_time = 0, const uint64_t target_file_size = 0,
+      const std::string& column_family_name, const int level_at_creation,
+      const uint64_t creation_time = 0, const uint64_t oldest_key_time = 0,
+      const uint64_t target_file_size = 0,
       const uint64_t file_creation_time = 0);
-
-  // REQUIRES: Either Finish() or Abandon() has been called.
-  ~BlockBasedTableBuilder();
 
   // No copying allowed
   BlockBasedTableBuilder(const BlockBasedTableBuilder&) = delete;
   BlockBasedTableBuilder& operator=(const BlockBasedTableBuilder&) = delete;
+
+  // REQUIRES: Either Finish() or Abandon() has been called.
+  ~BlockBasedTableBuilder();
 
   // Add key,value to the table being constructed.
   // REQUIRES: key is after any previously added key according to comparator.
@@ -89,6 +91,12 @@ class BlockBasedTableBuilder : public TableBuilder {
 
   // Get table properties
   TableProperties GetTableProperties() const override;
+
+  // Get file checksum
+  const std::string& GetFileChecksum() const override { return file_checksum_; }
+
+  // Get file checksum function name
+  const char* GetFileChecksumFuncName() const override;
 
  private:
   bool ok() const { return status().ok(); }
@@ -135,6 +143,9 @@ class BlockBasedTableBuilder : public TableBuilder {
   // Some compression libraries fail when the raw size is bigger than int. If
   // uncompressed size is bigger than kCompressionSizeLimit, don't compress it
   const uint64_t kCompressionSizeLimit = std::numeric_limits<int>::max();
+
+  // Store file checksum. If checksum is disabled, its value is "0".
+  std::string file_checksum_ = kUnknownFileChecksum;
 };
 
 Slice CompressBlock(const Slice& raw, const CompressionInfo& info,
@@ -143,4 +154,4 @@ Slice CompressBlock(const Slice& raw, const CompressionInfo& info,
                     std::string* sampled_output_fast,
                     std::string* sampled_output_slow);
 
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE

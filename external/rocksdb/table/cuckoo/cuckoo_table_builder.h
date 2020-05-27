@@ -10,14 +10,15 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "db/version_edit.h"
 #include "port/port.h"
 #include "rocksdb/status.h"
-#include "table/table_builder.h"
 #include "rocksdb/table.h"
 #include "rocksdb/table_properties.h"
+#include "table/table_builder.h"
 #include "util/autovector.h"
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 class CuckooTableBuilder: public TableBuilder {
  public:
@@ -30,6 +31,9 @@ class CuckooTableBuilder: public TableBuilder {
                                                 uint64_t),
                      uint32_t column_family_id,
                      const std::string& column_family_name);
+  // No copying allowed
+  CuckooTableBuilder(const CuckooTableBuilder&) = delete;
+  void operator=(const CuckooTableBuilder&) = delete;
 
   // REQUIRES: Either Finish() or Abandon() has been called.
   ~CuckooTableBuilder() {}
@@ -62,6 +66,12 @@ class CuckooTableBuilder: public TableBuilder {
   uint64_t FileSize() const override;
 
   TableProperties GetTableProperties() const override { return properties_; }
+
+  // Get file checksum
+  const std::string& GetFileChecksum() const override { return file_checksum_; }
+
+  // Get file checksum function name
+  const char* GetFileChecksumFuncName() const override;
 
  private:
   struct CuckooBucket {
@@ -117,11 +127,10 @@ class CuckooTableBuilder: public TableBuilder {
 
   bool closed_;  // Either Finish() or Abandon() has been called.
 
-  // No copying allowed
-  CuckooTableBuilder(const CuckooTableBuilder&) = delete;
-  void operator=(const CuckooTableBuilder&) = delete;
+  // Store file checksum. If checksum is disabled, its value is "0"
+  std::string file_checksum_ = kUnknownFileChecksum;
 };
 
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE
 
 #endif  // ROCKSDB_LITE
