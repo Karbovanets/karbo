@@ -99,14 +99,14 @@ set(COMMIT_ID_IN_VERSION ON CACHE BOOL "Include commit ID in version")
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/version")
 if (NOT COMMIT_ID_IN_VERSION)
   set(VERSION "${VERSION}-unknown")
-  configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in" "${CMAKE_CURRENT_BINARY_DIR}/version/version.h")
+  configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/cnVersion.h.in" "${CMAKE_CURRENT_BINARY_DIR}/version/cnVersion.h")
   add_custom_target(version ALL)
 elseif(DEFINED COMMIT)
   string(REPLACE "." "\\." VERSION_RE "${VERSION}")
   if(NOT REFS MATCHES "(\\(|, )tag: v${VERSION_RE}(\\)|, )")
     set(VERSION "${VERSION}-g${COMMIT}")
   endif()
-  configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in" "${CMAKE_CURRENT_BINARY_DIR}/version/version.h")
+  configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/cnVersion.h.in" "${CMAKE_CURRENT_BINARY_DIR}/version/cnVersion.h")
   add_custom_target(version ALL)
 else()
   find_package(Git QUIET)
@@ -115,13 +115,13 @@ else()
     add_custom_target(version ALL "${CMAKE_COMMAND}"
                       "-D" "VERSION=${VERSION}"
                       "-D" "GIT=${GIT_EXECUTABLE}"
-                      "-D" "TO=${CMAKE_CURRENT_BINARY_DIR}/version/version.h"
+                      "-D" "TO=${CMAKE_CURRENT_BINARY_DIR}/version/cnVersion.h"
                       "-D" "BUILD_REMARK=${BUILD_REMARK}"
                       "-P" "${CMAKE_CURRENT_SOURCE_DIR}/src/version.cmake" WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
   else()
     message(STATUS "WARNING: Git was not found!")
     set(VERSION "${VERSION}-unknown")
-    configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in" "${CMAKE_CURRENT_BINARY_DIR}/version/version.h")
+    configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/cnVersion.h.in" "${CMAKE_CURRENT_BINARY_DIR}/version/cnVersion.h")
     add_custom_target(version ALL)
   endif()
 endif()

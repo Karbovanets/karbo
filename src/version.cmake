@@ -62,5 +62,5 @@ if(GIT_FOUND)
     set(PROJECT_VERSION_REV ${PROJECT_GIT_COMMIT_COUNT})
   endif()
 
-  configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in" "${TO}")
+  configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/cnVersion.h.in" "${TO}")
 endif()
