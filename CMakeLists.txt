@@ -94,6 +94,40 @@ set(STATIC ON CACHE BOOL FORCE "Link libraries statically? Forced to ON")
 # This section helps us set up RocksDB for maximum portability
 set(ENABLE_AVX OFF CACHE STRING "Enable RocksDB AVX/AVX2 support detection? Defaults to OFF")
 
+## This section helps us tag our builds with the git commit information
+set(COMMIT_ID_IN_VERSION ON CACHE BOOL "Include commit ID in version")
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/version")
+if (NOT COMMIT_ID_IN_VERSION)
+  set(VERSION "${VERSION}-unknown")
+  configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in" "${CMAKE_CURRENT_BINARY_DIR}/version/version.h")
+  add_custom_target(version ALL)
+elseif(DEFINED COMMIT)
+  string(REPLACE "." "\\." VERSION_RE "${VERSION}")
+  if(NOT REFS MATCHES "(\\(|, )tag: v${VERSION_RE}(\\)|, )")
+    set(VERSION "${VERSION}-g${COMMIT}")
+  endif()
+  configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in" "${CMAKE_CURRENT_BINARY_DIR}/version/version.h")
+  add_custom_target(version ALL)
+else()
+  find_package(Git QUIET)
+  if(Git_FOUND OR GIT_FOUND)
+    message(STATUS "Found Git: ${GIT_EXECUTABLE}")
+    add_custom_target(version ALL "${CMAKE_COMMAND}"
+                      "-D" "VERSION=${VERSION}"
+                      "-D" "GIT=${GIT_EXECUTABLE}"
+                      "-D" "TO=${CMAKE_CURRENT_BINARY_DIR}/version/version.h"
+                      "-D" "BUILD_REMARK=${BUILD_REMARK}"
+                      "-P" "${CMAKE_CURRENT_SOURCE_DIR}/src/version.cmake" WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+  else()
+    message(STATUS "WARNING: Git was not found!")
+    set(VERSION "${VERSION}-unknown")
+    configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in" "${CMAKE_CURRENT_BINARY_DIR}/version/version.h")
+    add_custom_target(version ALL)
+  endif()
+endif()
+
+include_directories(include "${CMAKE_CURRENT_BINARY_DIR}/version" src external)
+
 ## Platform specific code base information is applied here
 if(MSVC)
   include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/Platform/Windows)
@@ -267,36 +301,5 @@ if (NOT ROCKSDB_FOUND)
       COMMAND ${CMAKE_COMMAND} ${CMAKE_CURRENT_SOURCE_DIR}/external/rocksdb -DARCH=${ARCH} -DWITH_ZSTD=${WITH_ZSTD} -DWITH_GFLAGS=0 -DCMAKE_BUILD_TYPE=MinSizeRel -DWITH_TESTS=OFF -DWITH_TOOLS=OFF -DPORTABLE=ON -B${PROJECT_BINARY_DIR}/rocksdb
     )
     set_directory_properties(PROPERTIES ADDITIONAL_MAKE_CLEAN_FILES "${PROJECT_BINARY_DIR}/rocksdb/librocksdb.a")
-  endif()
-endif()
-
-set(COMMIT_ID_IN_VERSION ON CACHE BOOL "Include commit ID in version")
-file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/version")
-if (NOT COMMIT_ID_IN_VERSION)
-  set(VERSION "${VERSION}-unknown")
-  configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in" "${CMAKE_CURRENT_BINARY_DIR}/version/version.h")
-  add_custom_target(version ALL)
-elseif(DEFINED COMMIT)
-  string(REPLACE "." "\\." VERSION_RE "${VERSION}")
-  if(NOT REFS MATCHES "(\\(|, )tag: v${VERSION_RE}(\\)|, )")
-    set(VERSION "${VERSION}-g${COMMIT}")
-  endif()
-  configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in" "${CMAKE_CURRENT_BINARY_DIR}/version/version.h")
-  add_custom_target(version ALL)
-else()
-  find_package(Git QUIET)
-  if(Git_FOUND OR GIT_FOUND)
-    message(STATUS "Found Git: ${GIT_EXECUTABLE}")
-    add_custom_target(version ALL "${CMAKE_COMMAND}"
-                      "-D" "VERSION=${VERSION}"
-                      "-D" "GIT=${GIT_EXECUTABLE}"
-                      "-D" "TO=${CMAKE_CURRENT_BINARY_DIR}/version/version.h"
-                      "-D" "BUILD_REMARK=${BUILD_REMARK}"
-                      "-P" "${CMAKE_CURRENT_SOURCE_DIR}/src/version.cmake" WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
-  else()
-    message(STATUS "WARNING: Git was not found!")
-    set(VERSION "${VERSION}-unknown")
-    configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in" "${CMAKE_CURRENT_BINARY_DIR}/version/version.h")
-    add_custom_target(version ALL)
   endif()
 endif()
