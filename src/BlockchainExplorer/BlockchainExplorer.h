@@ -23,7 +23,6 @@
 #include <unordered_set>
 
 #include "IBlockchainExplorer.h"
-//#include "IDataBase.h"
 #include "INode.h"
 
 #include "BlockchainExplorerErrors.h"
@@ -43,7 +42,7 @@ enum State {
 
 class BlockchainExplorer : public IBlockchainExplorer, public INodeObserver {
 public:
-  BlockchainExplorer(INode& node, Logging::ILogger& logger/*, IDataBase &database*/);
+  BlockchainExplorer(INode& node, Logging::ILogger& logger);
 
   BlockchainExplorer(const BlockchainExplorer&) = delete;
   BlockchainExplorer(BlockchainExplorer&&) = delete;
@@ -119,7 +118,6 @@ private:
 
   INode& node;
   Logging::LoggerRef logger;
-  //IDataBase& database;
 
   AsyncContextCounter asyncContextCounter;
   PoolUpdateGuard poolUpdateGuard;

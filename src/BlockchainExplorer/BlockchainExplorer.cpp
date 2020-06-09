@@ -147,13 +147,12 @@ private:
   bool m_cancelled;
 };
 
-BlockchainExplorer::BlockchainExplorer(INode& node, Logging::ILogger& logger/*, IDataBase &database*/) :
+BlockchainExplorer::BlockchainExplorer(INode& node, Logging::ILogger& logger) :
   state(NOT_INITIALIZED),
   synchronized(false),
   observersCounter(0),
   node(node),
-  logger(logger, "BlockchainExplorer")/*,
-  database(database)*/ {
+  logger(logger, "BlockchainExplorer") {
 }
 
 BlockchainExplorer::~BlockchainExplorer() {}
