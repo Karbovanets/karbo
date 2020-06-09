@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -147,13 +147,13 @@ private:
   bool m_cancelled;
 };
 
-BlockchainExplorer::BlockchainExplorer(INode& node, Logging::ILogger& logger, IDataBase &database) :
+BlockchainExplorer::BlockchainExplorer(INode& node, Logging::ILogger& logger/*, IDataBase &database*/) :
   state(NOT_INITIALIZED),
   synchronized(false),
   observersCounter(0),
   node(node),
-  logger(logger, "BlockchainExplorer"),
-  database(database) {
+  logger(logger, "BlockchainExplorer")/*,
+  database(database)*/ {
 }
 
 BlockchainExplorer::~BlockchainExplorer() {}

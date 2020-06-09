@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -23,7 +23,7 @@
 #include <unordered_set>
 
 #include "IBlockchainExplorer.h"
-#include "IDataBase.h"
+//#include "IDataBase.h"
 #include "INode.h"
 
 #include "BlockchainExplorerErrors.h"
@@ -43,7 +43,7 @@ enum State {
 
 class BlockchainExplorer : public IBlockchainExplorer, public INodeObserver {
 public:
-  BlockchainExplorer(INode& node, Logging::ILogger& logger, IDataBase &database);
+  BlockchainExplorer(INode& node, Logging::ILogger& logger/*, IDataBase &database*/);
 
   BlockchainExplorer(const BlockchainExplorer&) = delete;
   BlockchainExplorer(BlockchainExplorer&&) = delete;
@@ -119,7 +119,7 @@ private:
 
   INode& node;
   Logging::LoggerRef logger;
-  IDataBase& database;
+  //IDataBase& database;
 
   AsyncContextCounter asyncContextCounter;
   PoolUpdateGuard poolUpdateGuard;
