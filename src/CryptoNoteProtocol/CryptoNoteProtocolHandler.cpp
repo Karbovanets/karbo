@@ -1085,7 +1085,7 @@ void CryptoNoteProtocolHandler::relayTransactions(const std::vector<BinaryArray>
       auto transactionBinary = *tx_blob_it;
       Crypto::Hash transactionHash = Crypto::cn_fast_hash(transactionBinary.data(), transactionBinary.size());
       if (!m_stemPool.hasTransaction(transactionHash)) {
-        logger(Logging::INFO) << "Adding relayed transaction " << transactionHash << " to stempool";
+        logger(Logging::DEBUGGING) << "Adding relayed transaction " << transactionHash << " to stempool";
         BinaryArray txblob = *tx_blob_it;
         m_dispatcher.remoteSpawn([this, transactionHash, txblob] {
           m_stemPool.addTransaction(transactionHash, txblob);
@@ -1106,7 +1106,7 @@ void CryptoNoteProtocolHandler::relayTransactions(const std::vector<BinaryArray>
             r.stem = false;
             for (const auto& h : txHashes) {
               m_stemPool.removeTransaction(h);
-              logger(Logging::INFO) << h;
+              logger(Logging::WARNING) << h;
             }
 
             auto buf = LevinProtocol::encode(r);
