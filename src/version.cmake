@@ -36,7 +36,7 @@ if(GIT_FOUND)
 
   execute_process(
     COMMAND "${GIT_EXECUTABLE}" rev-parse --short HEAD
-    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
     RESULT_VARIABLE PROJECT_GIT_RESULT
     OUTPUT_VARIABLE PROJECT_GIT_COMMIT_ID
     ERROR_VARIABLE PROJECT_GIT_ERROR
@@ -62,5 +62,5 @@ if(GIT_FOUND)
     set(PROJECT_VERSION_REV ${PROJECT_GIT_COMMIT_COUNT})
   endif()
 
-  configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/cnVersion.h.in" "${TO}")
+  configure_file("${CMAKE_SOURCE_DIR}/src/cnVersion.h.in" "${TO}")
 endif()
