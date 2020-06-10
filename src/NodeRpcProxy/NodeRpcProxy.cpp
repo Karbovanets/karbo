@@ -880,9 +880,12 @@ std::error_code NodeRpcProxy::doGetBlocksByHeights(const std::vector<uint32_t>& 
     return ec;
   }
 
-  auto tmp = std::move(resp.blocks);
-  blocks.push_back(tmp);
-
+  for (const auto& b : resp.blocks) {
+    std::vector<BlockDetails> blocksOnSameIndex;
+    blocksOnSameIndex.push_back(b);
+    blocks.push_back(std::move(blocksOnSameIndex));
+  }
+  
   return ec;
 }
 
