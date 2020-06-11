@@ -505,8 +505,8 @@ struct block_header_response {
 };
 
 struct BLOCK_HEADER_RESPONSE {
-  std::string status;
   block_header_response block_header;
+  std::string status;
 
   void serialize(ISerializer &s) {
     KV_MEMBER(block_header)
@@ -667,7 +667,7 @@ struct COMMAND_RPC_GET_TRANSACTIONS_BY_PAYMENT_ID {
 
 		void serialize(ISerializer &s) {
 			KV_MEMBER(transactions)
-				KV_MEMBER(status)
+			KV_MEMBER(status)
 		}
 	};
 };
@@ -756,8 +756,8 @@ struct COMMAND_RPC_GET_BLOCKS_DETAILS_BY_HEIGHTS {
     std::string status;
 
     void serialize(ISerializer& s) {
-      KV_MEMBER(status)
       KV_MEMBER(blocks)
+      KV_MEMBER(status)
     }
   };
 };
@@ -776,8 +776,8 @@ struct COMMAND_RPC_GET_BLOCKS_DETAILS_BY_HASHES {
     std::string status;
 
     void serialize(ISerializer& s) {
-      KV_MEMBER(status)
       KV_MEMBER(blocks)
+      KV_MEMBER(status)
     }
   };
 };
@@ -796,8 +796,8 @@ struct COMMAND_RPC_GET_BLOCK_DETAILS_BY_HEIGHT {
     std::string status;
 
     void serialize(ISerializer& s) {
-      KV_MEMBER(status)
       KV_MEMBER(block)
+      KV_MEMBER(status)
     }
   };
 };
@@ -816,8 +816,8 @@ struct COMMAND_RPC_GET_BLOCK_DETAILS_BY_HASH {
     std::string status;
 
     void serialize(ISerializer& s) {
-      KV_MEMBER(status)
       KV_MEMBER(block)
+      KV_MEMBER(status)
     }
   };
 };
@@ -838,8 +838,8 @@ struct COMMAND_RPC_GET_BLOCKS_HASHES_BY_TIMESTAMPS {
     std::string status;
 
     void serialize(ISerializer &s) {
-      KV_MEMBER(status)
       KV_MEMBER(blockHashes)
+      KV_MEMBER(status)
     }
   };
 };
@@ -878,8 +878,8 @@ struct COMMAND_RPC_GET_TRANSACTION_DETAILS_BY_HASHES {
     std::string status;
 
     void serialize(ISerializer &s) {
-      KV_MEMBER(status)
       KV_MEMBER(transactions)
+      KV_MEMBER(status)
     }
   };
 };
@@ -898,8 +898,8 @@ struct COMMAND_RPC_GET_TRANSACTION_DETAILS_BY_HASH {
     std::string status;
 
     void serialize(ISerializer &s) {
-      KV_MEMBER(status)
       KV_MEMBER(transaction)
+      KV_MEMBER(status)
     }
   };
 };
@@ -919,8 +919,8 @@ struct COMMAND_RPC_BIN_GET_BLOCKS_DETAILS_BY_HEIGHTS {
     std::string status;
 
     void serialize(ISerializer& s) {
-      KV_MEMBER(status)
       KV_MEMBER(blocks)
+      KV_MEMBER(status)
     }
   };
 };
@@ -939,8 +939,8 @@ struct COMMAND_RPC_BIN_GET_BLOCKS_DETAILS_BY_HASHES {
     std::string status;
 
     void serialize(ISerializer& s) {
-      KV_MEMBER(status)
       KV_MEMBER(blocks)
+      KV_MEMBER(status)
     }
   };
 };
@@ -961,8 +961,8 @@ struct COMMAND_RPC_BIN_GET_BLOCKS_HASHES_BY_TIMESTAMPS {
     std::string status;
 
     void serialize(ISerializer& s) {
-      KV_MEMBER(status)
       KV_MEMBER(blockHashes)
+      KV_MEMBER(status)
     }
   };
 };
@@ -981,8 +981,8 @@ struct COMMAND_RPC_BIN_GET_TRANSACTION_HASHES_BY_PAYMENT_ID {
     std::string status;
 
     void serialize(ISerializer& s) {
-      KV_MEMBER(status)
       serializeAsBinary(transactionHashes, "transactionHashes", s);
+      KV_MEMBER(status)
     }
   };
 };
@@ -1001,8 +1001,8 @@ struct COMMAND_RPC_BIN_GET_TRANSACTION_DETAILS_BY_HASHES {
     std::string status;
 
     void serialize(ISerializer& s) {
-      KV_MEMBER(status)
       KV_MEMBER(transactions)
+      KV_MEMBER(status)
     }
   };
 };
