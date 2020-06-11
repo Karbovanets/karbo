@@ -187,9 +187,9 @@ void serialize(BlockDetails& block, ISerializer& serializer) {
   serializePod(block.prevBlockHash, "prevBlockHash", serializer);
   serializePod(block.proofOfWork, "proofOfWork", serializer);
   serializer(block.nonce, "nonce");
+  serializer(block.isAlternative, "isOrphaned");
   serializer(block.index, "index");
   serializer(block.depth, "depth");
-  serializer(block.isAlternative, "isOrphaned");
   serializePod(block.hash, "hash", serializer);
   serializer(block.difficulty, "difficulty");
   serializer(block.cumulativeDifficulty, "cumulativeDifficulty");

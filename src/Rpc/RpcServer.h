@@ -72,6 +72,11 @@ private:
   bool onGetRandomOuts(const COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::request& req, COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::response& res);
   bool onGetPoolChanges(const COMMAND_RPC_GET_POOL_CHANGES::request& req, COMMAND_RPC_GET_POOL_CHANGES::response& rsp);
   bool onGetPoolChangesLite(const COMMAND_RPC_GET_POOL_CHANGES_LITE::request& req, COMMAND_RPC_GET_POOL_CHANGES_LITE::response& rsp);
+  bool onBinGetBlocksDetailsByHashes(const COMMAND_RPC_BIN_GET_BLOCKS_DETAILS_BY_HASHES::request& req, COMMAND_RPC_BIN_GET_BLOCKS_DETAILS_BY_HASHES::response& rsp);
+  bool onBinGetBlocksDetailsByHeights(const COMMAND_RPC_BIN_GET_BLOCKS_DETAILS_BY_HEIGHTS::request& req, COMMAND_RPC_BIN_GET_BLOCKS_DETAILS_BY_HEIGHTS::response& rsp);
+  bool onBinGetBlocksHashesByTimestamps(const COMMAND_RPC_BIN_GET_BLOCKS_HASHES_BY_TIMESTAMPS::request& req, COMMAND_RPC_BIN_GET_BLOCKS_HASHES_BY_TIMESTAMPS::response& rsp);
+  bool onBinGetTransactionDetailsByHashes(const COMMAND_RPC_BIN_GET_TRANSACTION_DETAILS_BY_HASHES::request& req, COMMAND_RPC_BIN_GET_TRANSACTION_DETAILS_BY_HASHES::response& rsp);
+  bool onBinGetTransactionHashesByPaymentId(const COMMAND_RPC_BIN_GET_TRANSACTION_HASHES_BY_PAYMENT_ID::request& req, COMMAND_RPC_BIN_GET_TRANSACTION_HASHES_BY_PAYMENT_ID::response& rsp);
 
   // http handlers
   bool onGetIndex(const COMMAND_HTTP::request& req, COMMAND_HTTP::response& res);

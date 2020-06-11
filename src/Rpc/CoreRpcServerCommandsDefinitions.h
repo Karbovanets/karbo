@@ -905,6 +905,109 @@ struct COMMAND_RPC_GET_TRANSACTION_DETAILS_BY_HASH {
 };
 
 //-----------------------------------------------
+struct COMMAND_RPC_BIN_GET_BLOCKS_DETAILS_BY_HEIGHTS {
+  struct request {
+    std::vector<uint32_t> blockHeights;
+
+    void serialize(ISerializer& s) {
+      KV_MEMBER(blockHeights);
+    }
+  };
+
+  struct response {
+    std::vector<BlockDetails> blocks;
+    std::string status;
+
+    void serialize(ISerializer& s) {
+      KV_MEMBER(status)
+      KV_MEMBER(blocks)
+    }
+  };
+};
+
+struct COMMAND_RPC_BIN_GET_BLOCKS_DETAILS_BY_HASHES {
+  struct request {
+    std::vector<Crypto::Hash> blockHashes;
+
+    void serialize(ISerializer& s) {
+      serializeAsBinary(blockHashes, "blockHashes", s);
+    }
+  };
+
+  struct response {
+    std::vector<BlockDetails> blocks;
+    std::string status;
+
+    void serialize(ISerializer& s) {
+      KV_MEMBER(status)
+      KV_MEMBER(blocks)
+    }
+  };
+};
+
+struct COMMAND_RPC_BIN_GET_BLOCKS_HASHES_BY_TIMESTAMPS {
+  struct request {
+    uint64_t timestampBegin;
+    uint64_t secondsCount;
+
+    void serialize(ISerializer& s) {
+      KV_MEMBER(timestampBegin)
+      KV_MEMBER(secondsCount)
+    }
+  };
+
+  struct response {
+    std::vector<Crypto::Hash> blockHashes;
+    std::string status;
+
+    void serialize(ISerializer& s) {
+      KV_MEMBER(status)
+      KV_MEMBER(blockHashes)
+    }
+  };
+};
+
+struct COMMAND_RPC_BIN_GET_TRANSACTION_HASHES_BY_PAYMENT_ID {
+  struct request {
+    Crypto::Hash paymentId;
+
+    void serialize(ISerializer& s) {
+      KV_MEMBER(paymentId)
+    }
+  };
+
+  struct response {
+    std::vector<Crypto::Hash> transactionHashes;
+    std::string status;
+
+    void serialize(ISerializer& s) {
+      KV_MEMBER(status)
+      serializeAsBinary(transactionHashes, "transactionHashes", s);
+    }
+  };
+};
+
+struct COMMAND_RPC_BIN_GET_TRANSACTION_DETAILS_BY_HASHES {
+  struct request {
+    std::vector<Crypto::Hash> transactionHashes;
+
+    void serialize(ISerializer& s) {
+      serializeAsBinary(transactionHashes, "transactionHashes", s);
+    }
+  };
+
+  struct response {
+    std::vector<TransactionDetails> transactions;
+    std::string status;
+
+    void serialize(ISerializer& s) {
+      KV_MEMBER(status)
+      KV_MEMBER(transactions)
+    }
+  };
+};
+
+//-----------------------------------------------
 struct COMMAND_RPC_GEN_PAYMENT_ID {
   typedef EMPTY_STRUCT request;
   
