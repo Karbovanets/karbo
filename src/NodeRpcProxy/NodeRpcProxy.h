@@ -81,6 +81,7 @@ public:
   virtual uint64_t getWhitePeerlistSize() const override;
   virtual uint64_t getGreyPeerlistSize() const override;
   virtual std::string getNodeVersion() const override;
+  virtual bool isConnected() const override;
 
   virtual void getBlockHashesByTimestamps(uint64_t timestampBegin, size_t secondsCount, std::vector<Crypto::Hash>& blockHashes, const Callback& callback) override;
   virtual void getTransactionHashesByPaymentId(const Crypto::Hash& paymentId, std::vector<Crypto::Hash>& transactionHashes, const Callback& callback) override;
