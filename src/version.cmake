@@ -1,7 +1,7 @@
 # Read project version from git tag.
 find_package(Git)
-message(STATUS "Found Git: ${GIT_FOUND}")
-if(GIT_FOUND)
+message(STATUS "Found Git: ${GIT_FOUND}, preparing version...")
+if(Git_FOUND OR GIT_FOUND)
   execute_process(
     COMMAND "${GIT_EXECUTABLE}" describe --tags --abbrev=0 --match "v*"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
