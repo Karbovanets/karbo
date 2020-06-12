@@ -73,13 +73,12 @@ private:
       return false;
     }
 
-    if constexpr (std::is_integral_v<T>) {
+    if (std::is_integral<T>::value) {
       v = static_cast<T>(ptr->getInteger());
     }
-    else if (std::is_floating_point_v<T>) {
+    else if (std::is_floating_point<T>::value) {
       v = static_cast<T>(ptr->getReal());
     }
-
     return true;
   }
 };
