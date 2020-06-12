@@ -726,9 +726,10 @@ bool RpcServer::onGeneratePaymentId(const COMMAND_HTTP::request& req, COMMAND_HT
 
 bool RpcServer::onBinGetBlocksDetailsByHeights(const COMMAND_RPC_BIN_GET_BLOCKS_DETAILS_BY_HEIGHTS::request& req, COMMAND_RPC_BIN_GET_BLOCKS_DETAILS_BY_HEIGHTS::response& rsp) {
   try {
-    std::vector<BlockDetails> blockDetails;
+    std::vector<BinaryArray> blockDetails;
     for (const uint32_t& height : req.blockHeights) {
-      blockDetails.push_back(m_core.getBlockDetails(height));
+      BinaryArray ba = toBinaryArray(m_core.getBlockDetails(height));
+      blockDetails.push_back(ba);
     }
 
     rsp.blocks = std::move(blockDetails);
@@ -748,9 +749,10 @@ bool RpcServer::onBinGetBlocksDetailsByHeights(const COMMAND_RPC_BIN_GET_BLOCKS_
 
 bool RpcServer::onBinGetBlocksDetailsByHashes(const COMMAND_RPC_BIN_GET_BLOCKS_DETAILS_BY_HASHES::request& req, COMMAND_RPC_BIN_GET_BLOCKS_DETAILS_BY_HASHES::response& rsp) {
   try {
-    std::vector<BlockDetails> blockDetails;
+    std::vector<BinaryArray> blockDetails;
     for (const Crypto::Hash& hash : req.blockHashes) {
-      blockDetails.push_back(m_core.getBlockDetails(hash));
+      BinaryArray ba = toBinaryArray(m_core.getBlockDetails(hash));
+      blockDetails.push_back(ba);
     }
 
     rsp.blocks = std::move(blockDetails);

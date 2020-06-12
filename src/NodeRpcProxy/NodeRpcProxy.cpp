@@ -884,9 +884,15 @@ std::error_code NodeRpcProxy::doGetBlocksByHeights(const std::vector<uint32_t>& 
     return ec;
   }
 
-  for (const auto& b : resp.blocks) {
+  for (const BinaryArray& b : resp.blocks) {
     std::vector<BlockDetails> blocksOnSameIndex;
-    blocksOnSameIndex.push_back(b);
+    BlockDetails d;
+    if (!fromBinaryArray(d, b)) {
+      ec = make_error_code(error::INTERNAL_NODE_ERROR);
+      return ec;
+    }
+
+    blocksOnSameIndex.push_back(d);
     blocks.push_back(std::move(blocksOnSameIndex));
   }
   
@@ -904,7 +910,15 @@ std::error_code NodeRpcProxy::doGetBlocksByHashes(const std::vector<Crypto::Hash
     return ec;
   }
 
-  blocks = std::move(resp.blocks);
+  for (const BinaryArray& b : resp.blocks) {
+    BlockDetails d;
+    if (!fromBinaryArray(d, b)) {
+      ec = make_error_code(error::INTERNAL_NODE_ERROR);
+      return ec;
+    }
+    blocks.push_back(d);
+  }
+
   return ec;
 }
 
