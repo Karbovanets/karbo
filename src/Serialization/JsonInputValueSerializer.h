@@ -18,6 +18,8 @@
 
 #pragma once
 
+#include <type_traits>
+
 #include "Common/JsonValue.h"
 #include "ISerializer.h"
 
@@ -71,7 +73,13 @@ private:
       return false;
     }
 
-    v = static_cast<T>(ptr->getInteger());
+    if constexpr (std::is_integral_v<T>) {
+      v = static_cast<T>(ptr->getInteger());
+    }
+    else if (std::is_floating_point_v<T>) {
+      v = static_cast<T>(ptr->getReal());
+    }
+
     return true;
   }
 };

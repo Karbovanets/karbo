@@ -201,7 +201,7 @@ void serialize(BlockDetails& block, ISerializer& serializer) {
   serializer(block.alreadyGeneratedTransactions, "alreadyGeneratedTransactions");
   serializer(block.sizeMedian, "sizeMedian");
   serializer(block.effectiveSizeMedian, "effectiveSizeMedian");
-  //serializer(block.penalty, "penalty");
+  serializer(block.penalty, "penalty");
   serializer(block.totalFeeAmount, "totalFeeAmount");
   serializer(block.transactions, "transactions");
 }
