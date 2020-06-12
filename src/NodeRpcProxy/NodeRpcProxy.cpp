@@ -73,7 +73,7 @@ NodeRpcProxy::NodeRpcProxy(const std::string& nodeHost, unsigned short nodePort,
     m_pullInterval(5000),
     m_nodeHost(nodeHost),
     m_nodePort(nodePort),
-    m_connected(true),
+    m_connected(false),
     m_peerCount(0),
     m_networkHeight(0),
     m_nodeHeight(0),
@@ -461,6 +461,10 @@ uint64_t NodeRpcProxy::getGreyPeerlistSize() const {
 
 std::string NodeRpcProxy::getNodeVersion() const {
   return m_nodeVersion;
+}
+
+bool NodeRpcProxy::isConnected() const {
+  return m_connected;
 }
 
 void NodeRpcProxy::getBlockHashesByTimestamps(uint64_t timestampBegin, size_t secondsCount, std::vector<Crypto::Hash>& blockHashes, const Callback& callback) {

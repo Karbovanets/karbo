@@ -54,6 +54,7 @@ public:
   virtual uint64_t getWhitePeerlistSize() const { return 0; }
   virtual uint64_t getGreyPeerlistSize() const { return 0; }
   virtual std::string getNodeVersion() const { return std::string(); }
+  virtual bool isConnected() const override { return true; }
 
   virtual void getBlockHashesByTimestamps(uint64_t timestampBegin, size_t secondsCount, std::vector<Crypto::Hash>& blockHashes, const Callback& callback) override {
     callback(std::error_code());
