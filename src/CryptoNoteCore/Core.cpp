@@ -2072,7 +2072,7 @@ BlockDetails Core::getBlockDetails(const Crypto::Hash& blockHash) const {
   assert(result);
 
   if (blockDetails.baseReward == 0 && currentReward == 0) {
-    blockDetails.penalty = 0.0;
+    blockDetails.penalty = static_cast<double>(0);
   } else {
     assert(blockDetails.baseReward >= currentReward);
     blockDetails.penalty = static_cast<double>(blockDetails.baseReward - currentReward) / static_cast<double>(blockDetails.baseReward);
