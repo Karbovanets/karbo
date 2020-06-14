@@ -1711,6 +1711,9 @@ bool RpcServer::onCheckReserveProof(const COMMAND_RPC_CHECK_RESERVE_PROOF::reque
   std::vector<Hash> missed_txs;
   std::vector<BinaryArray> txs;
   m_core.getTransactions(transactionHashes, txs, missed_txs);
+  if (!missed_txs.empty()) {
+    throw JsonRpc::JsonRpcError(CORE_RPC_ERROR_CODE_WRONG_PARAM, std::string("Couldn't find some transactions of reserve proof"));
+  }
   std::vector<Transaction> transactions;
 
   // check spent status
@@ -1720,7 +1723,7 @@ bool RpcServer::onCheckReserveProof(const COMMAND_RPC_CHECK_RESERVE_PROOF::reque
     const reserve_proof_entry& proof = proofs[i];
     Transaction tx;
     if (!fromBinaryArray(tx, txs[i])) {
-      JsonRpc::JsonRpcError{
+      throw JsonRpc::JsonRpcError{
       CORE_RPC_ERROR_CODE_WRONG_PARAM, "Couldn't deserialize transaction" };
     }
 
