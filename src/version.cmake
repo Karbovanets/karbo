@@ -4,7 +4,7 @@ message(STATUS "Found Git: ${GIT_FOUND}, preparing version...")
 if(Git_FOUND OR GIT_FOUND)
   execute_process(
     COMMAND "${GIT_EXECUTABLE}" describe --tags --abbrev=0 --match "v*"
-    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
     RESULT_VARIABLE PROJECT_GIT_RESULT
     OUTPUT_VARIABLE PROJECT_GIT_TAG
     ERROR_VARIABLE PROJECT_GIT_ERROR
@@ -36,7 +36,7 @@ if(Git_FOUND OR GIT_FOUND)
 
   execute_process(
     COMMAND "${GIT_EXECUTABLE}" rev-parse --short HEAD
-    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
     RESULT_VARIABLE PROJECT_GIT_RESULT
     OUTPUT_VARIABLE PROJECT_GIT_COMMIT_ID
     ERROR_VARIABLE PROJECT_GIT_ERROR
@@ -61,6 +61,6 @@ if(Git_FOUND OR GIT_FOUND)
     message(STATUS "Git commit count: ${PROJECT_GIT_COMMIT_COUNT}")
     set(PROJECT_VERSION_REV ${PROJECT_GIT_COMMIT_COUNT})
   endif()
-
-  configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/cnVersion.h.in" "${TO}")
+else()
+  message(STATUS "WARNING: Git was not found!")
 endif()

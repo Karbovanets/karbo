@@ -50,7 +50,7 @@
 #include "Rpc/RpcServerConfig.h"
 #include "Serialization/BinaryInputStreamSerializer.h"
 #include "Serialization/BinaryOutputStreamSerializer.h"
-#include "cnVersion.h"
+#include "version.h"
 
 #include <Logging/LoggerManager.h>
 

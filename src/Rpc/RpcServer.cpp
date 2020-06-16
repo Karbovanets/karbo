@@ -19,7 +19,7 @@
 // along with Karbo.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "RpcServer.h"
-#include "cnVersion.h"
+#include "version.h"
 
 #include <future>
 #include <unordered_map>

@@ -83,7 +83,7 @@
 #include "Wallet/LegacyKeysImporter.h"
 #include "WalletLegacy/WalletHelper.h"
 
-#include "cnVersion.h"
+#include "version.h"
 #include "Mnemonics/electrum-words.h"
 
 #include <Logging/LoggerManager.h>

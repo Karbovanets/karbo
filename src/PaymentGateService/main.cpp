@@ -23,7 +23,7 @@
 #include <string.h>
 
 #include "PaymentGateService.h"
-#include "cnVersion.h"
+#include "version.h"
 
 #ifdef _WIN32
 #ifndef NOMINMAX

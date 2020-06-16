@@ -13,7 +13,7 @@
 #include <initializer_list>
 #include <iostream>
 
-#include "cnVersion.h"
+#include "version.h"
 
 #include <GreenWallet/WalletConfig.h>
 
