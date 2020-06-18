@@ -724,7 +724,7 @@ bool RpcServer::onGetBlocksDetailsByHeights(const COMMAND_RPC_GET_BLOCKS_DETAILS
   try {
     if (req.blockHeights.size() > BLOCK_LIST_MAX_COUNT) {
       throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM,
-          std::string("Requested blocks count: ") + std::to_string(req.blockHeights.size()) + " exceeded max limit of " + std::to_string(BLOCK_LIST_MAX_COUNT) };
+        std::string("Requested blocks count: ") + std::to_string(req.blockHeights.size()) + " exceeded max limit of " + std::to_string(BLOCK_LIST_MAX_COUNT) };
     }
     std::vector<BlockDetails> blockDetails;
     const uint32_t topIndex = m_core.getTopBlockIndex();
@@ -738,11 +738,9 @@ bool RpcServer::onGetBlocksDetailsByHeights(const COMMAND_RPC_GET_BLOCKS_DETAILS
     rsp.blocks = std::move(blockDetails);
   } catch (std::system_error& e) {
     throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, e.what() };
-    //rsp.status = e.what();
     return false;
   } catch (std::exception& e) {
     throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Error: " + std::string(e.what()) };
-    //rsp.status = "Error: " + std::string(e.what());
     return false;
   }
 
@@ -754,7 +752,7 @@ bool RpcServer::onGetBlocksDetailsByHashes(const COMMAND_RPC_GET_BLOCKS_DETAILS_
   try {
     if (req.blockHashes.size() > BLOCK_LIST_MAX_COUNT) {
       throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM,
-          std::string("Requested blocks count: ") + std::to_string(req.blockHashes.size()) + " exceeded max limit of " + std::to_string(BLOCK_LIST_MAX_COUNT) };
+        std::string("Requested blocks count: ") + std::to_string(req.blockHashes.size()) + " exceeded max limit of " + std::to_string(BLOCK_LIST_MAX_COUNT) };
     }
     std::vector<BlockDetails> blockDetails;
     for (const Crypto::Hash& hash : req.blockHashes) {
@@ -762,10 +760,10 @@ bool RpcServer::onGetBlocksDetailsByHashes(const COMMAND_RPC_GET_BLOCKS_DETAILS_
     }
     rsp.blocks = std::move(blockDetails);
   } catch (std::system_error& e) {
-    rsp.status = e.what();
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, e.what() };
     return false;
   } catch (std::exception& e) {
-    rsp.status = "Error: " + std::string(e.what());
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Error: " + std::string(e.what()) };
     return false;
   }
 
@@ -786,10 +784,10 @@ bool RpcServer::onGetBlockDetailsByHeight(const COMMAND_RPC_GET_BLOCK_DETAILS_BY
 
     res.block = m_core.getBlockDetails(cachedBlock.getBlockHash());
   } catch (std::system_error& e) {
-    res.status = e.what();
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, e.what() };
     return false;
   } catch (std::exception& e) {
-    res.status = "Error: " + std::string(e.what());
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Error: " + std::string(e.what()) };
     return false;
   }
 
@@ -808,10 +806,10 @@ bool RpcServer::onGetBlockDetailsByHash(const COMMAND_RPC_GET_BLOCK_DETAILS_BY_H
   try {
     res.block = m_core.getBlockDetails(block_hash);
   } catch (std::system_error& e) {
-    res.status = e.what();
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, e.what() };
     return false;
   } catch (std::exception& e) {
-    res.status = "Error: " + std::string(e.what());
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Error: " + std::string(e.what()) };
     return false;
   }
 
@@ -824,10 +822,10 @@ bool RpcServer::onGetBlocksHashesByTimestamps(const COMMAND_RPC_GET_BLOCKS_HASHE
     auto blockHashes = m_core.getBlockHashesByTimestamps(req.timestampBegin, req.secondsCount);
     rsp.blockHashes = std::move(blockHashes);
   } catch (std::system_error& e) {
-    rsp.status = e.what();
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, e.what() };
     return false;
   } catch (std::exception& e) {
-    rsp.status = "Error: " + std::string(e.what());
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Error: " + std::string(e.what()) };
     return false;
   }
 
@@ -846,10 +844,10 @@ bool RpcServer::onGetTransactionDetailsByHashes(const COMMAND_RPC_GET_TRANSACTIO
 
     rsp.transactions = std::move(transactionDetails);
   } catch (std::system_error& e) {
-    rsp.status = e.what();
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, e.what() };
     return false;
   } catch (std::exception& e) {
-    rsp.status = "Error: " + std::string(e.what());
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Error: " + std::string(e.what()) };
     return false;
   }
 
@@ -868,11 +866,11 @@ bool RpcServer::onGetTransactionDetailsByHash(const COMMAND_RPC_GET_TRANSACTION_
     rsp.transaction = m_core.getTransactionDetails(tx_hash);
   }
   catch (std::system_error& e) {
-    rsp.status = e.what();
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, e.what() };
     return false;
   }
   catch (std::exception& e) {
-    rsp.status = "Error: " + std::string(e.what());
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Error: " + std::string(e.what()) };
     return false;
   }
 
@@ -890,10 +888,10 @@ bool RpcServer::onGetTransactionHashesByPaymentId(const COMMAND_RPC_GET_TRANSACT
   try {
     rsp.transactionHashes = m_core.getTransactionHashesByPaymentId(pid_hash);
   } catch (std::system_error& e) {
-    rsp.status = e.what();
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, e.what() };
     return false;
   } catch (std::exception& e) {
-    rsp.status = "Error: " + std::string(e.what());
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Error: " + std::string(e.what()) };
     return false;
   }
 
