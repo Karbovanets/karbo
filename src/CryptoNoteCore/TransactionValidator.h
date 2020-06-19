@@ -89,6 +89,8 @@ class TransactionValidator
 
         const bool m_isPoolTransaction;
 
+        bool m_isFusion;
+
         CryptoNote::TransactionValidationResult m_validationResult;
 
         uint64_t m_sumOfOutputs = 0;
