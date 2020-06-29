@@ -705,7 +705,7 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
         checkAndRemoveInvalidPoolTransactions(validatorState);
 
         ret = error::AddBlockErrorCode::ADDED_TO_MAIN;
-        //logger(Logging::DEBUGGING) << "Block " << blockHash << " added to main chain. Index: " << (previousBlockIndex + 1);
+        logger(Logging::DEBUGGING) << "Block " << blockHash << " added to main chain. Index: " << (previousBlockIndex + 1);
         if ((previousBlockIndex + 1) % 1000 == 0) {
           logger(Logging::INFO) << "Block " << blockHash << " added to main chain. Index: " << (previousBlockIndex + 1);
         }
@@ -774,8 +774,9 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
                 logger(Logging::WARNING) << "Poisson check at depth " << i << " failed! delta_t: " << (high_timestamp - low_timestamp) << " size: " << reorgSize + i + 1;
                 failed_checks++;
               }
-              //else
-              //  logger(Logging::WARNING) << "Poisson check at depth " << i << " passed! delta_t: " << (high_timestamp - low_timestamp) << " size: " << reorgSize + i + 1;
+              else {
+                logger(Logging::INFO) << "Poisson check at depth " << i << " passed! delta_t: " << (high_timestamp - low_timestamp) << " size: " << reorgSize + i + 1;
+              }
             }
 
             logger(Logging::INFO) << "Poisson check result " << failed_checks << " fails out of " << i;
@@ -880,22 +881,18 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
    in the pool, there are only a subset of normal transaction validation
    tests that need to be completed to determine if the transaction can
    stay in the pool at this time. */
-void Core::checkAndRemoveInvalidPoolTransactions(
-  const TransactionValidatorState blockTransactionsState)
-{
+void Core::checkAndRemoveInvalidPoolTransactions(const TransactionValidatorState blockTransactionsState) {
   auto &pool = *transactionPool;
 
   const auto poolHashes = pool.getTransactionHashes();
 
   const auto maxTransactionSize = getMaximumTransactionAllowedSize(blockMedianSize, currency);
 
-  for (const auto poolTxHash : poolHashes)
-  {
+  for (const auto poolTxHash : poolHashes) {
     const auto poolTx = pool.tryGetTransaction(poolTxHash);
 
     /* Tx got removed by another thread */
-    if (!poolTx)
-    {
+    if (!poolTx) {
       continue;
     }
 
@@ -906,8 +903,7 @@ void Core::checkAndRemoveInvalidPoolTransactions(
     bool mixinSuccess = Core::getMixin(tx, mixin);
     if (mixinSuccess) {
       if ((getTopBlockIndex() > CryptoNote::parameters::UPGRADE_HEIGHT_V3_1 && mixin > currency.maxMixin()) ||
-        (getTopBlockIndex() > currency.upgradeHeightV4() && mixin < currency.minMixin() && mixin != 1))
-      {
+        (getTopBlockIndex() > currency.upgradeHeightV4() && mixin < currency.minMixin() && mixin != 1)) {
         mixinSuccess = false;
       }
     }
@@ -915,30 +911,25 @@ void Core::checkAndRemoveInvalidPoolTransactions(
     bool isValid = true;
 
     /* If the transaction is in the chain but somehow was not previously removed, fail */
-    if (isTransactionInChain(poolTxHash))
-    {
+    if (isTransactionInChain(poolTxHash)) {
       isValid = false;
     }
     /* If the transaction does not have the right number of mixins, fail */
-    else if (!mixinSuccess)
-    {
+    else if (!mixinSuccess) {
       isValid = false;
     }
     /* If the transaction exceeds the maximum size of a transaction, fail */
-    else if (poolTx->getTransactionBinaryArray().size() > maxTransactionSize)
-    {
+    else if (poolTx->getTransactionBinaryArray().size() > maxTransactionSize) {
       isValid = false;
     }
     /* If the the transaction contains outputs that were spent in the new block, fail */
-    else if (hasIntersections(blockTransactionsState, poolTxState))
-    {
+    else if (hasIntersections(blockTransactionsState, poolTxState)) {
       isValid = false;
     }
 
     /* If the transaction is no longer valid, remove it from the pool
        and tell everyone else that they should also remove it from the pool */
-    if (!isValid)
-    {
+    if (!isValid) {
       pool.removeTransaction(poolTxHash);
       notifyObservers(makeDelTransactionMessage({ poolTxHash }, Messages::DeleteTransaction::Reason::NotActual));
     }
@@ -946,14 +937,12 @@ void Core::checkAndRemoveInvalidPoolTransactions(
 }
 
 /* This quickly finds out if a transaction is in the blockchain somewhere */
-bool Core::isTransactionInChain(const Crypto::Hash &txnHash)
-{
+bool Core::isTransactionInChain(const Crypto::Hash &txnHash) {
   throwIfNotInitialized();
 
   auto segment = findSegmentContainingTransaction(txnHash);
 
-  if (segment != nullptr)
-  {
+  if (segment != nullptr) {
     return true;
   }
 
