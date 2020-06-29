@@ -580,7 +580,7 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
 
   logger(Logging::DEBUGGING) << "Request to add block came for block " << blockStr;
 
-  if (hasBlock(cachedBlock.getBlockHash())) {
+  if (hasBlock(blockHash)) {
     logger(Logging::DEBUGGING) << "Block " << blockStr << " already exists";
     return error::AddBlockErrorCode::ALREADY_EXISTS;
   }
@@ -613,7 +613,7 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
 
   auto currentBlockchainHeight = mainChainCache->getTopBlockIndex();
   if (!checkpoints.isAlternativeBlockAllowed(currentBlockchainHeight, previousBlockIndex + 1)) {
-    logger(Logging::DEBUGGING) << "Block " << cachedBlock.getBlockHash() << std::endl <<
+    logger(Logging::DEBUGGING) << "Block " << blockHash << std::endl <<
     " can't be accepted for alternative chain: block height " << previousBlockIndex + 1 << std::endl <<
     " is too deep below blockchain height " << currentBlockchainHeight;
     return error::AddBlockErrorCode::REJECTED_AS_ORPHANED;
@@ -663,23 +663,23 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
 
   if (!currency.getBlockReward(cachedBlock.getBlock().majorVersion, blocksSizeMedian,
                                cumulativeBlockSize, alreadyGeneratedCoins, cumulativeFee, reward, emissionChange)) {
-    logger(Logging::WARNING) << "Block " << cachedBlock.getBlockHash() << " has too big cumulative size";
+    logger(Logging::WARNING) << "Block " << blockHash << " has too big cumulative size";
     return error::BlockValidationError::CUMULATIVE_BLOCK_SIZE_TOO_BIG;
   }
 
   if (minerReward != reward) {
-    logger(Logging::WARNING) << "Block reward mismatch for block " << cachedBlock.getBlockHash()
+    logger(Logging::WARNING) << "Block reward mismatch for block " << blockHash
                              << ". Expected reward: " << reward << ", got reward: " << minerReward;
     return error::BlockValidationError::BLOCK_REWARD_MISMATCH;
   }
 
-  if (checkpoints.isInCheckpointZone(cachedBlock.getBlockIndex())) {
-    if (!checkpoints.checkBlock(cachedBlock.getBlockIndex(), cachedBlock.getBlockHash())) {
-      logger(Logging::WARNING) << "Checkpoint block hash mismatch for block " << cachedBlock.getBlockHash();
+  if (checkpoints.isInCheckpointZone(blockIndex)) {
+    if (!checkpoints.checkBlock(blockIndex, blockHash)) {
+      logger(Logging::WARNING) << "Checkpoint block hash mismatch for block " << blockHash;
       return error::BlockValidationError::CHECKPOINT_BLOCK_HASH_MISMATCH;
     }
   } else if (!currency.checkProofOfWork(cryptoContext, cachedBlock, currentDifficulty)) {
-    logger(Logging::WARNING) << "Proof of work too weak for block " << cachedBlock.getBlockHash();
+    logger(Logging::WARNING) << "Proof of work too weak for block " << blockHash;
     return error::BlockValidationError::PROOF_OF_WORK_TOO_WEAK;
   }
 
@@ -697,12 +697,17 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
 		
         //actualizePoolTransactions();
         updateBlockMedianSize();
-        actualizePoolTransactionsLite(validatorState);
+        //actualizePoolTransactionsLite(validatorState);
+        
+        /* Take the current block spent key images and run them
+           against the pool to remove any transactions that may
+           be in the pool that would now be considered invalid */
+        checkAndRemoveInvalidPoolTransactions(validatorState);
 
         ret = error::AddBlockErrorCode::ADDED_TO_MAIN;
-        //logger(Logging::DEBUGGING) << "Block " << cachedBlock.getBlockHash() << " added to main chain. Index: " << (previousBlockIndex + 1);
+        //logger(Logging::DEBUGGING) << "Block " << blockHash << " added to main chain. Index: " << (previousBlockIndex + 1);
         if ((previousBlockIndex + 1) % 1000 == 0) {
-          logger(Logging::INFO) << "Block " << cachedBlock.getBlockHash() << " added to main chain. Index: " << (previousBlockIndex + 1);
+          logger(Logging::INFO) << "Block " << blockHash << " added to main chain. Index: " << (previousBlockIndex + 1);
         }
 
         notifyObservers(makeDelTransactionMessage(std::move(hashes), Messages::DeleteTransaction::Reason::InBlock));
@@ -710,7 +715,7 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
         bool allowReorg = true;
         
         cache->pushBlock(cachedBlock, transactions, validatorState, cumulativeBlockSize, emissionChange, currentDifficulty, std::move(rawBlock));
-        logger(Logging::WARNING) << "Block " << cachedBlock.getBlockHash() << " added to alternative chain. Index: " << (previousBlockIndex + 1);
+        logger(Logging::WARNING) << "Block " << blockHash << " added to alternative chain. Index: " << (previousBlockIndex + 1);
 
         if (cache->getCurrentCumulativeDifficulty() > mainChainCache->getCurrentCumulativeDifficulty()) {
           int64_t reorgSize = cache->getTopBlockIndex() - cache->getStartBlockIndex() + 1;
@@ -797,12 +802,18 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
             updateMainChainSet();
 
             updateBlockMedianSize();
-            actualizePoolTransactions();
+            //actualizePoolTransactions();
+
+            /* Take the current block spent key images and run them
+               against the pool to remove any transactions that may
+               be in the pool that would now be considered invalid */
+            checkAndRemoveInvalidPoolTransactions(validatorState);
+
             copyTransactionsToPool(chainsLeaves[endpointIndex]);
 
             ret = error::AddBlockErrorCode::ADDED_TO_ALTERNATIVE_AND_SWITCHED;
 
-            logger(Logging::WARNING) << "Switching to alternative chain! New top block hash: " << cachedBlock.getBlockHash() << ", index: " << (previousBlockIndex + 1)
+            logger(Logging::WARNING) << "Switching to alternative chain! New top block hash: " << blockHash << ", index: " << (previousBlockIndex + 1)
               << ", previous top block hash: " << chainsLeaves[endpointIndex]->getTopBlockHash() << ", index: " << chainsLeaves[endpointIndex]->getTopBlockIndex();
           }
         }
@@ -816,7 +827,7 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
       chainsStorage.emplace_back(std::move(newCache));
       chainsLeaves.push_back(newlyForkedChainPtr);
 
-      logger(Logging::DEBUGGING) << "Adding alternative block: " << cachedBlock.getBlockHash();
+      logger(Logging::DEBUGGING) << "Adding alternative block: " << blockHash;
 
       newlyForkedChainPtr->pushBlock(cachedBlock, transactions, validatorState, cumulativeBlockSize, emissionChange,
                                      currentDifficulty, std::move(rawBlock));
@@ -825,7 +836,7 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
       updateBlockMedianSize();
     }
   } else {
-    logger(Logging::DEBUGGING) << "Adding alternative block: " << cachedBlock.getBlockHash();
+    logger(Logging::DEBUGGING) << "Adding alternative block: " << blockHash;
 
     auto upperSegment = cache->split(previousBlockIndex + 1);
     //[cache] is lower segment now
@@ -857,10 +868,96 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
     updateMainChainSet();
   }
 
-  logger(Logging::DEBUGGING) << "Block: " << cachedBlock.getBlockHash() << " successfully added";
+  logger(Logging::DEBUGGING) << "Block: " << blockHash << " successfully added";
   notifyOnSuccess(ret, previousBlockIndex, cachedBlock, *cache);
 
   return ret;
+}
+
+/* This method is a light version of transaction validation that is used
+   to clear the transaction pool of transactions that have been invalidated
+   by the addition of a block to the blockchain. As the transactions are already
+   in the pool, there are only a subset of normal transaction validation
+   tests that need to be completed to determine if the transaction can
+   stay in the pool at this time. */
+void Core::checkAndRemoveInvalidPoolTransactions(
+  const TransactionValidatorState blockTransactionsState)
+{
+  auto &pool = *transactionPool;
+
+  const auto poolHashes = pool.getTransactionHashes();
+
+  const auto maxTransactionSize = getMaximumTransactionAllowedSize(blockMedianSize, currency);
+
+  for (const auto poolTxHash : poolHashes)
+  {
+    const auto poolTx = pool.tryGetTransaction(poolTxHash);
+
+    /* Tx got removed by another thread */
+    if (!poolTx)
+    {
+      continue;
+    }
+
+    const auto poolTxState = extractSpentOutputs(*poolTx);
+
+    uint64_t mixin;
+    const auto tx = poolTx.get().getTransaction();
+    bool mixinSuccess = Core::getMixin(tx, mixin);
+    if (mixinSuccess) {
+      if ((getTopBlockIndex() > CryptoNote::parameters::UPGRADE_HEIGHT_V3_1 && mixin > currency.maxMixin()) ||
+        (getTopBlockIndex() > currency.upgradeHeightV4() && mixin < currency.minMixin() && mixin != 1))
+      {
+        mixinSuccess = false;
+      }
+    }
+
+    bool isValid = true;
+
+    /* If the transaction is in the chain but somehow was not previously removed, fail */
+    if (isTransactionInChain(poolTxHash))
+    {
+      isValid = false;
+    }
+    /* If the transaction does not have the right number of mixins, fail */
+    else if (!mixinSuccess)
+    {
+      isValid = false;
+    }
+    /* If the transaction exceeds the maximum size of a transaction, fail */
+    else if (poolTx->getTransactionBinaryArray().size() > maxTransactionSize)
+    {
+      isValid = false;
+    }
+    /* If the the transaction contains outputs that were spent in the new block, fail */
+    else if (hasIntersections(blockTransactionsState, poolTxState))
+    {
+      isValid = false;
+    }
+
+    /* If the transaction is no longer valid, remove it from the pool
+       and tell everyone else that they should also remove it from the pool */
+    if (!isValid)
+    {
+      pool.removeTransaction(poolTxHash);
+      notifyObservers(makeDelTransactionMessage({ poolTxHash }, Messages::DeleteTransaction::Reason::NotActual));
+    }
+  }
+}
+
+/* This quickly finds out if a transaction is in the blockchain somewhere */
+bool Core::isTransactionInChain(const Crypto::Hash &txnHash)
+{
+  throwIfNotInitialized();
+
+  auto segment = findSegmentContainingTransaction(txnHash);
+
+  if (segment != nullptr)
+  {
+    return true;
+  }
+
+  return false;
 }
 
 void Core::actualizePoolTransactions() {
@@ -942,6 +1039,9 @@ std::error_code Core::submitBlock(BinaryArray&& rawBlockTemplate) {
   rawBlock.block = std::move(rawBlockTemplate);
 
   rawBlock.transactions.reserve(blockTemplate.transactionHashes.size());
+
+  std::scoped_lock lock(m_submitBlockMutex);
+
   for (const auto& transactionHash : blockTemplate.transactionHashes) {
     if (!transactionPool->checkIfTransactionPresent(transactionHash)) {
       logger(Logging::WARNING) << "The transaction " << Common::podToHex(transactionHash)

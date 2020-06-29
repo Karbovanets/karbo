@@ -1177,6 +1177,7 @@ void CryptoNoteProtocolHandler::updateObservedHeight(uint32_t peerHeight, const 
 
 void CryptoNoteProtocolHandler::recalculateMaxObservedHeight(const CryptoNoteConnectionContext& context) {
   //should be locked outside
+  uint32_t localHeight = m_core.getTopBlockIndex() + 1;
   uint32_t peerHeight = 0;
   m_p2p->for_each_connection([&peerHeight, &context](const CryptoNoteConnectionContext& ctx, PeerIdType peerId) {
     if (ctx.m_connection_id != context.m_connection_id) {
@@ -1184,7 +1185,7 @@ void CryptoNoteProtocolHandler::recalculateMaxObservedHeight(const CryptoNoteCon
     }
   });
 
-  m_observedHeight = std::max(peerHeight, m_core.getTopBlockIndex() + 1);
+  m_observedHeight = std::max(peerHeight, localHeight);
 }
 
 uint32_t CryptoNoteProtocolHandler::getObservedHeight() const {

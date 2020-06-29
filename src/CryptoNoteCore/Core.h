@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2018-2019, The TurtleCoin Developers
 // Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
@@ -224,6 +225,9 @@ private:
   
   void actualizePoolTransactions();
   void actualizePoolTransactionsLite(const TransactionValidatorState& validatorState); //Checks pool txs only for double spend.
+  void checkAndRemoveInvalidPoolTransactions(const TransactionValidatorState blockTransactionsState);
+
+  bool isTransactionInChain(const Crypto::Hash &txnHash);
 
   void transactionPoolCleaningProcedure();
   void updateBlockMedianSize();
@@ -233,6 +237,7 @@ private:
   void initRootSegment();
   void cutSegment(IBlockchainCache& segment, uint32_t startIndex);
 
+  std::mutex m_submitBlockMutex;
 };
 
 }

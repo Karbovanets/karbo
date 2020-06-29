@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2018-2019, The TurtleCoin Developers
 // Copyright (c) 2016-2019, The Karbo developers
 //
 // This file is part of Karbo.
@@ -27,6 +28,7 @@
 #include <boost/multi_index/member.hpp>
 #include <boost/multi_index/mem_fun.hpp>
 #include <boost/multi_index/ordered_index.hpp>
+#include <boost/optional.hpp>
 
 #include "ITransactionPool.h"
 #include <Logging/LoggerMessage.h>
@@ -41,6 +43,7 @@ public:
 
   virtual bool pushTransaction(CachedTransaction&& transaction, TransactionValidatorState&& transactionState) override;
   virtual const CachedTransaction& getTransaction(const Crypto::Hash& hash) const override;
+  virtual const boost::optional<CachedTransaction> tryGetTransaction(const Crypto::Hash &hash) const override;
   virtual bool removeTransaction(const Crypto::Hash& hash) override;
 
   virtual size_t getTransactionCount() const override;
@@ -111,6 +114,8 @@ private:
   TransactionsContainer::index<TransactionCostTag>::type& transactionCostIndex;
   TransactionsContainer::index<PaymentIdTag>::type& paymentIdIndex;
   
+  mutable std::mutex m_transactionsMutex;
+
   Logging::LoggerRef logger;
 };
 

@@ -22,6 +22,7 @@
 
 #include <chrono>
 #include <unordered_map>
+#include <boost/optional.hpp>
 
 #include "crypto/crypto.h"
 
@@ -52,6 +53,7 @@ public:
 
   virtual bool pushTransaction(CachedTransaction&& tx, TransactionValidatorState&& transactionState) override;
   virtual const CachedTransaction& getTransaction(const Crypto::Hash& hash) const override;
+  virtual const boost::optional<CachedTransaction> tryGetTransaction(const Crypto::Hash &hash) const override;
   virtual bool removeTransaction(const Crypto::Hash& hash) override;
 
   virtual size_t getTransactionCount() const override;
