@@ -114,7 +114,7 @@ private:
   TransactionsContainer::index<TransactionCostTag>::type& transactionCostIndex;
   TransactionsContainer::index<PaymentIdTag>::type& paymentIdIndex;
   
-  mutable std::mutex m_transactionsMutex;
+  mutable std::recursive_mutex m_transactions_lock;
 
   Logging::LoggerRef logger;
 };

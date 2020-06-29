@@ -1029,7 +1029,7 @@ std::error_code Core::submitBlock(BinaryArray&& rawBlockTemplate) {
 
   rawBlock.transactions.reserve(blockTemplate.transactionHashes.size());
 
-  std::scoped_lock lock(m_submitBlockMutex);
+  std::lock_guard<std::recursive_mutex> lock(m_submitBlockMutex);
 
   for (const auto& transactionHash : blockTemplate.transactionHashes) {
     if (!transactionPool->checkIfTransactionPresent(transactionHash)) {

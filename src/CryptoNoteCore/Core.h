@@ -19,6 +19,7 @@
 
 #pragma once
 #include <ctime>
+#include <mutex>
 #include <vector>
 #include <unordered_map>
 #include "BlockchainCache.h"
@@ -237,7 +238,7 @@ private:
   void initRootSegment();
   void cutSegment(IBlockchainCache& segment, uint32_t startIndex);
 
-  std::mutex m_submitBlockMutex;
+  std::recursive_mutex m_submitBlockMutex;
 };
 
 }
