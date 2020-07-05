@@ -37,7 +37,9 @@ enum class BlockValidationError {
   CHECKPOINT_BLOCK_HASH_MISMATCH,
   PROOF_OF_WORK_TOO_WEAK,
   TRANSACTION_ABSENT_IN_POOL,
-  BASE_TRANSACTION_EXTRA_MM_TAG
+  BASE_TRANSACTION_EXTRA_MM_TAG,
+  TRANSACTIONS_INCONSISTENCY,
+  DUPLICATE_TRANSACTION
 };
 
 // custom category:
@@ -70,6 +72,9 @@ public:
       case BlockValidationError::PROOF_OF_WORK_TOO_WEAK: return "Proof of work is too weak";
       case BlockValidationError::TRANSACTION_ABSENT_IN_POOL: return "Block's transaction is absent in transaction pool";
       case BlockValidationError::BASE_TRANSACTION_EXTRA_MM_TAG: return "Merge mining tag was found in miner transaction extra";
+      case BlockValidationError::TRANSACTIONS_INCONSISTENCY: return "Block contains inconsistent transactions";
+      case BlockValidationError::DUPLICATE_TRANSACTION: return "Block contains duplicate transaction";
+
       default: return "Unknown error";
     }
   }

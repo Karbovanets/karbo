@@ -635,20 +635,38 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
 
   auto currentDifficulty = cache->getDifficultyForNextBlock(previousBlockIndex);
   if (currentDifficulty == 0) {
-    logger(Logging::DEBUGGING) << "Block " << blockStr << " has difficulty overhead";
+    logger(Logging::WARNING) << "Block " << blockStr << " has difficulty overhead";
     return error::BlockValidationError::DIFFICULTY_OVERHEAD;
   }
 
   uint64_t cumulativeFee = 0;
 
-  for (const auto& transaction : transactions) {
+  std::unordered_set<Crypto::Hash> txBlobsHashes;
+
+  for (size_t i = 0; i < transactions.size(); ++i) {
+    // check if tx hashes in txs blob and header match
+    Crypto::Hash transactionHash = transactions[i].getTransactionHash();
+    if (transactionHash != blockTemplate.transactionHashes[i]) {
+      logger(Logging::WARNING) << "Transaction mismatch, provided blob hash: "
+                               << transactionHash << ", should be: "
+                               << blockTemplate.transactionHashes[i];
+      return error::BlockValidationError::TRANSACTIONS_INCONSISTENCY;
+    }
+
+    // check that there's no duplicate
+    auto result = txBlobsHashes.insert(transactionHash);
+    if (!result.second) {
+      logger(Logging::WARNING) << "Duplicate transaction " << transactionHash;
+      return error::BlockValidationError::DUPLICATE_TRANSACTION;
+    }
+
     uint64_t fee = 0;
     // Skip expensive fee validation (due to a dynamic minimal fee calculation)
     // for transactions in a checkpoints range - they are assumed valid.
     const uint64_t minFee = checkpoints.isInCheckpointZone(blockIndex) ? 0 : getMinimalFee(blockIndex);
-    auto transactionValidationResult = validateTransaction(transaction, validatorState, cache, m_transactionValidationThreadPool, fee, minFee, previousBlockIndex, false);
+    auto transactionValidationResult = validateTransaction(transactions[i], validatorState, cache, m_transactionValidationThreadPool, fee, minFee, previousBlockIndex, false);
     if (transactionValidationResult) {
-      logger(Logging::DEBUGGING) << "Failed to validate transaction " << transaction.getTransactionHash() << ": " << transactionValidationResult.message();
+      logger(Logging::WARNING) << "Failed to validate transaction " << transactions[i].getTransactionHash() << ": " << transactionValidationResult.message();
       return transactionValidationResult;
     }
 
