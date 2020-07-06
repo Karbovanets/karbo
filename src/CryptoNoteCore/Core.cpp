@@ -255,9 +255,12 @@ Crypto::Hash Core::getTopBlockHash() const {
 Crypto::Hash Core::getBlockHashByIndex(uint32_t blockIndex) const {
   assert(!chainsStorage.empty());
   assert(!chainsLeaves.empty());
-  assert(blockIndex <= getTopBlockIndex());
 
   throwIfNotInitialized();
+
+  if (blockIndex > getTopBlockIndex()) {
+    return NULL_HASH;
+  }
 
   return chainsLeaves[0]->getBlockHash(blockIndex);
 }
