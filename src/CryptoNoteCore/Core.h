@@ -130,7 +130,7 @@ public:
   virtual void load() override;
 
   virtual BlockDetails getBlockDetails(const Crypto::Hash& blockHash) const override;
-  virtual BlockDetails getBlockDetails(const uint32_t blockHeight) const override;
+  virtual BlockDetails getBlockDetails(const uint32_t blockHeight, const uint32_t attempt = 0) const override;
   virtual BlockDetailsShort getBlockDetailsLite(const Crypto::Hash& blockHash) const override;
   virtual BlockDetailsShort getBlockDetailsLite(uint32_t blockIndex) const override;
   virtual TransactionDetails getTransactionDetails(const Crypto::Hash& transactionHash) const override;

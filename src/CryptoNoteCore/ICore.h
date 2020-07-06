@@ -115,7 +115,7 @@ public:
   virtual void load() = 0;
 
   virtual BlockDetails getBlockDetails(const Crypto::Hash& blockHash) const = 0;
-  virtual BlockDetails getBlockDetails(const uint32_t blockHeight) const = 0;
+  virtual BlockDetails getBlockDetails(const uint32_t blockHeight, const uint32_t attempt = 0) const = 0;
   virtual BlockDetailsShort getBlockDetailsLite(const Crypto::Hash& blockHash) const = 0;
   virtual BlockDetailsShort getBlockDetailsLite(uint32_t blockIndex) const = 0;
   virtual TransactionDetails getTransactionDetails(const Crypto::Hash& transactionHash) const = 0;

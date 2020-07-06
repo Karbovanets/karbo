@@ -1180,7 +1180,7 @@ std::pair<Crypto::Hash, size_t> BlockchainCache::getMultisignatureOutputReferenc
 
 uint32_t BlockchainCache::getTopBlockIndex() const {
   assert(!blockInfos.empty());
-  return startIndex + static_cast<uint32_t>(blockInfos.size()) - 1;
+  return startIndex + storage->getBlockCount() - 1;
 }
 
 const Crypto::Hash& BlockchainCache::getTopBlockHash() const {
