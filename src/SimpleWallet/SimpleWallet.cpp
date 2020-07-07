@@ -2440,7 +2440,7 @@ void simple_wallet::printConnectionError() const {
 
 int main(int argc, char* argv[]) {
 #ifdef _WIN32
-   setlocale(LC_ALL, "");
+   setlocale(LC_ALL, "Russian");
    SetConsoleCP(1251);
    SetConsoleOutputCP(1251);
   _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
