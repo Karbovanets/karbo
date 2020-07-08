@@ -82,7 +82,13 @@ if (WITH_ZSTD)
     add_definitions(-DENABLE_ZSTD_COMPRESSION)
 endif ()
 
-## We only build static binaries -- this is left here for our dependencies
+if(MSVC OR MINGW)
+  set(DEFAULT_STATIC TRUE)
+else()
+  set(DEFAULT_STATIC FALSE)
+endif()
+
+option(STATIC "Link libraries statically" ${DEFAULT_STATIC})
 set(STATIC ${MSVC} CACHE BOOL "Link libraries statically")
 
 # This section helps us set up RocksDB for maximum portability
