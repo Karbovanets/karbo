@@ -88,8 +88,10 @@ else()
   set(DEFAULT_STATIC FALSE)
 endif()
 
-option(STATIC "Link libraries statically" ${DEFAULT_STATIC})
-set(STATIC ${MSVC} CACHE BOOL "Link libraries statically")
+#option(STATIC "Link libraries statically" ${DEFAULT_STATIC})
+#set(STATIC ${MSVC} CACHE BOOL "Link libraries statically")
+
+set(STATIC ON CACHE BOOL FORCE "Link libraries statically? Forced to ON")
 
 # This section helps us set up RocksDB for maximum portability
 set(ENABLE_AVX OFF CACHE STRING "Enable RocksDB AVX/AVX2 support detection? Defaults to OFF")
@@ -252,6 +254,7 @@ if(NOT MSVC)
 endif()
 
 ## Go get us some static BOOST libraries
+set(Boost_NO_BOOST_CMAKE ON)
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_STATIC_RUNTIME ON)
 find_package(Boost REQUIRED COMPONENTS system filesystem thread date_time chrono regex serialization program_options coroutine context atomic)
@@ -265,9 +268,7 @@ endif()
 
 find_package(Rocksdb 5.15.10)
 
-if (STATIC)
-  set (OPENSSL_USE_STATIC_LIBS ON) 
-endif ()
+set (OPENSSL_USE_STATIC_LIBS ON) 
 if (MSVC)
   set(OPENSSL_MSVC_STATIC_RT ON)
 endif ()
