@@ -265,9 +265,11 @@ endif()
 
 find_package(Rocksdb 5.15.10)
 
-set (OPENSSL_USE_STATIC_LIBS ON) 
+if (STATIC)
+  set (OPENSSL_USE_STATIC_LIBS ON) 
+endif ()
 if (MSVC)
-    set(OPENSSL_MSVC_STATIC_RT ON)
+  set(OPENSSL_MSVC_STATIC_RT ON)
 endif ()
 
 # We have to look for Homebrew OpenSSL a bit differently
