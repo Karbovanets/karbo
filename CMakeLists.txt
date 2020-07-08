@@ -29,20 +29,6 @@ set(ENABLE_MALLOC_USABLE_SIZE OFF CACHE STRING "Enable RocksDB MALLOC_USABLE_SIZ
 set(ENABLE_SCHED_GETCPU OFF CACHE STRING "Enable RocksDB SCHED_GETCPU support detection? Defaults to OFF")
 set(WITH_ZSTD ON CACHE BOOL "Enable zstd compression")
 
-if (NOT DEFINED ENV{DEVELOPER_LOCAL_TOOLS})
-  message(STATUS "Could not find DEVELOPER_LOCAL_TOOLS in env (not required)")
-  set(BOOST_IGNORE_SYSTEM_PATHS_DEFAULT OFF)
-elseif ("$ENV{DEVELOPER_LOCAL_TOOLS}" EQUAL 1)
-  message(STATUS "Found: env DEVELOPER_LOCAL_TOOLS = 1")
-  set(BOOST_IGNORE_SYSTEM_PATHS_DEFAULT ON)
-else()
-  message(STATUS "Found: env DEVELOPER_LOCAL_TOOLS = 0")
-  set(BOOST_IGNORE_SYSTEM_PATHS_DEFAULT OFF)
-endif()
-
-message(STATUS "BOOST_IGNORE_SYSTEM_PATHS defaults to ${BOOST_IGNORE_SYSTEM_PATHS_DEFAULT}")
-option(BOOST_IGNORE_SYSTEM_PATHS "Ignore boost system paths for local boost installation" ${BOOST_IGNORE_SYSTEM_PATHS_DEFAULT})
-
 option(WITH_LITE_WALLET "Lite wallet specific" OFF)
 
 if (NOT ARCH OR ARCH STREQUAL "" OR ARCH STREQUAL "native" OR ARCH STREQUAL "default")
@@ -102,8 +88,10 @@ else()
   set(DEFAULT_STATIC FALSE)
 endif()
 
-option(STATIC "Link libraries statically" ${DEFAULT_STATIC})
-set(STATIC ${MSVC} CACHE BOOL "Link libraries statically")
+#option(STATIC "Link libraries statically" ${DEFAULT_STATIC})
+#set(STATIC ${MSVC} CACHE BOOL "Link libraries statically")
+
+set(STATIC ON CACHE BOOL FORCE "Link libraries statically? Forced to ON")
 
 # This section helps us set up RocksDB for maximum portability
 set(ENABLE_AVX OFF CACHE STRING "Enable RocksDB AVX/AVX2 support detection? Defaults to OFF")
@@ -265,36 +253,19 @@ if(NOT MSVC)
   endif()
 endif()
 
-if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux" AND NOT ANDROID)
-    set(CMAKE_EXE_LINKER_FLAGS "-pthread")
-	set(Boost_NO_BOOST_CMAKE ON)
-	set(Boost_USE_STATIC_LIBS ON)
-    set(Boost_USE_STATIC_RUNTIME ON)
-endif()
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")
 
-if (${BOOST_IGNORE_SYSTEM_PATHS} STREQUAL "ON")
-  set(Boost_NO_SYSTEM_PATHS TRUE)
-endif()
-
-set(OLD_LIB_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES})
-if(STATIC)
-  if(MINGW)
-    set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
-  endif()
-  set(Boost_NO_BOOST_CMAKE ON)
-  set(Boost_USE_STATIC_LIBS ON)
-  set(Boost_USE_STATIC_RUNTIME ON)
-endif()
-
+## Go get us some static BOOST libraries
+set(Boost_NO_BOOST_CMAKE ON)
+set(Boost_USE_STATIC_LIBS ON)
+set(Boost_USE_STATIC_RUNTIME ON)
 find_package(Boost REQUIRED COMPONENTS system filesystem thread date_time chrono regex serialization program_options coroutine context atomic)
 message(STATUS "Boost Found: ${Boost_INCLUDE_DIRS}")
 include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
-
-set(CMAKE_FIND_LIBRARY_SUFFIXES ${OLD_LIB_SUFFIXES})
-if(NOT Boost_FOUND)
-  die("Could not find Boost libraries, please make sure you have installed Boost or libboost-all-dev (1.58) or the equivalent")
-elseif(Boost_FOUND)
-  message(STATUS "Found Boost Version: ${Boost_VERSION}")
+if(APPLE OR OPENBSD OR ANDROID)
+  set(Boost_LIBRARIES "${Boost_LIBRARIES}")
+elseif(NOT MSVC)
+  set(Boost_LIBRARIES "${Boost_LIBRARIES};rt")
 endif()
 
 find_package(Rocksdb 5.15.10)
