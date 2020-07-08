@@ -294,7 +294,6 @@ endif()
 if (OPENSSL_FOUND)
     ## On non MSVC build systems, we need to link ldl with the static OpenSSL library
     if (NOT MSVC)
-	    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lssl -lcrypto")
         set(OPENSSL_LIBRARIES "${OPENSSL_LIBRARIES};dl")
     endif ()
 

@@ -10,10 +10,6 @@ endif()
 include_directories(${CMAKE_SOURCE_DIR}/external/linenoise)
 include_directories(${CMAKE_SOURCE_DIR}/external/zstd)
 
-if(OPENSSL_FOUND)
-    include_directories(${OPENSSL_INCLUDE_DIRS})
-endif()
-
 file(GLOB_RECURSE BlockchainExplorer BlockchainExplorer/*)
 file(GLOB_RECURSE Checkpoints Checkpoints/*)
 file(GLOB_RECURSE Common Common/*)
@@ -117,7 +113,7 @@ target_link_libraries(PaymentGateService ${KarboPaymentGate} ${KarboWallet} ${Ka
 target_link_libraries(ConnectivityTool ${KarboCore} ${KarboLink} ${KarboCommon} ${Boost_LIBRARIES})
 
 if (MSVC)
-  target_link_libraries(System crypt32 ws2_32)
+  target_link_libraries(System ws2_32)
   target_link_libraries(Daemon Rpcrt4 ws2_32 advapi32 crypt32 gdi32 user32)
   target_link_libraries(SimpleWallet Rpcrt4 ws2_32 advapi32 crypt32 gdi32 user32)
   target_link_libraries(PaymentGateService Rpcrt4 ws2_32 advapi32 crypt32 gdi32 user32)
