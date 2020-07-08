@@ -117,6 +117,10 @@ public:
 
   virtual uint64_t feeAmount() const override { return 0; }
 
+  virtual void setRootCert(const std::string &path) { }
+
+  virtual void disableVerify() { }
+
 };
 
 

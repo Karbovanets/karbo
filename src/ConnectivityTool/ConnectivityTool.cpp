@@ -194,7 +194,7 @@ bool handle_get_daemon_info(po::variables_map& vm) {
 
   try {
     System::Dispatcher dispatcher;
-    HttpClient httpClient(dispatcher, command_line::get_arg(vm, arg_ip), command_line::get_arg(vm, arg_rpc_port));
+    HttpClient httpClient(dispatcher, command_line::get_arg(vm, arg_ip), command_line::get_arg(vm, arg_rpc_port), false);
 
     CryptoNote::COMMAND_RPC_GET_INFO::request req;
     CryptoNote::COMMAND_RPC_GET_INFO::response res;

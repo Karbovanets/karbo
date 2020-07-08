@@ -1057,7 +1057,7 @@ std::error_code NodeRpcProxy::jsonCommand(const std::string& comm, const Request
   std::string rpc_url = this->m_daemon_path + comm;
 
   try {
-    m_logger(TRACE) << "Send " << url << " JSON request";
+    m_logger(TRACE) << "Send " << rpc_url << " JSON request";
     EventLock eventLock(*m_httpEvent);
     invokeJsonCommand(*m_httpClient, rpc_url, req, res);
     ec = interpretResponseStatus(res.status);
@@ -1068,9 +1068,9 @@ std::error_code NodeRpcProxy::jsonCommand(const std::string& comm, const Request
   }
 
   if (ec) {
-    m_logger(TRACE) << url << " JSON request failed: " << ec << ", " << ec.message();
+    m_logger(TRACE) << rpc_url << " JSON request failed: " << ec << ", " << ec.message();
   } else {
-    m_logger(TRACE) << url << " JSON request complete";
+    m_logger(TRACE) << rpc_url << " JSON request complete";
   }
 
   return ec;

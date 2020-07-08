@@ -119,7 +119,7 @@ if (OPENSSL_FOUND)
     target_link_libraries(Optimizer ${OPENSSL_LIBRARIES})
     target_link_libraries(PaymentGateService ${OPENSSL_LIBRARIES})
     target_link_libraries(Miner ${OPENSSL_LIBRARIES})
-	
+
   # prevent error LNK2019: unresolved external symbol _vsnprintf
   if(MSVC AND NOT (MSVC_VERSION LESS 1900))
     target_link_libraries(Daemon "legacy_stdio_definitions.lib")
@@ -178,6 +178,7 @@ add_dependencies(P2P version)
 add_dependencies(Rpc version)
 add_dependencies(PaymentGate version)
 add_dependencies(CryptoNoteCore version)
+add_dependencies(InProcessNode version)
 
 set_property(TARGET ConnectivityTool PROPERTY OUTPUT_NAME "connectivity_tool")
 set_property(TARGET Daemon PROPERTY OUTPUT_NAME "karbowanecd")
