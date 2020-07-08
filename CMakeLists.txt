@@ -83,7 +83,7 @@ if (WITH_ZSTD)
 endif ()
 
 ## We only build static binaries -- this is left here for our dependencies
-set(STATIC ON CACHE BOOL FORCE "Link libraries statically? Forced to ON")
+set(STATIC ${MSVC} CACHE BOOL "Link libraries statically")
 
 # This section helps us set up RocksDB for maximum portability
 set(ENABLE_AVX OFF CACHE STRING "Enable RocksDB AVX/AVX2 support detection? Defaults to OFF")
