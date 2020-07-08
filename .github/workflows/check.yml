@@ -66,8 +66,8 @@ jobs:
           build_folder="build/"
           krb_ver=${GITHUB_SHA::7}
           release_name="Karbo-cli-macOS-$krb_ver"
-          brew install gcc boost@1.60
-          brew link boost@1.60 --force
+          brew install gcc boost@1.69
+          brew link boost@1.69 --force
           mkdir "$build_folder"
           cd "$build_folder"
           cmake -DCMAKE_C_FLAGS="-mmacosx-version-min=10.12" -DCMAKE_CXX_FLAGS="-mmacosx-version-min=10.12" ..
@@ -141,7 +141,7 @@ jobs:
         id: build
         run: |
           sudo apt-get purge '*boost*'
-          sudo apt install -y libboost1.62-all-dev
+          sudo apt install -y libboost-all-dev
           build_folder="build/release"
           krb_ver=${GITHUB_SHA::7}
           release_name=Karbo-cli-ubuntu18.04-"$krb_ver"
@@ -182,7 +182,7 @@ jobs:
 
         run: |
           sudo apt-get purge '*boost*'
-          sudo apt install -y libboost1.62-all-dev
+          sudo apt install -y libboost-all-dev
           build_folder="build/release"
           krb_ver=${GITHUB_SHA::7}
           release_name=Karbo-cli-ubuntu18.04-clang-6-"$krb_ver"
