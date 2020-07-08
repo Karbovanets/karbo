@@ -262,7 +262,9 @@ endif()
 find_package(Rocksdb 5.15.10)
 
 set (OPENSSL_USE_STATIC_LIBS ON) 
-set (OPENSSL_MSVC_STATIC_RT ON)
+if (MSVC)
+    set(OPENSSL_MSVC_STATIC_RT ON)
+endif ()
 
 # We have to look for Homebrew OpenSSL a bit differently
 # Borrowed from https://github.com/tarantool/tarantool/commit/6eab201af1843f53a833c8928dc58fceffa08147
