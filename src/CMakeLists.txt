@@ -10,6 +10,10 @@ endif()
 include_directories(${CMAKE_SOURCE_DIR}/external/linenoise)
 include_directories(${CMAKE_SOURCE_DIR}/external/zstd)
 
+if(OPENSSL_FOUND)
+    include_directories(${OPENSSL_INCLUDE_DIRS})
+endif()
+
 file(GLOB_RECURSE BlockchainExplorer BlockchainExplorer/*)
 file(GLOB_RECURSE Checkpoints Checkpoints/*)
 file(GLOB_RECURSE Common Common/*)
