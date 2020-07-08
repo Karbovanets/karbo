@@ -110,7 +110,7 @@ jobs:
         run: |
           sudo apt-get purge '*libssl*'
           sudo apt update
-          sudo apt install -y libboost-all-dev libssl1.0.0-dev
+          sudo apt install -y libboost-all-dev libssl1.0-dev
           build_folder="build/release"
           krb_ver=${GITHUB_SHA::7}
           release_name=Karbo-cli-ubuntu16.04-"$krb_ver"
