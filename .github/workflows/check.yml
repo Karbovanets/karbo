@@ -19,6 +19,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Install OpenSSL
+        run: choco install openssl
+
       - name: Build
         shell: powershell
         id: build
