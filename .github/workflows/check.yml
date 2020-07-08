@@ -33,7 +33,7 @@ jobs:
           $release_name = "karbo-cli-win64-$krb_ver"
           mkdir "$build_folder"
           cd "$build_folder"
-          cmake -G "Visual Studio 16 2019" -A x64 -DARCH=default -DBOOST_ROOT="$env:BOOST_ROOT_1_69_0" ..
+          cmake -G "Visual Studio 16 2019" -A x64 -DARCH=default -DBOOST_ROOT="$env:BOOST_ROOT_1_72_0" ..
           MSBuild Karbo.sln /p:Configuration=Release /p:PlatformToolset=v141 /m
           cd src\Release
           Compress-Archive -Path *.exe -DestinationPath "$release_name.zip"
@@ -115,7 +115,7 @@ jobs:
           release_name=Karbo-cli-ubuntu18.04-"$krb_ver"
           mkdir -p "$build_folder"
           cd "$build_folder"
-          cmake -D ARCH=default -D CMAKE_BUILD_TYPE=Release -D CMAKE_POSITION_INDEPENDENT_CODE:BOOL=true -D BOOST_IGNORE_SYSTEM_PATHS_DEFAULT=ON -D BOOST_ROOT=/usr ../..
+          cmake -D ARCH=default -D CMAKE_BUILD_TYPE=Release -D CMAKE_POSITION_INDEPENDENT_CODE:BOOL=true ../..
           make
           mkdir -p "$release_name"
           exeFiles=()
@@ -156,7 +156,7 @@ jobs:
           release_name=Karbo-cli-ubuntu18.04-clang-6-"$krb_ver"
           mkdir -p "$build_folder"
           cd "$build_folder"
-          cmake -D ARCH=default -D CMAKE_BUILD_TYPE=Release -D CMAKE_POSITION_INDEPENDENT_CODE:BOOL=true -D BOOST_IGNORE_SYSTEM_PATHS_DEFAULT=ON -D BOOST_ROOT=/usr ../..
+          cmake -D ARCH=default -D CMAKE_BUILD_TYPE=Release -D CMAKE_POSITION_INDEPENDENT_CODE:BOOL=true ../..
           make
           mkdir -p "$release_name"
           exeFiles=()
