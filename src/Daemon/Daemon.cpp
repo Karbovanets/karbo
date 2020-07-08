@@ -56,6 +56,7 @@
 
 #if defined(WIN32)
 #include <crtdbg.h>
+#undef ERROR
 #endif
 
 using Common::JsonValue;
@@ -355,7 +356,6 @@ int main(int argc, char* argv[])
       dch.start_handling();
     }
 
-	boost::filesystem::path data_dir_path(data_dir);
     boost::filesystem::path chain_file_path(rpcConfig.getChainFile());
     boost::filesystem::path key_file_path(rpcConfig.getKeyFile());
     boost::filesystem::path dh_file_path(rpcConfig.getDhFile());
@@ -369,7 +369,7 @@ int main(int argc, char* argv[])
       dh_file_path = data_dir_path / dh_file_path;
     }
     bool server_ssl_enable = false;
-    if (rpcConfig.isEnableSSL()) {
+    if (rpcConfig.isEnabledSSL()) {
       if (boost::filesystem::exists(chain_file_path, ec) &&
           boost::filesystem::exists(key_file_path, ec) &&
           boost::filesystem::exists(dh_file_path, ec)) {
@@ -385,7 +385,7 @@ int main(int argc, char* argv[])
     if (server_ssl_enable) ssl_info += ", SSL on address " + rpcConfig.getBindAddressSSL();
     logger(INFO) << "Starting core rpc server on address " << rpcConfig.getBindAddress() << ssl_info;
     rpcServer.start(rpcConfig.getBindIP(), rpcConfig.getBindPort(), rpcConfig.getBindPortSSL(), server_ssl_enable);
-    rpcServer.restrictRPC(rpcConfig.restrictedRpc);
+    rpcServer.restrictRPC(rpcConfig.restrictedRPC);
     rpcServer.enableCors(rpcConfig.enableCors);
     if (!rpcConfig.nodeFeeAddress.empty() && !rpcConfig.nodeFeeAmountStr.empty()) {
       AccountPublicAddress acc = boost::value_initialized<AccountPublicAddress>();

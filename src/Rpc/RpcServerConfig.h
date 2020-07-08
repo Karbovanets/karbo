@@ -49,11 +49,11 @@ public:
   std::string dhFile;
   std::string chainFile;
   std::string keyFile;
-  std::string enableCors;
   std::string contactInfo;
   std::string nodeFeeAddress;
   std::string nodeFeeAmountStr;
   std::string nodeFeeViewKey;
+  std::vector<std::string> enableCors;
 };
 
 }

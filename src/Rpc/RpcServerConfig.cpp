@@ -52,8 +52,8 @@ namespace CryptoNote {
     bindIp(DEFAULT_RPC_IP),
     bindPort(DEFAULT_RPC_PORT),
     enableCors({}),
-	enableSSL(false),
-    restrictedRpc(false),
+    enableSSL(false),
+    restrictedRPC(false),
     contactInfo(""),
     nodeFeeAddress(""),
     nodeFeeAmountStr(""),
@@ -96,7 +96,7 @@ namespace CryptoNote {
     keyFile = command_line::get_arg(vm, arg_key_file);
     dhFile = command_line::get_arg(vm, arg_dh_file);
     enableCors = command_line::get_arg(vm, arg_enable_cors);
-    restrictedRpc = command_line::get_arg(vm, arg_restricted_rpc);
+    restrictedRPC = command_line::get_arg(vm, arg_restricted_rpc);
     contactInfo = command_line::get_arg(vm, arg_set_contact);
     nodeFeeAddress = command_line::get_arg(vm, arg_set_fee_address);
     nodeFeeAmountStr = command_line::get_arg(vm, arg_set_fee_amount);

@@ -38,6 +38,7 @@
 #include "CryptoNoteCore/RocksDBWrapper.h"
 #include "CryptoNoteProtocol/CryptoNoteProtocolHandler.h"
 #include "P2p/NetNode.h"
+#include "Rpc/RpcServer.h"
 #include <System/Context.h>
 #include "Wallet/WalletGreen.h"
 
@@ -253,7 +254,7 @@ void PaymentGateService::runInProcess(Logging::LoggerRef& log) {
 
   CryptoNote::CryptoNoteProtocolHandler protocol(currency, *dispatcher, core, nullptr, logger);
   CryptoNote::NodeServer p2pNode(*dispatcher, protocol, logger);
-  
+  CryptoNote::RpcServer rpcServer(*dispatcher, logger, core, p2pNode, protocol);
   protocol.set_p2p_endpoint(&p2pNode);
 
   log(Logging::INFO) << "initializing p2pNode";
@@ -281,7 +282,7 @@ void PaymentGateService::runInProcess(Logging::LoggerRef& log) {
   std::string rpc_dh_file = "";
 
   if (config.remoteNodeConfig.m_enable_ssl) {
-    if (validateSertPath(config.coreConfig.configFolder,
+    if (validateSertPath(config.dataDir,
         config.remoteNodeConfig.m_chain_file,
         config.remoteNodeConfig.m_key_file,
         config.remoteNodeConfig.m_dh_file,
@@ -370,7 +371,7 @@ void PaymentGateService::runWalletService(const CryptoNote::Currency& currency, 
     std::string rpc_dh_file = "";
 
     if (config.gateConfiguration.m_enable_ssl) {
-        if (validateSertPath(config.coreConfig.configFolder,
+        if (validateSertPath(config.dataDir,
             config.gateConfiguration.m_chain_file,
             config.gateConfiguration.m_key_file,
             config.gateConfiguration.m_dh_file,

@@ -44,6 +44,8 @@ class HttpServer {
 
 public:
   HttpServer(System::Dispatcher& dispatcher, Logging::ILogger& log);
+  virtual ~HttpServer() {}
+
   void setCerts(const std::string& chain_file, const std::string& key_file, const std::string& dh_file);
   void start(const std::string& address, uint16_t port, uint16_t port_ssl = 0,
              bool server_ssl_enable = false, const std::string& user = "", const std::string& password = "");
