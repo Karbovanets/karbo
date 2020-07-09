@@ -625,6 +625,7 @@ int CryptoNoteProtocolHandler::processObjects(CryptoNoteConnectionContext& conte
     }
 
     auto addResult = m_core.addBlock(cachedBlocks[index], std::move(rawBlocks[index]));
+
     if (addResult == error::AddBlockErrorCondition::BLOCK_VALIDATION_FAILED ||
         addResult == error::AddBlockErrorCondition::TRANSACTION_VALIDATION_FAILED ||
         addResult == error::AddBlockErrorCondition::DESERIALIZATION_FAILED) {

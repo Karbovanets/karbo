@@ -575,6 +575,9 @@ double calc_poisson_ln(double lam, uint64_t k)
 
 std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlock) {
   throwIfNotInitialized();
+
+  std::lock_guard<std::recursive_mutex> lock(m_blockchain_lock);
+
   uint32_t blockIndex = cachedBlock.getBlockIndex();
   Crypto::Hash blockHash = cachedBlock.getBlockHash();
   std::ostringstream os;
@@ -614,7 +617,7 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
   auto previousBlockIndex = cache->getBlockIndex(previousBlockHash);
   auto mainChainCache = chainsLeaves[0];
 
-  auto currentBlockchainHeight = mainChainCache->getTopBlockIndex();
+  auto currentBlockchainHeight = mainChainCache->getTopBlockIndex() + 1;
   if (!checkpoints.isAlternativeBlockAllowed(currentBlockchainHeight, previousBlockIndex + 1)) {
     logger(Logging::DEBUGGING) << "Block " << blockHash << std::endl <<
     " can't be accepted for alternative chain: block height " << previousBlockIndex + 1 << std::endl <<
@@ -769,10 +772,10 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
             std::vector<uint64_t> main_chain = mainChainCache->getLastTimestamps(CryptoNote::parameters::POISSON_CHECK_DEPTH, cache->getStartBlockIndex() - 1, UseGenesis{false});
 
             logger(Logging::WARNING) << "Poisson check triggered by reorg size " << reorgSize;
-            //for(size_t i=0; i < alt_chain.size(); i++)
-            //  logger(Logging::WARNING) << "DEBUG: alt_chain [" << i << "] " << alt_chain[i];
-            //for(size_t i=0; i < main_chain.size(); i++)
-            //  logger(Logging::WARNING) << "DEBUG: main_chain [" << i << "] " << main_chain[i];
+            for(size_t i=0; i < alt_chain.size(); i++)
+              logger(Logging::DEBUGGING) << "DEBUG: alt_chain [" << i << "] " << alt_chain[i];
+            for(size_t i=0; i < main_chain.size(); i++)
+              logger(Logging::DEBUGGING) << "DEBUG: main_chain [" << i << "] " << main_chain[i];
 
             uint64_t high_timestamp = alt_chain.back();
               std::reverse(main_chain.begin(), main_chain.end());
@@ -1049,8 +1052,6 @@ std::error_code Core::submitBlock(BinaryArray&& rawBlockTemplate) {
   rawBlock.block = std::move(rawBlockTemplate);
 
   rawBlock.transactions.reserve(blockTemplate.transactionHashes.size());
-
-  std::lock_guard<std::recursive_mutex> lock(m_submitBlockMutex);
 
   for (const auto& transactionHash : blockTemplate.transactionHashes) {
     if (!transactionPool->checkIfTransactionPresent(transactionHash)) {

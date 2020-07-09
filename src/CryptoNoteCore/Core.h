@@ -238,7 +238,7 @@ private:
   void initRootSegment();
   void cutSegment(IBlockchainCache& segment, uint32_t startIndex);
 
-  std::recursive_mutex m_submitBlockMutex;
+  std::recursive_mutex m_blockchain_lock;
 };
 
 }
