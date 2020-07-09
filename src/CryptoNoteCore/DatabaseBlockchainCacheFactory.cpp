@@ -38,7 +38,7 @@ std::unique_ptr<IBlockchainCache> DatabaseBlockchainCacheFactory::createRootBloc
 }
 
 std::unique_ptr<IBlockchainCache> DatabaseBlockchainCacheFactory::createBlockchainCache(const Currency& currency, IBlockchainCache* parent, uint32_t startIndex) {
-  return std::unique_ptr<IBlockchainCache> (new BlockchainCache("", currency, logger, parent, startIndex));
+  return std::unique_ptr<IBlockchainCache> (new DatabaseBlockchainCache(currency, database, *this, logger));
 }
 
 } //namespace CryptoNote

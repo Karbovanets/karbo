@@ -22,6 +22,7 @@
 #include "Currency.h"
 #include "Difficulty.h"
 #include "IBlockchainCache.h"
+#include "BlockchainCache.h"
 
 #include "CryptoNoteCore/UpgradeManager.h"
 

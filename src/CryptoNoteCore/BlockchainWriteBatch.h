@@ -20,9 +20,9 @@
 
 #include "IWriteBatch.h"
 
-#include "BlockchainCache.h"
 #include "CryptoNote.h"
 #include "DatabaseCacheData.h"
+#include "BlockchainCache.h"
 
 namespace CryptoNote {
 
