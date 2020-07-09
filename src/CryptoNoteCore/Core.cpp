@@ -584,7 +584,7 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
   os << blockIndex << " (" << blockHash << ")";
   std::string blockStr = os.str();
 
-  logger(Logging::DEBUGGING) << "Request to add block came for block " << blockStr;
+  logger(Logging::DEBUGGING) << "Request came to add block " << blockStr;
 
   if (hasBlock(blockHash)) {
     logger(Logging::DEBUGGING) << "Block " << blockStr << " already exists";
@@ -669,10 +669,19 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
     uint64_t fee = 0;
     // Skip expensive fee validation (due to a dynamic minimal fee calculation)
     // for transactions in a checkpoints range - they are assumed valid.
-    const uint64_t minFee = checkpoints.isInCheckpointZone(blockIndex) ? 0 : getMinimalFee(blockIndex);
+    const uint64_t minFee = checkpoints.isInCheckpointZone(blockIndex) ? 0 : /*getMinimalFee(blockIndex)*/ currency.minimumFee();
     auto transactionValidationResult = validateTransaction(transactions[i], validatorState, cache, m_transactionValidationThreadPool, fee, minFee, previousBlockIndex, false);
     if (transactionValidationResult) {
-      logger(Logging::WARNING) << "Failed to validate transaction " << transactions[i].getTransactionHash() << ": " << transactionValidationResult.message();
+      const auto hash = transactions[i].getTransactionHash();
+      logger(Logging::WARNING) << "Failed to validate transaction " << hash << ": " << transactionValidationResult.message();
+
+      if (transactionPool->checkIfTransactionPresent(hash))
+      {
+        logger(Logging::DEBUGGING) << "Invalid transaction " << hash << " is present in the pool, removing";
+        transactionPool->removeTransaction(hash);
+        notifyObservers(makeDelTransactionMessage({ hash }, Messages::DeleteTransaction::Reason::NotActual));
+      }
+
       return transactionValidationResult;
     }
 
@@ -722,10 +731,6 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
         //actualizePoolTransactions();
         updateBlockMedianSize();
         //actualizePoolTransactionsLite(validatorState);
-        
-        /* Take the current block spent key images and run them
-           against the pool to remove any transactions that may
-           be in the pool that would now be considered invalid */
         checkAndRemoveInvalidPoolTransactions(validatorState);
 
         ret = error::AddBlockErrorCode::ADDED_TO_MAIN;
@@ -823,15 +828,11 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
             assert(endpointIndex != chainsStorage.size());
             assert(endpointIndex != 0);
 
-            std::swap(chainsLeaves[0], chainsLeaves[endpointIndex]);
+            std::swap(chainsLeaves[0], chainsLeaves[endpointIndex]); // reorg itself
             updateMainChainSet();
 
             updateBlockMedianSize();
             //actualizePoolTransactions();
-
-            /* Take the current block spent key images and run them
-               against the pool to remove any transactions that may
-               be in the pool that would now be considered invalid */
             checkAndRemoveInvalidPoolTransactions(validatorState);
 
             copyTransactionsToPool(chainsLeaves[endpointIndex]);
@@ -898,8 +899,10 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
 
   return ret;
 }
-
-/* This method is a light version of transaction validation that is used
+/* Take the current block spent key images and run them
+   against the pool to remove any transactions that may
+   be in the pool that would now be considered invalid.
+   This method is a light version of transaction validation that is used
    to clear the transaction pool of transactions that have been invalidated
    by the addition of a block to the blockchain. As the transactions are already
    in the pool, there are only a subset of normal transaction validation
