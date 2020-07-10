@@ -669,7 +669,7 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
     uint64_t fee = 0;
     // Skip expensive fee validation (due to a dynamic minimal fee calculation)
     // for transactions in a checkpoints range - they are assumed valid.
-    const uint64_t minFee = checkpoints.isInCheckpointZone(blockIndex) ? 0 : /*getMinimalFee(blockIndex)*/ currency.minimumFee();
+    const uint64_t minFee = checkpoints.isInCheckpointZone(blockIndex) ? 0 : getMinimalFee(blockIndex);
     auto transactionValidationResult = validateTransaction(transactions[i], validatorState, cache, m_transactionValidationThreadPool, fee, minFee, previousBlockIndex, false);
     if (transactionValidationResult) {
       const auto hash = transactions[i].getTransactionHash();
@@ -2527,10 +2527,13 @@ Difficulty Core::getAvgDifficulty(uint32_t height, uint32_t window) const {
 }
 
 uint64_t Core::getMinimalFee() {
-  return getMinimalFee(getTopBlockIndex());
+  //return getMinimalFee(getTopBlockIndex());
+  return currency.minimumFee();
 }
 
 uint64_t Core::getMinimalFee(uint32_t height) {
+  return currency.minimumFee();
+/*
   IBlockchainCache* mainChain = chainsLeaves[0];
   uint32_t currentIndex = mainChain->getTopBlockIndex();
   if (height < 3 || currentIndex <= 1)
@@ -2552,7 +2555,7 @@ uint64_t Core::getMinimalFee(uint32_t height) {
   // historical reference trailing average reward
   uint64_t avgReferenceReward = mainChain->getAlreadyGeneratedCoins(height) / height;
 
-  return currency.getMinimalFee(avgCurrentDifficulty, currentReward, avgReferenceDifficulty, avgReferenceReward, height);
+  return currency.getMinimalFee(avgCurrentDifficulty, currentReward, avgReferenceDifficulty, avgReferenceReward, height);*/
 }
 
 uint64_t Core::calculateReward(uint64_t alreadyGeneratedCoins) const {
