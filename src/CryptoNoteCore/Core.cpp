@@ -32,7 +32,7 @@
 #include "Common/MemoryInputStream.h"
 #include "CryptoNoteTools.h"
 #include "CryptoNoteFormatUtils.h"
-#include "DataBaseBlockchainCache.h"
+#include "DatabaseBlockchainCache.h"
 #include "BlockchainStorage.h"
 #include "BlockchainUtils.h"
 #include "CryptoNoteCore/ITimeProvider.h"
