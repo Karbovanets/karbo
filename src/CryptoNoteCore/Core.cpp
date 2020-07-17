@@ -1056,6 +1056,8 @@ std::error_code Core::submitBlock(BinaryArray&& rawBlockTemplate) {
 
   rawBlock.transactions.reserve(blockTemplate.transactionHashes.size());
 
+  std::lock_guard<std::recursive_mutex> lock(m_blockchain_lock);
+
   for (const auto& transactionHash : blockTemplate.transactionHashes) {
     if (!transactionPool->checkIfTransactionPresent(transactionHash)) {
       logger(Logging::WARNING) << "The transaction " << Common::podToHex(transactionHash)
