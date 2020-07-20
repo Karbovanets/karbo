@@ -23,6 +23,7 @@
 #include <sys/eventfd.h>
 #include <sys/timerfd.h>
 #include <fcntl.h>
+#include <stdexcept>
 #include <string.h>
 #include <ucontext.h>
 #include <unistd.h>
