@@ -62,11 +62,20 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Find Tag
+        id: tagger
+        uses: jimschubert/query-tag-action@v1
+        with:
+          include: 'v*'
+          exclude: '*-rc*'
+          commit-ish: 'HEAD~'
+          skip-unshallow: 'true'
+
       - name: Build
         id: build
         run: |
           build_folder="build/"
-          krb_ver=git describe --tags --abbrev=0
+          krb_ver="${{steps.tagger.outputs.tag}}"
           release_name="Karbo-cli-macOS-$krb_ver"
           brew install gcc boost
           brew link boost --force
@@ -104,13 +113,22 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Find Tag
+        id: tagger
+        uses: jimschubert/query-tag-action@v1
+        with:
+          include: 'v*'
+          exclude: '*-rc*'
+          commit-ish: 'HEAD~'
+          skip-unshallow: 'true'
+
       - name: Build
         id: build
         run: |
           sudo apt update
           sudo apt install -y libboost-all-dev libssl-dev
           build_folder="build/release"
-          krb_ver=git describe --tags --abbrev=0
+          krb_ver="${{ steps.build.outputs.krb_ver }}"
           release_name=Karbo-cli-ubuntu20.04-"krb_ver"
           mkdir -p "$build_folder"
           cd "$build_folder"
@@ -140,13 +158,22 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Find Tag
+        id: tagger
+        uses: jimschubert/query-tag-action@v1
+        with:
+          include: 'v*'
+          exclude: '*-rc*'
+          commit-ish: 'HEAD~'
+          skip-unshallow: 'true'
+
       - name: Build
         id: build
         run: |
           sudo apt update
           sudo apt install -y libboost-all-dev libssl-dev
           build_folder="build/release"
-          krb_ver=git describe --tags --abbrev=0
+          krb_ver="${{ steps.build.outputs.krb_ver }}"
           release_name=Karbo-cli-ubuntu18.04-"krb_ver"
           mkdir -p "$build_folder"
           cd "$build_folder"
@@ -176,6 +203,15 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Find Tag
+        id: tagger
+        uses: jimschubert/query-tag-action@v1
+        with:
+          include: 'v*'
+          exclude: '*-rc*'
+          commit-ish: 'HEAD~'
+          skip-unshallow: 'true'
+
       - name: Build
         id: build
 
@@ -187,7 +223,7 @@ jobs:
           sudo apt update
           sudo apt install -y libboost-all-dev libssl-dev
           build_folder="build/release"
-          krb_ver=git describe --tags --abbrev=0
+          krb_ver="${{ steps.build.outputs.krb_ver }}"
           release_name=Karbo-cli-ubuntu18.04-clang-6-"krb_ver"
           mkdir -p "$build_folder"
           cd "$build_folder"
