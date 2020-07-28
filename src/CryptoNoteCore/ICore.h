@@ -17,7 +17,13 @@
 // along with Karbo.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
+#include <cstdint>
+#include <list>
+#include <memory>
+#include <system_error>
 #include <vector>
+#include <utility>
+
 #include <CryptoNote.h>
 
 #include "AddBlockErrors.h"

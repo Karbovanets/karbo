@@ -297,7 +297,7 @@ std::unique_ptr<IBlockchainCache> BlockchainCache::split(uint32_t splitBlockInde
   children = { newCache.get() };
 
   logger(Logging::DEBUGGING) << "Split successfully completed";
-  return std::move(newCache);
+  return newCache;
 }
 
 void BlockchainCache::splitSpentKeyImages(BlockchainCache& newCache, uint32_t splitBlockIndex) {

@@ -626,6 +626,7 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
   }
 
   bool addOnTop = cache->getTopBlockIndex() == previousBlockIndex;
+
   auto maxBlockCumulativeSize = currency.maxBlockCumulativeSize(previousBlockIndex + 1);
   if (cumulativeBlockSize > maxBlockCumulativeSize) {
     logger(Logging::WARNING) << "Block " << blockStr << " has too big cumulative size";
@@ -669,7 +670,7 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
     uint64_t fee = 0;
     // Skip expensive fee validation (due to a dynamic minimal fee calculation)
     // for transactions in a checkpoints range - they are assumed valid.
-    const uint64_t minFee = checkpoints.isInCheckpointZone(blockIndex) ? 0 : /*getMinimalFee(blockIndex)*/ currency.minimumFee();
+    const uint64_t minFee = checkpoints.isInCheckpointZone(blockIndex) ? 0 : getMinimalFee(blockIndex);
     auto transactionValidationResult = validateTransaction(transactions[i], validatorState, cache, m_transactionValidationThreadPool, fee, minFee, previousBlockIndex, false);
     if (transactionValidationResult) {
       const auto hash = transactions[i].getTransactionHash();
@@ -724,7 +725,7 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
       auto hashes = preallocateVector<Crypto::Hash>(transactions.size());
 
       // TODO: exception safety
-      if (cache == chainsLeaves[0]) {
+      if (cache == mainChainCache) {
 
         cache->pushBlock(cachedBlock, transactions, validatorState, cumulativeBlockSize, emissionChange, currentDifficulty, std::move(rawBlock));
 		

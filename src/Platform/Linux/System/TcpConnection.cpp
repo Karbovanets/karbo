@@ -20,6 +20,8 @@
 
 #include <arpa/inet.h>
 #include <cassert>
+#include <cstdint>
+#include <stdexcept>
 #include <sys/epoll.h>
 #include <unistd.h>
 

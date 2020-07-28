@@ -71,7 +71,7 @@ std::unique_ptr<BlockchainStorage::IBlockchainStorageInternal> SwappedBlockchain
     blocks.pop_back();
   }
 
-  return std::move(newStorage);
+  return newStorage;
 }
 
 }
