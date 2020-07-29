@@ -1003,7 +1003,10 @@ void InProcessNode::getBlockTimestamp(uint32_t height, uint64_t& timestamp, cons
 }
 
 std::error_code InProcessNode::doGetBlockTimestamp(uint32_t height, uint64_t& timestamp) {
-  timestamp = core.getBlockTimestamp(height);
+  if (core.getTopBlockIndex() < height) {
+    return make_error_code(CryptoNote::error::REQUEST_ERROR);
+  }
+  timestamp = core.getBlockTimestampByIndex(height);
 
   return std::error_code();
 }

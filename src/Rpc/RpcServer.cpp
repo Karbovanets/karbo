@@ -1439,7 +1439,7 @@ bool RpcServer::onGetBlockTimestampByHeight(const COMMAND_RPC_GET_BLOCK_TIMESTAM
       std::string("To big height: ") + std::to_string(req.height) + ", current blockchain height = " + std::to_string(m_core.getTopBlockIndex()) };
   }
 
-  res.timestamp = m_core.getBlockTimestamp(req.height);
+  res.timestamp = m_core.getBlockTimestampByIndex(req.height);
   res.status = CORE_RPC_STATUS_OK;
   return true;
 }

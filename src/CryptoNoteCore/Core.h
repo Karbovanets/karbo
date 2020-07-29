@@ -82,7 +82,6 @@ public:
 
   virtual Difficulty getBlockDifficulty(uint32_t blockIndex) const override;
   virtual Difficulty getBlockCumulativeDifficulty(uint32_t blockIndex) const override;
-  virtual uint64_t getBlockTimestamp(uint32_t blockIndex) const override;
 
   virtual Difficulty getDifficultyForNextBlock() const override;
   virtual Difficulty getAvgDifficulty(uint32_t height, uint32_t window) const override;

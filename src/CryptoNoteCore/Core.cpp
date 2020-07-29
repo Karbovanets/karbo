@@ -525,16 +525,6 @@ Difficulty Core::getBlockCumulativeDifficulty(uint32_t blockIndex) const {
   return difficulties[0];
 }
 
-uint64_t Core::getBlockTimestamp(uint32_t blockIndex) const {
-  throwIfNotInitialized();
-  IBlockchainCache* mainChain = chainsLeaves[0];
-
-  auto timestamps = mainChain->getLastTimestamps(1, blockIndex, addGenesisBlock);
-
-  assert(timestamps.size() == 1);
-  return timestamps[0];
-}
-
 Difficulty Core::getDifficultyForNextBlock() const {
   throwIfNotInitialized();
   IBlockchainCache* mainChain = chainsLeaves[0];

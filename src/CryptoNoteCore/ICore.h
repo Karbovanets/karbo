@@ -81,7 +81,6 @@ public:
 
   virtual Difficulty getBlockDifficulty(uint32_t blockIndex) const = 0;
   virtual Difficulty getBlockCumulativeDifficulty(uint32_t blockIndex) const = 0;
-  virtual uint64_t getBlockTimestamp(uint32_t blockIndex) const = 0;
 
   virtual Difficulty getDifficultyForNextBlock() const = 0;
   virtual Difficulty getAvgDifficulty(uint32_t height, uint32_t window) const = 0;
