@@ -617,11 +617,11 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
   auto previousBlockIndex = cache->getBlockIndex(previousBlockHash);
   auto mainChainCache = chainsLeaves[0];
 
-  auto currentBlockchainHeight = mainChainCache->getTopBlockIndex() + 1;
-  if (!checkpoints.isAlternativeBlockAllowed(currentBlockchainHeight, previousBlockIndex + 1)) {
-    logger(Logging::DEBUGGING) << "Block " << blockHash << std::endl <<
-    " can't be accepted for alternative chain: block height " << previousBlockIndex + 1 << std::endl <<
-    " is too deep below blockchain height " << currentBlockchainHeight;
+  auto topIndex = mainChainCache->getTopBlockIndex() + 1;
+  if (!checkpoints.isAlternativeBlockAllowed(topIndex, previousBlockIndex + 1)) {
+    logger(Logging::DEBUGGING) << "Block " << blockHash <<
+    " can't be accepted for alternative chain: block index " << previousBlockIndex + 1 <<
+    " is too deep below blockchain top index " << topIndex;
     return error::AddBlockErrorCode::REJECTED_AS_ORPHANED;
   }
 
