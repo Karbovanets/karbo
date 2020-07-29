@@ -573,41 +573,6 @@ bool writeAddressFile(const std::string& addressFilename, const std::string& add
   return true;
 }
 
-#ifndef __ANDROID__
-bool processServerAliasResponse(const std::string& s, std::string& address) {
-  try {
-
-    // Courtesy of Monero Project
-    // make sure the txt record has "oa1:krb" and find it
-    auto pos = s.find("oa1:krb");
-    if (pos == std::string::npos)
-      return false;
-    // search from there to find "recipient_address="
-    pos = s.find("recipient_address=", pos);
-    if (pos == std::string::npos)
-      return false;
-    pos += 18; // move past "recipient_address="
-    // find the next semicolon
-    auto pos2 = s.find(";", pos);
-    if (pos2 != std::string::npos)
-    {
-      // length of address == 95, we can at least validate that much here
-      if (pos2 - pos == 95)
-      {
-        address = s.substr(pos, 95);
-      }
-      else {
-        return false;
-      }
-    }
-  }
-  catch (std::exception&) {
-    return false;
-  }
-
-  return true;
-}
-
 bool comfirmPrompt() {
   std::string answer;
   do {
@@ -636,7 +601,6 @@ bool askAliasesTransfersConfirmation(const std::map<std::string, std::vector<Wal
 
   return comfirmPrompt();
 }
-#endif
 
 }
 
@@ -2159,27 +2123,6 @@ bool simple_wallet::show_unlocked_outputs_count(const std::vector<std::string>& 
   return true;
 }
 
-#ifndef __ANDROID__
-//----------------------------------------------------------------------------------------------------
-std::string simple_wallet::resolveAlias(const std::string& aliasUrl) {
-  std::string host;
-  std::string uri;
-  std::vector<std::string>records;
-  std::string address;
-
-  if (!Common::fetch_dns_txt(aliasUrl, records)) {
-    throw std::runtime_error("Failed to lookup DNS record");
-  }
-
-  for (const auto& record : records) {
-    if (processServerAliasResponse(record, address)) {
-      return address;
-    }
-  }
-  throw std::runtime_error("Failed to parse server response");
-}
-#endif
-
 //----------------------------------------------------------------------------------------------------
 bool simple_wallet::transfer(const std::vector<std::string> &args) {
   if (m_trackingWallet) {
@@ -2211,7 +2154,7 @@ bool simple_wallet::transfer(const std::vector<std::string> &args) {
       std::string address;
 
       try {
-        address = resolveAlias(kv.first);
+        address = Common::resolveAlias(kv.first);
 
         AccountPublicAddress ignore;
         if (!m_currency.parseAccountAddressString(address, ignore)) {

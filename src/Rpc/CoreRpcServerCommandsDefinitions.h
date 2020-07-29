@@ -1113,4 +1113,24 @@ struct COMMAND_RPC_CHECK_RESERVE_PROOF {
   };
 };
 
+struct COMMAND_RPC_RESOLVE_OPEN_ALIAS {
+  struct request {
+    std::string url;
+
+    void serialize(ISerializer& s) {
+      KV_MEMBER(url);
+    }
+  };
+
+  struct response {
+    std::string address;
+    std::string status;
+
+    void serialize(ISerializer& s) {
+      KV_MEMBER(address);
+      KV_MEMBER(status);
+    }
+  };
+};
+
 }

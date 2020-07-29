@@ -1027,7 +1027,7 @@ bool getOpenAlias(const std::string& alias, std::string& address)
 
     try
     {
-        aliasAddress = resolveAlias(alias);
+        aliasAddress = Common::resolveAlias(alias);
     }
     catch (std::exception& e)
     {
@@ -1063,7 +1063,7 @@ std::string resolveAlias(const std::string& aliasUrl)
     }
 
     for (const auto& record : records) {
-        if (processServerAliasResponse(record, address)) {
+        if (Common::processServerAliasResponse(record, address)) {
             return address; // return first found address
         }
     }

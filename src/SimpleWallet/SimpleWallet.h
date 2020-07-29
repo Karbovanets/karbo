@@ -130,10 +130,6 @@ namespace CryptoNote
     bool check_tx_proof(const std::vector<std::string> &args);
     bool get_reserve_proof(const std::vector<std::string> &args);
 
-#ifndef __ANDROID__
-    std::string resolveAlias(const std::string& aliasUrl);
-#endif
-
     void printConnectionError() const;
 
     //---------------- IWalletLegacyObserver -------------------------

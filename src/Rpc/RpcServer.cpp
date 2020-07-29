@@ -29,6 +29,7 @@
 // CryptoNote
 #include "crypto/random.h"
 #include "Common/Base58.h"
+#include "Common/DnsTools.h"
 #include "Common/Math.h"
 #include "Common/StringTools.h"
 #include "CryptoNoteCore/TransactionUtils.h"
@@ -409,7 +410,8 @@ bool RpcServer::processJsonRpcRequest(const HttpRequest& request, HttpResponse& 
       { "checkreserveproof", { makeMemberMethod(&RpcServer::onCheckReserveProof), false } },
       { "validateaddress", { makeMemberMethod(&RpcServer::onValidateAddress), false } },
       { "verifymessage", { makeMemberMethod(&RpcServer::onVerifyMessage), false } },
-      { "submitblock", { makeMemberMethod(&RpcServer::onSubmitBlock), false } }
+      { "submitblock", { makeMemberMethod(&RpcServer::onSubmitBlock), false } },
+      { "resolveopenalias", { makeMemberMethod(&RpcServer::onResolveOpenAlias), true } }
 
     };
 
@@ -1861,6 +1863,24 @@ bool RpcServer::onVerifyMessage(const COMMAND_RPC_VERIFY_MESSAGE::request& req, 
 
   memcpy(&s, decoded.data(), sizeof(s));
   res.sig_valid = Crypto::check_signature(hash, acc.spendPublicKey, s);
+
+  res.status = CORE_RPC_STATUS_OK;
+  return true;
+}
+
+bool RpcServer::onResolveOpenAlias(const COMMAND_RPC_RESOLVE_OPEN_ALIAS::request& req, COMMAND_RPC_RESOLVE_OPEN_ALIAS::response& res) {
+  try {
+    res.address = Common::resolveAlias(req.url);
+
+    AccountPublicAddress ignore;
+    if (!m_core.getCurrency().parseAccountAddressString(res.address, ignore)) {
+          throw JsonRpc::JsonRpcError(CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Address \"" + res.address + "\" is invalid");
+    }
+  }
+  catch (std::exception& e) {
+    throw JsonRpc::JsonRpcError(CORE_RPC_ERROR_CODE_WRONG_PARAM, "Couldn't resolve alias: " + std::string(e.what()));
+    return true;
+  }
 
   res.status = CORE_RPC_STATUS_OK;
   return true;
