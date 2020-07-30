@@ -122,6 +122,28 @@ the last one takes effect.
 
     Note: If `windowLog` is set to larger than 27, `--long=windowLog` or
     `--memory=windowSize` needs to be passed to the decompressor.
+* `--patch-from=FILE`:
+    Specify the file to be used as a reference point for zstd's diff engine.
+    This is effectively dictionary compression with some convenient parameter
+    selection, namely that windowSize > srcSize.
+
+    Note: cannot use both this and -D together
+    Note: `--long` mode will be automatically activated if chainLog < fileLog
+        (fileLog being the windowLog requried to cover the whole file). You 
+        can also manually force it.
+	Node: for all levels, you can use --patch-from in --single-thread mode
+		to improve compression ratio at the cost of speed
+    Note: for level 19, you can get increased compression ratio at the cost 
+        of speed by specifying `--zstd=targetLength=` to be something large 
+        (i.e 4096), and by setting a large `--zstd=chainLog=`
+* `-M#`, `--memory=#`:
+    Set a memory usage limit. By default, Zstandard uses 128 MB for decompression
+    as the maximum amount of memory the decompressor is allowed to use, but you can
+    override this manually if need be in either direction (ie. you can increase or
+    decrease it).
+
+    This is also used during compression when using with --patch-from=. In this case,
+    this parameter overrides that maximum size allowed for a dictionary. (128 MB).
 * `-T#`, `--threads=#`:
     Compress using `#` working threads (default: 1).
     If `#` is 0, attempt to detect and use the number of physical CPU cores.
@@ -144,6 +166,18 @@ the last one takes effect.
     Due to the chaotic nature of dynamic adaptation, compressed result is not reproducible.
     _note_ : at the time of this writing, `--adapt` can remain stuck at low speed
     when combined with multiple worker threads (>=2).
+* `--stream-size=#` :
+    Sets the pledged source size of input coming from a stream. This value must be exact, as it
+    will be included in the produced frame header. Incorrect stream sizes will cause an error.
+    This information will be used to better optimize compression parameters, resulting in
+    better and potentially faster compression, especially for smaller source sizes.
+* `--size-hint=#`:
+    When handling input from a stream, `zstd` must guess how large the source size
+    will be when optimizing compression parameters. If the stream size is relatively
+    small, this guess may be a poor one, resulting in a higher compression ratio than
+    expected. This feature allows for controlling the guess when needed.
+    Exact guesses result in better compression ratios. Overestimates result in slightly
+    degraded compression ratios, while underestimates may result in significant degradation.
 * `--rsyncable` :
     `zstd` will periodically synchronize the compression state to make the
     compressed file more rsync-friendly. There is a negligible impact to
@@ -172,6 +206,10 @@ the last one takes effect.
     default: enabled when output is into a file,
     and disabled when output is stdout.
     This setting overrides default and can force sparse mode over stdout.
+* `--[no-]content-size`:
+    enable / disable whether or not the original size of the file is placed in
+    the header of the compressed file. The default option is 
+    --content-size (meaning that the original size will be placed in the header).
 * `--rm`:
     remove source file(s) after successful compression or decompression
 * `-k`, `--keep`:
@@ -179,6 +217,16 @@ the last one takes effect.
     This is the default behavior.
 * `-r`:
     operate recursively on directories
+* `--filelist=FILE`
+    read a list of files to process as content from `FILE`.
+    Format is compatible with `ls` output, with one file per line.
+* `--output-dir-flat[=dir]`:
+    resulting files are stored into target `dir` directory,
+    instead of same directory as origin file.
+    Be aware that this command can introduce name collision issues,
+    if multiple files, from different directories, end up having the same name.
+    Collision resolution ensures first file with a given name will be present in `dir`,
+    while in combination with `-f`, the last file will be present instead.
 * `--format=FORMAT`:
     compress and decompress in other formats. If compiled with
     support, zstd can compress to or decompress from other compression algorithm
@@ -190,8 +238,14 @@ the last one takes effect.
     display version number and exit.
     Advanced : `-vV` also displays supported formats.
     `-vvV` also displays POSIX support.
-* `-v`:
+* `-v`, `--verbose`:
     verbose mode
+* `--show-default-cparams`:
+    Shows the default compresssion parameters that will be used for a
+    particular src file. If the provided src file is not a regular file
+    (eg. named pipe), the cli will just output the default paramters.
+    That is, the parameters that are used when the src size is
+    unknown.
 * `-q`, `--quiet`:
     suppress warnings, interactivity, and notifications.
     specify twice to suppress errors too.
@@ -201,6 +255,16 @@ the last one takes effect.
     add integrity check computed from uncompressed data (default: enabled)
 * `--`:
     All arguments after `--` are treated as files
+
+### Restricted usage of Environment Variables
+
+Using environment variables to set parameters has security implications.
+Therefore, this avenue is intentionally restricted.
+Only `ZSTD_CLEVEL` is supported currently, for setting compression level.
+`ZSTD_CLEVEL` can be used to set the level between 1 and 19 (the "normal" range).
+If the value of `ZSTD_CLEVEL` is not a valid integer, it will be ignored with a warning message.
+`ZSTD_CLEVEL` just replaces the default compression level (`3`).
+It can be overridden by corresponding command line arguments.
 
 
 DICTIONARY BUILDER
@@ -373,7 +437,7 @@ The list of available _options_:
     Bigger hash tables cause less collisions which usually makes compression
     faster, but requires more memory during compression.
 
-    The minimum _hlog_ is 6 (64 B) and the maximum is 26 (128 MiB).
+    The minimum _hlog_ is 6 (64 B) and the maximum is 30 (1 GiB).
 
 - `chainLog`=_clog_, `clog`=_clog_:
     Specify the maximum number of bits for a hash chain or a binary tree.
@@ -384,7 +448,8 @@ The list of available _options_:
     compression.
     This option is ignored for the ZSTD_fast strategy.
 
-    The minimum _clog_ is 6 (64 B) and the maximum is 28 (256 MiB).
+    The minimum _clog_ is 6 (64 B) and the maximum is 29 (524 Mib) on 32-bit platforms
+    and 30 (1 Gib) on 64-bit platforms.
 
 - `searchLog`=_slog_, `slog`=_slog_:
     Specify the maximum number of searches in a hash chain or a binary tree
@@ -393,7 +458,7 @@ The list of available _options_:
     More searches increases the chance to find a match which usually increases
     compression ratio but decreases compression speed.
 
-    The minimum _slog_ is 1 and the maximum is 26.
+    The minimum _slog_ is 1 and the maximum is 'windowLog' - 1.
 
 - `minMatch`=_mml_, `mml`=_mml_:
     Specify the minimum searched length of a match in a hash table.
@@ -403,22 +468,22 @@ The list of available _options_:
 
     The minimum _mml_ is 3 and the maximum is 7.
 
-- `targetLen`=_tlen_, `tlen`=_tlen_:
+- `targetLength`=_tlen_, `tlen`=_tlen_:
     The impact of this field vary depending on selected strategy.
 
     For ZSTD\_btopt, ZSTD\_btultra and ZSTD\_btultra2, it specifies
     the minimum match length that causes match finder to stop searching.
-    A larger `targetLen` usually improves compression ratio
+    A larger `targetLength` usually improves compression ratio
     but decreases compression speed.
-
+t
     For ZSTD\_fast, it triggers ultra-fast mode when > 0.
     The value represents the amount of data skipped between match sampling.
-    Impact is reversed : a larger `targetLen` increases compression speed
+    Impact is reversed : a larger `targetLength` increases compression speed
     but decreases compression ratio.
 
     For all other strategies, this field has no impact.
 
-    The minimum _tlen_ is 0 and the maximum is 999.
+    The minimum _tlen_ is 0 and the maximum is 128 Kib.
 
 - `overlapLog`=_ovlog_,  `ovlog`=_ovlog_:
     Determine `overlapSize`, amount of data reloaded from previous job.
@@ -441,7 +506,7 @@ The list of available _options_:
     Bigger hash tables usually improve compression ratio at the expense of more
     memory during compression and a decrease in compression speed.
 
-    The minimum _lhlog_ is 6 and the maximum is 26 (default: 20).
+    The minimum _lhlog_ is 6 and the maximum is 30 (default: 20).
 
 - `ldmMinMatch`=_lmml_, `lmml`=_lmml_:
     Specify the minimum searched length of a match for long distance matching.
@@ -461,7 +526,7 @@ The list of available _options_:
     Larger bucket sizes improve collision resolution but decrease compression
     speed.
 
-    The minimum _lblog_ is 0 and the maximum is 8 (default: 3).
+    The minimum _lblog_ is 1 and the maximum is 8 (default: 3).
 
 - `ldmHashRateLog`=_lhrlog_, `lhrlog`=_lhrlog_:
     Specify the frequency of inserting entries into the long distance matching
