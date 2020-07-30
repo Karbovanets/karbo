@@ -3,7 +3,7 @@ find_package(Git)
 message(STATUS "Found Git: ${GIT_FOUND}, preparing version...")
 if(Git_FOUND OR GIT_FOUND)
   execute_process(
-    COMMAND "${GIT_EXECUTABLE}" describe --tags --abbrev=0 --match "v*"
+    COMMAND "${GIT_EXECUTABLE}" describe --tags --abbrev=0 --match "v.*"
     WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
     RESULT_VARIABLE PROJECT_GIT_RESULT
     OUTPUT_VARIABLE PROJECT_GIT_TAG
@@ -11,7 +11,7 @@ if(Git_FOUND OR GIT_FOUND)
     OUTPUT_STRIP_TRAILING_WHITESPACE
     ERROR_STRIP_TRAILING_WHITESPACE)
   if(NOT PROJECT_GIT_RESULT EQUAL 0)
-    set(PROJECT_GIT_TAG "2.0.0")
+    set(PROJECT_GIT_TAG "v.2.0.0")
     set(PROJECT_VERSION_MAJOR 2)
     set(PROJECT_VERSION_MINOR 0)
     set(PROJECT_VERSION_PATCH 0)
