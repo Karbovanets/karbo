@@ -45,7 +45,7 @@
 
 namespace CryptoNote {
 
-using Tools::ThreadPool;
+using Utilities::ThreadPool;
 
 class Core : public ICore, public ICoreInformation {
 public:
@@ -169,7 +169,7 @@ private:
 
   IntrusiveLinkedList<MessageQueue<BlockchainMessage>> queueList;
   std::unique_ptr<IBlockchainCacheFactory> blockchainCacheFactory;
-  Tools::ThreadPool m_transactionValidationThreadPool;
+  Utilities::ThreadPool<bool> m_transactionValidationThreadPool;
   bool initialized;
 
   time_t start_time;
@@ -180,7 +180,7 @@ private:
   bool extractTransactions(const std::vector<BinaryArray>& rawTransactions, std::vector<CachedTransaction>& transactions, uint64_t& cumulativeSize);
 
   std::error_code validateTransaction(const CachedTransaction& transaction, TransactionValidatorState& state, IBlockchainCache* cache, 
-    Tools::ThreadPool &threadPool, uint64_t& fee, uint64_t minFee, uint32_t blockIndex, const bool isPoolTransaction);
+    Utilities::ThreadPool<bool> &threadPool, uint64_t& fee, uint64_t minFee, uint32_t blockIndex, const bool isPoolTransaction);
 
   uint32_t findBlockchainSupplement(const std::vector<Crypto::Hash>& remoteBlockIds) const;
   std::vector<Crypto::Hash> getBlockHashes(uint32_t startBlockIndex, uint32_t maxCount) const;

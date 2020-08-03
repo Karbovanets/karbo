@@ -21,7 +21,7 @@ TransactionValidator::TransactionValidator(
     CryptoNote::IBlockchainCache *cache,
     const CryptoNote::Currency &currency,
     const CryptoNote::Checkpoints &checkpoints,
-    Tools::ThreadPool &threadPool,
+    Utilities::ThreadPool<bool> &threadPool,
     const uint32_t blockHeight,
     const uint64_t blockSizeMedian,
     const uint64_t minFee,
@@ -470,7 +470,9 @@ bool TransactionValidator::validateTransactionInputsExpensive()
     for (const auto &input : m_transaction.inputs)
     {
         /* Validate each input on a separate thread in our thread pool */
-        validationResults.emplace_back(m_threadPool.enqueue([inputIndex, &input, &prefixHash, &cancelValidation, this] {
+                        //emplace_back
+        validationResults.push_back(m_threadPool.addJob([inputIndex, &input, &prefixHash, &cancelValidation, this] {
+
             if (cancelValidation.load())
             {
               return false; // fail the validation immediately if cancel requested

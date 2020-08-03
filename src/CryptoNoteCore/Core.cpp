@@ -1515,7 +1515,7 @@ bool Core::extractTransactions(const std::vector<BinaryArray>& rawTransactions,
 }
 
 std::error_code Core::validateTransaction(const CachedTransaction& cachedTransaction, TransactionValidatorState& state, IBlockchainCache* cache,
-                                          Tools::ThreadPool &threadPool, uint64_t& fee, uint64_t minFee, uint32_t blockIndex, const bool isPoolTransaction) {
+                                          Utilities::ThreadPool<bool> &threadPool, uint64_t& fee, uint64_t minFee, uint32_t blockIndex, const bool isPoolTransaction) {
   TransactionValidator txValidator(
     cachedTransaction,
     state,
