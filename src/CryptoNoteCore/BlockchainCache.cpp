@@ -1237,21 +1237,30 @@ Difficulty BlockchainCache::getDifficultyForNextBlock() const {
 
 Difficulty BlockchainCache::getDifficultyForNextBlock(uint32_t blockIndex) const {
   assert(blockIndex <= getTopBlockIndex());
-  uint8_t nextBlockMajorVersion = getBlockMajorVersionForHeight(blockIndex+1);
+  uint8_t nextBlockMajorVersion = getBlockMajorVersionForHeight(blockIndex + 1);
   auto timestamps = getLastTimestamps(currency.difficultyBlocksCountByBlockVersion(nextBlockMajorVersion), blockIndex, skipGenesisBlock);
-  auto commulativeDifficulties =
-      getLastCumulativeDifficulties(currency.difficultyBlocksCountByBlockVersion(nextBlockMajorVersion), blockIndex, skipGenesisBlock);
+  auto commulativeDifficulties = getLastCumulativeDifficulties(currency.difficultyBlocksCountByBlockVersion(nextBlockMajorVersion), blockIndex, skipGenesisBlock);
   return currency.nextDifficulty(nextBlockMajorVersion, blockIndex, std::move(timestamps), std::move(commulativeDifficulties));
 }
 
 Difficulty BlockchainCache::getCurrentCumulativeDifficulty() const {
-  assert(!blockInfos.empty());
-  return blockInfos.get<BlockIndexTag>().back().cumulativeDifficulty;
+  if (!blockInfos.empty()) {
+    return blockInfos.get<BlockIndexTag>().back().cumulativeDifficulty;
+  }
+  else {
+    assert(parent != nullptr);
+    return parent->getCurrentCumulativeDifficulty();
+  }
 }
 
 Difficulty BlockchainCache::getCurrentCumulativeDifficulty(uint32_t blockIndex) const {
   assert(!blockInfos.empty());
   assert(blockIndex <= getTopBlockIndex());
+  if (blockIndex < startIndex) {
+    assert(parent != nullptr);
+    return parent->getCurrentCumulativeDifficulty(blockIndex);
+  }
+
   return blockInfos.get<BlockIndexTag>().at(blockIndex - startIndex).cumulativeDifficulty;
 }
 
