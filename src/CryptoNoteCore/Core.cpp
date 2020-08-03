@@ -1708,7 +1708,7 @@ void Core::initRootSegment() {
   chainsLeaves[0]->load();
 }
 
-void Core::rewind(const uint64_t blockIndex) {
+void Core::rewind(const uint32_t blockIndex) {
   cutSegment(*chainsLeaves[0], blockIndex);
 }
 
@@ -2116,7 +2116,7 @@ BlockDetails Core::getBlockDetails(const uint32_t blockHeight, const uint32_t at
     return getBlockDetails(segment->getBlockHash(blockHeight));
   }
   catch (const std::out_of_range &e) {
-    logger(Logging::INFO) << "Failed to get block details, mid chain reorg";
+    logger(Logging::INFO) << "Failed to get block details, mid chain reorg: " << e.what();
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     return getBlockDetails(blockHeight, attempt + 1);

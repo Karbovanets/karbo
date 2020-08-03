@@ -140,7 +140,7 @@ public:
 
   virtual uint32_t getCurrentBlockchainHeight() const;
 
-  virtual void rewind(const uint64_t blockIndex) override;
+  virtual void rewind(const uint32_t blockIndex) override;
 
   uint8_t getBlockMajorVersionForHeight(uint32_t height) const;
   virtual bool getMixin(const Transaction& transaction, uint64_t& mixin) override;

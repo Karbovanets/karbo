@@ -129,7 +129,7 @@ public:
   virtual std::vector<Crypto::Hash> getTransactionHashesByPaymentId(const Crypto::Hash& paymentId) const = 0;
   virtual bool getTransactionsByPaymentId(const Crypto::Hash& paymentId, std::vector<Transaction>& transactions) = 0;
 
-  virtual void rewind(const uint64_t blockIndex) = 0;
+  virtual void rewind(const uint32_t blockIndex) = 0;
 
   virtual uint64_t getMinimalFee(uint32_t height) = 0;
   virtual uint64_t getMinimalFee() = 0;
