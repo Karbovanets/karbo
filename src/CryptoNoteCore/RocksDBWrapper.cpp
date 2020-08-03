@@ -227,7 +227,7 @@ rocksdb::Options RocksDBWrapper::getDBOptions(const DataBaseConfig &config) {
   fOptions.min_write_buffer_number_to_merge = 2;
   // this means we'll use 50% extra memory in the worst case, but will reduce
   // write stalls.
-  fOptions.max_write_buffer_number = 2; // 6
+  fOptions.max_write_buffer_number = 6;
   // start flushing L0->L1 as soon as possible. each file on level0 is
   // (memtable_memory_budget / 2). This will flush level 0 when it's bigger than
   // memtable_memory_budget.
