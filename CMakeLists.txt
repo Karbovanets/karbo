@@ -1,4 +1,5 @@
-cmake_minimum_required(VERSION 3.5)
+# We need 3.8 for set(CMAKE_CXX_STANDARD 17)
+cmake_minimum_required(VERSION 3.8)
 project(Karbo)
 
 # Required for finding Threads on ARM
@@ -17,6 +18,11 @@ set(CMAKE_SKIP_INSTALL_RULES OFF FORCE)
 set(CMAKE_SKIP_PACKAGE_ALL_DEPENDENCY ON FORCE)
 set(CMAKE_SUPPRESS_REGENERATION ON)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+
+# Enable c++17
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 ## This section is specifically for RocksDB build options that we've disabled for maximum portability
 set(ENABLE_AVX OFF CACHE STRING "Enable RocksDB AVX/AVX2? Defaults to OFF")
@@ -183,7 +189,7 @@ if(NOT MSVC)
   endif()
 
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 ${STATICASSERTC_FLAG} ${WARNINGS} ${C_WARNINGS} ${ARCH_FLAG} ${MAES_FLAG}")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 ${STATICASSERTCPP_FLAG} ${WARNINGS} ${CXX_WARNINGS} ${ARCH_FLAG} ${MAES_FLAG}")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 ${STATICASSERTCPP_FLAG} ${WARNINGS} ${CXX_WARNINGS} ${ARCH_FLAG} ${MAES_FLAG}")
 
   if (APPLE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGTEST_HAS_TR1_TUPLE=0 -DBOOST_NO_AUTO_PTR")
