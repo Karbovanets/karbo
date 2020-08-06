@@ -294,6 +294,7 @@ struct COMMAND_RPC_GET_INFO {
     uint8_t block_major_version;
     std::string already_generated_coins;
     std::string contact;
+    bool is_synchronized;
 
     void serialize(ISerializer &s) {
       KV_MEMBER(status)
@@ -318,6 +319,7 @@ struct COMMAND_RPC_GET_INFO {
       KV_MEMBER(block_major_version)
       KV_MEMBER(already_generated_coins)
       KV_MEMBER(contact)
+      KV_MEMBER(is_synchronized)
     }
   };
 };

@@ -187,6 +187,7 @@ private:
   bool m_stop = false;
   bool m_connected;
   bool m_daemon_no_verify;
+  bool m_node_synced;
   std::atomic<size_t> m_peerCount;
   std::atomic<uint32_t> m_networkHeight;
   std::atomic<uint32_t> m_nodeHeight;

@@ -928,6 +928,7 @@ bool RpcServer::onGetInfo(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RPC_
   res.start_time = (uint64_t)m_core.getStartTime();
   res.version = PROJECT_VERSION_LONG;
   res.status = CORE_RPC_STATUS_OK;
+  res.is_synchronized = m_p2p.get_payload_object().isSynchronized();
   return true;
 }
 

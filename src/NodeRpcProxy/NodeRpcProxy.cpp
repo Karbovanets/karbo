@@ -92,7 +92,8 @@ NodeRpcProxy::NodeRpcProxy(const std::string& nodeHost, unsigned short nodePort,
     m_incConnectionsCount(0),
     m_rpcConnectionsCount(0),
     m_whitePeerlistSize(0),
-    m_greyPeerlistSize(0) {
+    m_greyPeerlistSize(0),
+    m_node_synced(false) {
   resetInternalState();
 }
 
@@ -316,6 +317,7 @@ void NodeRpcProxy::updateBlockchainStatus() {
     m_whitePeerlistSize.store(getInfoResp.white_peerlist_size, std::memory_order_relaxed);
     m_greyPeerlistSize.store(getInfoResp.grey_peerlist_size, std::memory_order_relaxed);
     m_nodeVersion = getInfoResp.version;
+    m_node_synced = getInfoResp.is_synchronized;
     uint64_t alreadyGenCoins;
     if (Common::parseAmount(boost::lexical_cast<std::string>(getInfoResp.already_generated_coins), alreadyGenCoins)) {
       m_alreadyGeneratedCoins.store(alreadyGenCoins, std::memory_order_relaxed);
@@ -728,11 +730,12 @@ void NodeRpcProxy::getTransactionsByPaymentId(const Crypto::Hash& paymentId, std
 void NodeRpcProxy::isSynchronized(bool& syncStatus, const Callback& callback) {
   std::lock_guard<std::mutex> lock(m_mutex);
   if (m_state != STATE_INITIALIZED) {
+    syncStatus = false;
     callback(make_error_code(error::NOT_INITIALIZED));
     return;
   }
 
-  // TODO NOT IMPLEMENTED
+  syncStatus = m_node_synced;
   callback(std::error_code());
 }
 
