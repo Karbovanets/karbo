@@ -606,15 +606,7 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
 
   auto previousBlockIndex = cache->getBlockIndex(previousBlockHash);
   auto mainChainCache = chainsLeaves[0];
-
   auto currentBlockchainHeight = mainChainCache->getTopBlockIndex() + 1;
-  if (!checkpoints.isAlternativeBlockAllowed(currentBlockchainHeight, previousBlockIndex + 1)) {
-    logger(Logging::DEBUGGING) << "Block " << blockHash << std::endl <<
-    " can't be accepted for alternative chain: block height " << previousBlockIndex + 1 << std::endl <<
-    " is too deep below blockchain height " << currentBlockchainHeight;
-    return error::AddBlockErrorCode::REJECTED_AS_ORPHANED;
-  }
-
   bool addOnTop = cache->getTopBlockIndex() == previousBlockIndex;
 
   auto maxBlockCumulativeSize = currency.maxBlockCumulativeSize(previousBlockIndex + 1);
@@ -734,6 +726,13 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
       } else {
         bool allowReorg = true;
         
+        if (!checkpoints.isAlternativeBlockAllowed(currentBlockchainHeight, previousBlockIndex + 1)) {
+          logger(Logging::WARNING) << "Block " << blockHash <<
+            " can't be accepted for alternative chain: block index " << previousBlockIndex + 1 <<
+            " is too deep below blockchain top index " << currentBlockchainHeight;
+          return error::AddBlockErrorCode::REJECTED_AS_ORPHANED;
+        }
+
         cache->pushBlock(cachedBlock, transactions, validatorState, cumulativeBlockSize, emissionChange, currentDifficulty, std::move(rawBlock));
         logger(Logging::WARNING) << "Block " << blockHash << " added to alternative chain. Index: " << (previousBlockIndex + 1);
 
@@ -854,6 +853,13 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
     }
   } else {
     logger(Logging::DEBUGGING) << "Adding alternative block: " << blockHash;
+ 
+    if (!checkpoints.isAlternativeBlockAllowed(currentBlockchainHeight, previousBlockIndex + 1)) {
+      logger(Logging::WARNING) << "Block " << blockHash <<
+        " can't be accepted for alternative chain: block index " << previousBlockIndex + 1 <<
+        " is too deep below blockchain top index " << currentBlockchainHeight;
+      return error::AddBlockErrorCode::REJECTED_AS_ORPHANED;
+    }
 
     auto upperSegment = cache->split(previousBlockIndex + 1);
     //[cache] is lower segment now
