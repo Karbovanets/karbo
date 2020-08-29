@@ -21,6 +21,7 @@
 #include "DaemonCommandsHandler.h"
 
 #include <ctime>
+#include <boost/bind/placeholders.hpp>
 #include <boost/format.hpp>
 #include "math.h"
 
