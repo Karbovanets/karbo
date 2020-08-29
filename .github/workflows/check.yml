@@ -20,8 +20,14 @@ jobs:
           fetch-depth: 0
           ref: master
 
+      - name: Get specific version CMake
+        uses: lukka/get-cmake@v3.17.2
+
       - name: Install OpenSSL
         run: choco install openssl
+
+      - name: Install Boost
+        run: choco install -y boost-msvc-14.1
 
       - name: Build
         shell: powershell
@@ -33,7 +39,7 @@ jobs:
           $release_name = "karbo-cli-win64-${krb_ver}"
           mkdir "$build_folder"
           cd "$build_folder"
-          cmake -G "Visual Studio 16 2019" -A x64 -DARCH=default -DBOOST_ROOT="$env:BOOST_ROOT_1_69_0" ..
+          cmake -G "Visual Studio 16 2019" -A x64 -DARCH=default -DBoost_USE_STATIC_LIBS=ON -DBoost_NO_BOOST_CMAKE=ON -DBOOST_ROOT="$env:BOOST_ROOT_1_67_0" ..
           MSBuild Karbo.sln /p:Configuration=Release /p:PlatformToolset=v141 /m
           cd src\Release
           Compress-Archive -Path *.exe -DestinationPath "$release_name.zip"
@@ -64,6 +70,9 @@ jobs:
           fetch-depth: 0
           ref: master
 
+      - name: Get specific version CMake
+        uses: lukka/get-cmake@v3.17.2
+
       - name: Find Tag
         id: tagger
         uses: jimschubert/query-tag-action@v1
@@ -83,7 +92,7 @@ jobs:
           brew link boost --force
           mkdir "$build_folder"
           cd "$build_folder"
-          cmake -DCMAKE_C_FLAGS="-mmacosx-version-min=10.12" -DCMAKE_CXX_FLAGS="-mmacosx-version-min=10.12" ..
+          cmake -DBoost_NO_BOOST_CMAKE=ON -DARCH=default -DCMAKE_C_FLAGS="-mmacosx-version-min=10.12" -DCMAKE_CXX_FLAGS="-mmacosx-version-min=10.12" ..
           make
           mkdir "$release_name"
           exeFiles=()
@@ -116,6 +125,9 @@ jobs:
           fetch-depth: 0
           ref: master
 
+      - name: Get specific version CMake
+        uses: lukka/get-cmake@v3.17.2
+
       - name: Find Tag
         id: tagger
         uses: jimschubert/query-tag-action@v1
@@ -135,7 +147,7 @@ jobs:
           release_name="Karbo-cli-ubuntu20.04-${krb_ver}"
           mkdir -p "$build_folder"
           cd "$build_folder"
-          cmake -D ARCH=default -D CMAKE_BUILD_TYPE=Release -D CMAKE_POSITION_INDEPENDENT_CODE:BOOL=true ../..
+          cmake -DBoost_NO_BOOST_CMAKE=ON -D ARCH=default -D CMAKE_BUILD_TYPE=Release -D CMAKE_POSITION_INDEPENDENT_CODE:BOOL=true ../..
           make
           mkdir -p "$release_name"
           exeFiles=()
@@ -232,7 +244,7 @@ jobs:
           release_name="Karbo-cli-ubuntu18.04-clang-6-${krb_ver}"
           mkdir -p "$build_folder"
           cd "$build_folder"
-          cmake -D ARCH=default -D CMAKE_BUILD_TYPE=Release -D CMAKE_POSITION_INDEPENDENT_CODE:BOOL=true ../..
+          cmake -DBoost_NO_BOOST_CMAKE=ON -D ARCH=default -D CMAKE_BUILD_TYPE=Release -D CMAKE_POSITION_INDEPENDENT_CODE:BOOL=true ../..
           make
           mkdir -p "$release_name"
           exeFiles=()

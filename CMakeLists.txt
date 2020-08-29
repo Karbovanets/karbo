@@ -1,5 +1,4 @@
-# We need 3.8 for set(CMAKE_CXX_STANDARD 17)
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.17.2)
 project(Karbo)
 
 # Required for finding Threads on ARM
