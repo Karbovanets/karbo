@@ -26,9 +26,6 @@ jobs:
       - name: Install OpenSSL
         run: choco install openssl
 
-      - name: Install Boost
-        run: choco install -y boost-msvc-14.1
-
       - name: Build
         shell: powershell
         id: build
@@ -39,7 +36,7 @@ jobs:
           $release_name = "karbo-cli-win64-${krb_ver}"
           mkdir "$build_folder"
           cd "$build_folder"
-          cmake -G "Visual Studio 16 2019" -A x64 -DARCH=default -DBoost_USE_STATIC_LIBS=ON -DBoost_NO_BOOST_CMAKE=ON -DBOOST_ROOT="$env:BOOST_ROOT_1_67_0" ..
+          cmake -G "Visual Studio 16 2019" -A x64 -DARCH=default -DBoost_USE_STATIC_LIBS=ON -DBoost_NO_BOOST_CMAKE=ON -DBOOST_ROOT="C:\hostedtoolcache\windows\Boost\1.69.0\X86_64" ..
           MSBuild Karbo.sln /p:Configuration=Release /p:PlatformToolset=v141 /m
           cd src\Release
           Compress-Archive -Path *.exe -DestinationPath "$release_name.zip"
