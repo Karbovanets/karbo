@@ -169,22 +169,24 @@ std::unordered_map<std::string, RpcServer::RpcHandler<RpcServer::HandlerFunction
   { "/get_pool_changes.bin", { binMethod<COMMAND_RPC_GET_POOL_CHANGES>(&RpcServer::onGetPoolChanges), false } },
   { "/get_pool_changes_lite.bin", { binMethod<COMMAND_RPC_GET_POOL_CHANGES_LITE>(&RpcServer::onGetPoolChangesLite), false } },
 
-  // http handlers
+  // plain text/html handlers
   { "/", { httpMethod<COMMAND_HTTP>(&RpcServer::onGetIndex), true } },
   { "/supply", { httpMethod<COMMAND_HTTP>(&RpcServer::onGetSupply), false } },
   { "/paymentid", { httpMethod<COMMAND_HTTP>(&RpcServer::onGeneratePaymentId), true } },
 
-  // http get json handlers
+  // get json handlers
   { "/getinfo", { jsonMethod<COMMAND_RPC_GET_INFO>(&RpcServer::onGetInfo), true } },
   { "/getheight", { jsonMethod<COMMAND_RPC_GET_HEIGHT>(&RpcServer::onGetHeight), true } },
   { "/feeaddress", { jsonMethod<COMMAND_RPC_GET_FEE_ADDRESS>(&RpcServer::onGetFeeAddress), true } },
-  
+  { "/gettransactionspool", { jsonMethod<COMMAND_RPC_GET_TRANSACTIONS_POOL_SHORT>(&RpcServer::onGetTransactionsPoolShort), true } },
+  { "/gettransactionsinpool", { jsonMethod<COMMAND_RPC_GET_TRANSACTIONS_POOL>(&RpcServer::onGetTransactionsPool), true } },
+
   // disabled in restricted rpc mode
   { "/getpeers", { jsonMethod<COMMAND_RPC_GET_PEER_LIST>(&RpcServer::onGetPeerList), true } },
   { "/stop_daemon", { jsonMethod<COMMAND_RPC_STOP_DAEMON>(&RpcServer::onStopDaemon), true } },
   { "/getconnections", { jsonMethod<COMMAND_RPC_GET_CONNECTIONS>(&RpcServer::onGetConnections), true } },
 
-  // rpc post json handlers
+  // post json handlers
   { "/gettransactions", { jsonMethod<COMMAND_RPC_GET_TRANSACTIONS>(&RpcServer::onGetTransactions), false } },
   { "/sendrawtransaction", { jsonMethod<COMMAND_RPC_SEND_RAW_TX>(&RpcServer::onSendRawTx), false } },
   { "/getblocks", { jsonMethod<COMMAND_RPC_GET_BLOCKS_FAST>(&RpcServer::onGetBlocks), false } },
@@ -400,7 +402,8 @@ bool RpcServer::processJsonRpcRequest(const HttpRequest& request, HttpResponse& 
       { "getaltblockslist", { makeMemberMethod(&RpcServer::onGetAltBlocksList), true } },
       { "getlastblockheader", { makeMemberMethod(&RpcServer::onGetLastBlockHeader), false } },
       { "gettransaction", { makeMemberMethod(&RpcServer::onGetTransactionDetailsByHash), false } },
-      { "gettransactionspool", { makeMemberMethod(&RpcServer::onGetTransactionsPool), false } },
+      { "gettransactionspool", { makeMemberMethod(&RpcServer::onGetTransactionsPoolShort), false } },
+      { "gettransactionsinpool", { makeMemberMethod(&RpcServer::onGetTransactionsPool), false } },
       { "gettransactionsbypaymentid", { makeMemberMethod(&RpcServer::onGetTransactionsByPaymentId), false } },
       { "gettransactionhashesbypaymentid", { makeMemberMethod(&RpcServer::onGetTransactionHashesByPaymentId), false } },
       { "gettransactionsbyhashes", { makeMemberMethod(&RpcServer::onGetTransactionDetailsByHashes), false } },
@@ -1238,7 +1241,7 @@ bool RpcServer::onGetAltBlocksList(const COMMAND_RPC_GET_ALT_BLOCKS_LIST::reques
   return true;
 }
 
-bool RpcServer::onGetTransactionsPool(const COMMAND_RPC_GET_TRANSACTIONS_POOL::request& req, COMMAND_RPC_GET_TRANSACTIONS_POOL::response& res) {
+bool RpcServer::onGetTransactionsPoolShort(const COMMAND_RPC_GET_TRANSACTIONS_POOL_SHORT::request& req, COMMAND_RPC_GET_TRANSACTIONS_POOL_SHORT::response& res) {
   auto pool = m_core.getPoolTransactionsWithReceiveTime();
   for (const auto txrt : pool) {
 	transaction_pool_response transaction_short;
@@ -1252,6 +1255,23 @@ bool RpcServer::onGetTransactionsPool(const COMMAND_RPC_GET_TRANSACTIONS_POOL::r
     transaction_short.size = getObjectBinarySize(tx);
     transaction_short.receive_time = txrt.second;
     res.transactions.push_back(transaction_short);
+  }
+
+  res.status = CORE_RPC_STATUS_OK;
+  return true;
+}
+
+bool RpcServer::onGetTransactionsPool(const COMMAND_RPC_GET_TRANSACTIONS_POOL::request& req, COMMAND_RPC_GET_TRANSACTIONS_POOL::response& res) {
+  auto pool = m_core.getPoolTransactionsWithReceiveTime();
+  for (const auto txrt : pool) {
+    try {
+      TransactionDetails transactionDetails = m_core.getTransactionDetails(txrt.first, txrt.second, true);
+      res.transactions.push_back(transactionDetails);
+    }
+    catch (std::exception& e) {
+      throw JsonRpc::JsonRpcError(CORE_RPC_ERROR_CODE_INTERNAL_ERROR, std::string(e.what()));
+      return true;
+    }
   }
 
   res.status = CORE_RPC_STATUS_OK;
@@ -1958,7 +1978,6 @@ bool RpcServer::onResolveOpenAlias(const COMMAND_RPC_RESOLVE_OPEN_ALIAS::request
   }
   catch (std::exception& e) {
     throw JsonRpc::JsonRpcError(CORE_RPC_ERROR_CODE_WRONG_PARAM, "Couldn't resolve alias: " + std::string(e.what()));
-    return true;
   }
 
   res.status = CORE_RPC_STATUS_OK;
