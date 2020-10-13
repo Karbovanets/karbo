@@ -180,6 +180,7 @@ std::unordered_map<std::string, RpcServer::RpcHandler<RpcServer::HandlerFunction
   { "/feeaddress", { jsonMethod<COMMAND_RPC_GET_FEE_ADDRESS>(&RpcServer::onGetFeeAddress), true } },
   { "/gettransactionspool", { jsonMethod<COMMAND_RPC_GET_TRANSACTIONS_POOL_SHORT>(&RpcServer::onGetTransactionsPoolShort), true } },
   { "/gettransactionsinpool", { jsonMethod<COMMAND_RPC_GET_TRANSACTIONS_POOL>(&RpcServer::onGetTransactionsPool), true } },
+  { "/getrawtransactionspool", { jsonMethod<COMMAND_RPC_GET_RAW_TRANSACTIONS_POOL>(&RpcServer::onGetTransactionsPoolRaw), true } },
 
   // disabled in restricted rpc mode
   { "/getpeers", { jsonMethod<COMMAND_RPC_GET_PEER_LIST>(&RpcServer::onGetPeerList), true } },
@@ -431,6 +432,7 @@ bool RpcServer::processJsonRpcRequest(const HttpRequest& request, HttpResponse& 
       { "gettransaction", { makeMemberMethod(&RpcServer::onGetTransactionDetailsByHash), false } },
       { "gettransactionspool", { makeMemberMethod(&RpcServer::onGetTransactionsPoolShort), false } },
       { "gettransactionsinpool", { makeMemberMethod(&RpcServer::onGetTransactionsPool), false } },
+      { "getrawtransactionspool", { makeMemberMethod(&RpcServer::onGetTransactionsPoolRaw), false } },
       { "gettransactionsbypaymentid", { makeMemberMethod(&RpcServer::onGetTransactionsByPaymentId), false } },
       { "gettransactionhashesbypaymentid", { makeMemberMethod(&RpcServer::onGetTransactionHashesByPaymentId), false } },
       { "gettransactionsbyhashes", { makeMemberMethod(&RpcServer::onGetTransactionDetailsByHashes), false } },
@@ -1399,6 +1401,30 @@ bool RpcServer::onGetTransactionsPool(const COMMAND_RPC_GET_TRANSACTIONS_POOL::r
     try {
       TransactionDetails transactionDetails = m_core.getTransactionDetails(txrt.first, txrt.second, true);
       res.transactions.push_back(transactionDetails);
+    }
+    catch (std::exception& e) {
+      throw JsonRpc::JsonRpcError(CORE_RPC_ERROR_CODE_INTERNAL_ERROR, std::string(e.what()));
+      return true;
+    }
+  }
+
+  res.status = CORE_RPC_STATUS_OK;
+  return true;
+}
+
+bool RpcServer::onGetTransactionsPoolRaw(const COMMAND_RPC_GET_RAW_TRANSACTIONS_POOL::request& req, COMMAND_RPC_GET_RAW_TRANSACTIONS_POOL::response& res) {
+  auto pool = m_core.getPoolTransactionsWithReceiveTime();
+  for (const auto txrt : pool) {
+    try {
+      res.transactions.push_back(tx_with_output_global_indexes());
+      tx_with_output_global_indexes &e = res.transactions.back();
+
+      e.hash = getObjectHash(txrt.first);
+      e.height = boost::value_initialized<uint32_t>();
+      e.block_hash = boost::value_initialized<Crypto::Hash>();
+      e.timestamp = txrt.second;
+      e.transaction = *static_cast<const TransactionPrefix*>(&txrt.first);
+      e.fee = getInputAmount(txrt.first) - getOutputAmount(txrt.first);
     }
     catch (std::exception& e) {
       throw JsonRpc::JsonRpcError(CORE_RPC_ERROR_CODE_INTERNAL_ERROR, std::string(e.what()));
