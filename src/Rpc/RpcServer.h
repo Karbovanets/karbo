@@ -95,6 +95,7 @@ private:
   bool onGetTransactionDetailsByHashes(const COMMAND_RPC_GET_TRANSACTION_DETAILS_BY_HASHES::request& req, COMMAND_RPC_GET_TRANSACTION_DETAILS_BY_HASHES::response& rsp);
   bool onGetTransactionDetailsByHash(const COMMAND_RPC_GET_TRANSACTION_DETAILS_BY_HASH::request& req, COMMAND_RPC_GET_TRANSACTION_DETAILS_BY_HASH::response& rsp);
   bool onGetTransactionDetailsByHeights(const COMMAND_RPC_GET_TRANSACTION_DETAILS_BY_HEIGHTS::request& req, COMMAND_RPC_GET_TRANSACTION_DETAILS_BY_HEIGHTS::response& rsp);
+  bool onGetTransactionsWithOutputGlobalIndexesByHeights(const COMMAND_RPC_GET_TRANSACTIONS_WITH_OUTPUT_GLOBAL_INDEXES_BY_HEIGHTS::request& req, COMMAND_RPC_GET_TRANSACTIONS_WITH_OUTPUT_GLOBAL_INDEXES_BY_HEIGHTS::response& rsp);
   bool onGetTransactionHashesByPaymentId(const COMMAND_RPC_GET_TRANSACTION_HASHES_BY_PAYMENT_ID::request& req, COMMAND_RPC_GET_TRANSACTION_HASHES_BY_PAYMENT_ID::response& rsp);
   bool onGetTransactions(const COMMAND_RPC_GET_TRANSACTIONS::request& req, COMMAND_RPC_GET_TRANSACTIONS::response& res);
   bool onSendRawTx(const COMMAND_RPC_SEND_RAW_TX::request& req, COMMAND_RPC_SEND_RAW_TX::response& res);
@@ -124,6 +125,8 @@ private:
 
 
   void fillBlockHeaderResponse(const BlockTemplate& blk, bool orphan_status, uint32_t index, const Crypto::Hash& hash, block_header_response& responce);
+  void fillTransactionsWithOutputGlobalIndexesByHeights(uint32_t start_height, uint32_t count, bool include_miner_txs, std::vector<tx_with_output_global_indexes>& transactions);
+
   RawBlockLegacy prepareRawBlockLegacy(BinaryArray&& blockBlob);
 
   Logging::LoggerRef logger;

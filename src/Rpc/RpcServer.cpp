@@ -204,6 +204,7 @@ std::unordered_map<std::string, RpcServer::RpcHandler<RpcServer::HandlerFunction
   { "/get_transaction_details_by_hashes", { jsonMethod<COMMAND_RPC_GET_TRANSACTION_DETAILS_BY_HASHES>(&RpcServer::onGetTransactionDetailsByHashes), false } },
   { "/get_transaction_details_by_hash", { jsonMethod<COMMAND_RPC_GET_TRANSACTION_DETAILS_BY_HASH>(&RpcServer::onGetTransactionDetailsByHash), false } },
   { "/get_transaction_details_by_heights", { jsonMethod<COMMAND_RPC_GET_TRANSACTION_DETAILS_BY_HEIGHTS>(&RpcServer::onGetTransactionDetailsByHeights), false } },
+  { "/get_raw_transactions_by_heights", { jsonMethod<COMMAND_RPC_GET_TRANSACTIONS_WITH_OUTPUT_GLOBAL_INDEXES_BY_HEIGHTS>(&RpcServer::onGetTransactionsWithOutputGlobalIndexesByHeights), false } },
   { "/get_transaction_hashes_by_payment_id", { jsonMethod<COMMAND_RPC_GET_TRANSACTION_HASHES_BY_PAYMENT_ID>(&RpcServer::onGetTransactionHashesByPaymentId), false } },
 
   // json rpc
@@ -434,6 +435,7 @@ bool RpcServer::processJsonRpcRequest(const HttpRequest& request, HttpResponse& 
       { "gettransactionhashesbypaymentid", { makeMemberMethod(&RpcServer::onGetTransactionHashesByPaymentId), false } },
       { "gettransactionsbyhashes", { makeMemberMethod(&RpcServer::onGetTransactionDetailsByHashes), false } },
       { "gettransactionsbyheights", { makeMemberMethod(&RpcServer::onGetTransactionDetailsByHeights), false } },
+      { "getrawtransactionsbyheights", { makeMemberMethod(&RpcServer::onGetTransactionsWithOutputGlobalIndexesByHeights), false } },
       { "getcurrencyid", { makeMemberMethod(&RpcServer::onGetCurrencyId), true } },
       { "checktransactionkey", { makeMemberMethod(&RpcServer::onCheckTxSecretKey), false } },
       { "checktransactionbyviewkey", { makeMemberMethod(&RpcServer::onCheckTxWithViewKey), false } },
@@ -930,7 +932,7 @@ bool RpcServer::onGetTransactionDetailsByHeights(const COMMAND_RPC_GET_TRANSACTI
 
       uint32_t upperBound = std::min<uint32_t>(req.heights[1], m_core.getCurrentBlockchainHeight());
       
-      for (size_t i = 0; i < (upperBound - req.heights[0]) + 1; i++) {
+      for (size_t i = 0; i < (upperBound - req.heights[0]); i++) {
         heights.push_back(req.heights[0] + i);
       }
     }
@@ -974,6 +976,110 @@ bool RpcServer::onGetTransactionDetailsByHeights(const COMMAND_RPC_GET_TRANSACTI
       }
     }
     rsp.transactions = std::move(transactions);
+  }
+  catch (std::system_error& e) {
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, e.what() };
+    return false;
+  }
+  catch (std::exception& e) {
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Error: " + std::string(e.what()) };
+    return false;
+  }
+  rsp.status = CORE_RPC_STATUS_OK;
+  return true;
+}
+
+void RpcServer::fillTransactionsWithOutputGlobalIndexesByHeights(uint32_t start_height, uint32_t count, bool include_miner_txs, std::vector<tx_with_output_global_indexes>& transactions) {
+  std::vector<RawBlock> raw_blocks = m_core.getBlocks(start_height, count);
+
+  for (const auto& rb : raw_blocks) {
+    BlockTemplate block;
+    if (!fromBinaryArray(block, rb.block)) {
+      throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR,
+        std::string("Coulnd't deserialize BlockTemplate") };
+    }
+
+    uint32_t blockHeight = boost::get<BaseInput>(block.baseTransaction.inputs[0]).blockIndex;
+
+    if (include_miner_txs) {
+      std::vector<uint32_t> globalIndexes;
+      Crypto::Hash tx_id = getObjectHash(block.baseTransaction);
+      if (!m_core.getTransactionGlobalIndexes(tx_id, globalIndexes)) {
+        throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR,
+          std::string("Coulnd't get transaction global indexes") };
+      }
+
+      transactions.push_back(tx_with_output_global_indexes());
+      tx_with_output_global_indexes &e = transactions.back();
+
+      e.hash = tx_id;
+      e.block_hash = getObjectHash(block);
+      e.height = blockHeight;
+      e.timestamp = block.timestamp;
+      e.transaction = *static_cast<const TransactionPrefix*>(&block.baseTransaction);
+      e.output_indexes = globalIndexes;
+      e.fee = 0;
+    }
+
+    for (const auto& rt : rb.transactions) {
+      Transaction tx;
+      if (!fromBinaryArray(tx, rt)) {
+        JsonRpc::JsonRpcError{
+        CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Couldn't deserialize transaction" };
+      }
+
+      std::vector<uint32_t> globalIndexes;
+      Crypto::Hash tx_id = getObjectHash(block.baseTransaction);
+      if (!m_core.getTransactionGlobalIndexes(tx_id, globalIndexes)) {
+        throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR,
+          std::string("Coulnd't get transaction global indexes") };
+      }
+
+      transactions.push_back(tx_with_output_global_indexes());
+      tx_with_output_global_indexes &e = transactions.back();
+
+      e.hash = tx_id;
+      e.block_hash = getObjectHash(block);
+      e.height = blockHeight;
+      e.timestamp = block.timestamp;
+      e.transaction = *static_cast<const TransactionPrefix*>(&tx);
+      e.output_indexes = globalIndexes;
+      e.fee = getInputAmount(tx) - getOutputAmount(tx);
+    }
+  }
+}
+
+bool RpcServer::onGetTransactionsWithOutputGlobalIndexesByHeights(const COMMAND_RPC_GET_TRANSACTIONS_WITH_OUTPUT_GLOBAL_INDEXES_BY_HEIGHTS::request& req, COMMAND_RPC_GET_TRANSACTIONS_WITH_OUTPUT_GLOBAL_INDEXES_BY_HEIGHTS::response& rsp) {
+  try {
+    if (req.heights.size() > BLOCK_LIST_MAX_COUNT) {
+      throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM,
+        std::string("Requested blocks count: ") + std::to_string(req.heights.size()) + " exceeded max limit of " + std::to_string(BLOCK_LIST_MAX_COUNT) };
+    }
+
+    const uint32_t topIndex = m_core.getTopBlockIndex();
+
+    if (req.range) {
+      if (req.heights.size() != 2) {
+        throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM,
+          std::string("The range is set to true but heights size is not equal to 2") };
+      }
+      if (topIndex < req.heights.back()) {
+        throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_TOO_BIG_HEIGHT,
+          std::string("Invalid height: ") + std::to_string(req.heights.back()) + ", current blockchain height = " + std::to_string(topIndex) };
+      }
+
+      fillTransactionsWithOutputGlobalIndexesByHeights(req.heights.front(), req.heights.back() - req.heights.front(), req.include_miner_txs, rsp.transactions);
+    }
+    else {
+      for (const uint32_t& height : req.heights) {
+        if (topIndex < height) {
+          throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_TOO_BIG_HEIGHT,
+            std::string("Invalid height: ") + std::to_string(height) + ", current blockchain height = " + std::to_string(topIndex) };
+        }
+
+        fillTransactionsWithOutputGlobalIndexesByHeights(req.heights.front(), 1, req.include_miner_txs, rsp.transactions);
+      } 
+    }
   }
   catch (std::system_error& e) {
     throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, e.what() };
@@ -1599,7 +1705,7 @@ bool RpcServer::onCheckTxSecretKey(const COMMAND_RPC_CHECK_TX_KEY::request& req,
   if (1 == txs.size()) {
     if (!fromBinaryArray(tx, txs.front())) {
       JsonRpc::JsonRpcError{
-      CORE_RPC_ERROR_CODE_WRONG_PARAM, "Couldn't deserialize transaction" };
+      CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Couldn't deserialize transaction" };
     }
   }
   else {
@@ -1674,7 +1780,7 @@ bool RpcServer::onCheckTxWithViewKey(const COMMAND_RPC_CHECK_TX_WITH_PRIVATE_VIE
   if (1 == txs.size()) {
     if (!fromBinaryArray(tx, txs.front())) {
       JsonRpc::JsonRpcError{
-      CORE_RPC_ERROR_CODE_WRONG_PARAM, "Couldn't deserialize transaction" };
+      CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Couldn't deserialize transaction" };
     }
   }
   else {
@@ -1761,7 +1867,7 @@ bool RpcServer::onCheckTxProof(const COMMAND_RPC_CHECK_TX_PROOF::request& req, C
   if (1 == txs.size()) {
     if (!fromBinaryArray(tx, txs.front())) {
       JsonRpc::JsonRpcError{
-      CORE_RPC_ERROR_CODE_WRONG_PARAM, "Couldn't deserialize transaction" };
+      CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Couldn't deserialize transaction" };
     }
   }
   else {
