@@ -124,6 +124,7 @@ public:
   virtual BlockDetailsShort getBlockDetailsLite(const Crypto::Hash& blockHash) const = 0;
   virtual BlockDetailsShort getBlockDetailsLite(uint32_t blockIndex) const = 0;
   virtual TransactionDetails getTransactionDetails(const Crypto::Hash& transactionHash) const = 0;
+  virtual TransactionDetails getTransactionDetails(const Transaction& rawTransaction, const uint64_t timestamp, bool foundInPool) const = 0;
   virtual std::vector<Crypto::Hash> getAlternativeBlockHashesByIndex(uint32_t blockIndex) const = 0;
   virtual std::vector<Crypto::Hash> getBlockHashesByTimestamps(uint64_t timestampBegin, size_t secondsCount) const = 0;
   virtual std::vector<Crypto::Hash> getTransactionHashesByPaymentId(const Crypto::Hash& paymentId) const = 0;

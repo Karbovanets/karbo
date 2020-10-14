@@ -2268,14 +2268,18 @@ TransactionDetails Core::getTransactionDetails(const Crypto::Hash& transactionHa
 }
 
 TransactionDetails Core::getTransactionDetails(const Crypto::Hash& transactionHash, IBlockchainCache* segment, bool foundInPool) const {
+  throwIfNotInitialized();
+
   assert((segment != nullptr) != foundInPool);
   if (segment == nullptr) {
     segment = chainsLeaves[0];
   }
 
-  std::unique_ptr<ITransaction> transaction;
   Transaction rawTransaction;
+  uint64_t transactionTime;
+  
   TransactionDetails transactionDetails;
+
   if (!foundInPool) {
     std::vector<Crypto::Hash> transactionsHashes;
     std::vector<BinaryArray> rawTransactions;
@@ -2290,28 +2294,58 @@ TransactionDetails Core::getTransactionDetails(const Crypto::Hash& transactionHa
     Utils::restoreCachedTransactions(rawTransactions, transactions);
     assert(transactions.size() == 1);
 
+    rawTransaction = transactions.back().getTransaction();
+    auto timestamps = segment->getLastTimestamps(1, transactionDetails.blockIndex, addGenesisBlock);
+    assert(timestamps.size() == 1);
+    transactionTime = timestamps.back();
+  }
+  else {
+    rawTransaction = transactionPool->getTransaction(transactionHash).getTransaction();
+    transactionTime = transactionPool->getTransactionReceiveTime(transactionHash);
+  }
+
+  return getTransactionDetails(rawTransaction, transactionHash, segment, transactionTime, foundInPool);
+}
+
+TransactionDetails Core::getTransactionDetails(const Transaction& rawTransaction, const uint64_t timestamp, bool foundInPool) const {
+  throwIfNotInitialized();
+
+  const Crypto::Hash transactionHash = getObjectHash(rawTransaction);
+
+  IBlockchainCache* segment = findSegmentContainingTransaction(transactionHash);
+
+  assert((segment != nullptr) != foundInPool);
+
+  if (segment == nullptr) {
+    segment = chainsLeaves[0];
+  }
+
+  return getTransactionDetails(rawTransaction, transactionHash, segment, timestamp, foundInPool);
+}
+
+TransactionDetails Core::getTransactionDetails(const Transaction& rawTransaction, const Crypto::Hash& transactionHash, IBlockchainCache* segment, const uint64_t timestamp, bool foundInPool) const {
+  throwIfNotInitialized();
+
+  assert((segment != nullptr) != foundInPool);
+
+  TransactionDetails transactionDetails;
+  CachedTransaction cachedTransaction(rawTransaction);
+
+  transactionDetails.timestamp = timestamp;
+  transactionDetails.size = cachedTransaction.getTransactionBinaryArray().size();
+  transactionDetails.fee = cachedTransaction.getTransactionFee();
+
+  std::unique_ptr<ITransaction> transaction = createTransaction(rawTransaction);
+
+  if (!foundInPool) {
     transactionDetails.inBlockchain = true;
     transactionDetails.blockIndex = segment->getBlockIndexContainingTx(transactionHash);
     transactionDetails.blockHash = segment->getBlockHash(transactionDetails.blockIndex);
-
-    auto timestamps = segment->getLastTimestamps(1, transactionDetails.blockIndex, addGenesisBlock);
-    assert(timestamps.size() == 1);
-    transactionDetails.timestamp = timestamps.back();
-
-    transactionDetails.size = transactions.back().getTransactionBinaryArray().size();
-    transactionDetails.fee = transactions.back().getTransactionFee();
-
-    rawTransaction = transactions.back().getTransaction();
-    transaction = createTransaction(rawTransaction);
-  } else {
+  }
+  else {
     transactionDetails.inBlockchain = false;
-    transactionDetails.timestamp = transactionPool->getTransactionReceiveTime(transactionHash);
-
-    transactionDetails.size = transactionPool->getTransaction(transactionHash).getTransactionBinaryArray().size();
-    transactionDetails.fee = transactionPool->getTransaction(transactionHash).getTransactionFee();
-
-    rawTransaction = transactionPool->getTransaction(transactionHash).getTransaction();
-    transaction = createTransaction(rawTransaction);
+    transactionDetails.blockIndex = boost::value_initialized<uint32_t>();
+    transactionDetails.blockHash = boost::value_initialized<Crypto::Hash>();
   }
 
   transactionDetails.hash = transactionHash;
@@ -2343,7 +2377,7 @@ TransactionDetails Core::getTransactionDetails(const Crypto::Hash& transactionHa
   transaction->getExtraNonce(transactionDetails.extra.nonce);
   transactionDetails.extra.raw = transaction->getExtra();
   transactionDetails.extra.size = transaction->getExtra().size();
-  
+
   transactionDetails.signatures = rawTransaction.signatures;
 
   transactionDetails.inputs.reserve(transaction->getInputCount());
@@ -2367,7 +2401,7 @@ TransactionDetails Core::getTransactionDetails(const Crypto::Hash& transactionHa
       assert(txInToKeyDetails.input.outputIndexes.size() == outputReferences.size());
 
       txInToKeyDetails.mixin = txInToKeyDetails.input.outputIndexes.size();
-      
+
       for (const auto& r : outputReferences) {
         TransactionOutputReferenceDetails d;
         d.number = r.second;
@@ -2380,7 +2414,7 @@ TransactionDetails Core::getTransactionDetails(const Crypto::Hash& transactionHa
       MultisignatureInputDetails txInMultisigDetails;
       txInMultisigDetails.input = boost::get<MultisignatureInput>(rawTransaction.inputs[i]);
       std::pair<Crypto::Hash, size_t> outputReference = segment->getMultisignatureOutputReference(txInMultisigDetails.input.amount, txInMultisigDetails.input.outputIndex);
-      
+
       txInMultisigDetails.output.number = outputReference.second;
       txInMultisigDetails.output.transactionHash = outputReference.first;
       txInDetails = txInMultisigDetails;

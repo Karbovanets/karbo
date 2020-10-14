@@ -133,6 +133,7 @@ public:
   virtual BlockDetailsShort getBlockDetailsLite(const Crypto::Hash& blockHash) const override;
   virtual BlockDetailsShort getBlockDetailsLite(uint32_t blockIndex) const override;
   virtual TransactionDetails getTransactionDetails(const Crypto::Hash& transactionHash) const override;
+  TransactionDetails getTransactionDetails(const Transaction& rawTransaction, const uint64_t timestamp, bool foundInPool) const;
   virtual std::vector<Crypto::Hash> getAlternativeBlockHashesByIndex(uint32_t blockIndex) const override;
   virtual std::vector<Crypto::Hash> getBlockHashesByTimestamps(uint64_t timestampBegin, size_t secondsCount) const override;
   virtual std::vector<Crypto::Hash> getTransactionHashesByPaymentId(const Crypto::Hash& paymentId) const override;
@@ -219,6 +220,7 @@ private:
   void mergeMainChainSegments();
   void mergeSegments(IBlockchainCache* acceptingSegment, IBlockchainCache* segment);
   TransactionDetails getTransactionDetails(const Crypto::Hash& transactionHash, IBlockchainCache* segment, bool foundInPool) const;
+  TransactionDetails getTransactionDetails(const Transaction& rawTransaction, const Crypto::Hash& transactionHash, IBlockchainCache* segment, const uint64_t timestamp, bool foundInPool) const;
   void notifyOnSuccess(error::AddBlockErrorCode opResult, uint32_t previousBlockIndex, const CachedBlock& cachedBlock,
                        const IBlockchainCache& cache);
   void copyTransactionsToPool(IBlockchainCache* alt);
