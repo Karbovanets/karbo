@@ -79,6 +79,7 @@ void invokeJsonCommand(HttpClient& client, const std::string& url, const Request
   HttpRequest hreq;
   HttpResponse hres;
 
+  hreq.addHeader("Connection", "keep-alive");
   hreq.addHeader("Content-Type", "application/json");
   if (!user.empty() || !password.empty()) {
     hreq.addHeader("Authorization", "Basic " + base64::encode(Common::asBinaryArray(user + ":" + password)));
@@ -108,6 +109,7 @@ void invokeJsonRpcCommand(HttpClient& client, const std::string& method, const R
     HttpRequest httpReq;
     HttpResponse httpRes;
 
+    httpReq.addHeader("Connection", "keep-alive");
     httpReq.addHeader("Content-Type", "application/json");
     if (!user.empty() || !password.empty()) {
       httpReq.addHeader("Authorization", "Basic " + base64::encode(Common::asBinaryArray(user + ":" + password)));
@@ -138,6 +140,7 @@ void invokeBinaryCommand(HttpClient& client, const std::string& url, const Reque
   HttpRequest hreq;
   HttpResponse hres;
 
+  hreq.addHeader("Connection", "keep-alive");
   if (!user.empty() || !password.empty()) {
     hreq.addHeader("Authorization", "Basic " + base64::encode(Common::asBinaryArray(user + ":" + password)));
   }
