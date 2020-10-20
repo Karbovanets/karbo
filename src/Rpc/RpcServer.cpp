@@ -1053,11 +1053,6 @@ void RpcServer::fillTransactionsWithOutputGlobalIndexesByHeights(uint32_t start_
 
 bool RpcServer::onGetTransactionsWithOutputGlobalIndexesByHeights(const COMMAND_RPC_GET_TRANSACTIONS_WITH_OUTPUT_GLOBAL_INDEXES_BY_HEIGHTS::request& req, COMMAND_RPC_GET_TRANSACTIONS_WITH_OUTPUT_GLOBAL_INDEXES_BY_HEIGHTS::response& rsp) {
   try {
-    if (req.heights.size() > BLOCK_LIST_MAX_COUNT) {
-      throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM,
-        std::string("Requested blocks count: ") + std::to_string(req.heights.size()) + " exceeded max limit of " + std::to_string(BLOCK_LIST_MAX_COUNT) };
-    }
-
     const uint32_t topIndex = m_core.getTopBlockIndex();
 
     if (req.range) {
@@ -1065,14 +1060,28 @@ bool RpcServer::onGetTransactionsWithOutputGlobalIndexesByHeights(const COMMAND_
         throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM,
           std::string("The range is set to true but heights size is not equal to 2") };
       }
-      if (topIndex < req.heights.back()) {
+      
+      std::vector<uint32_t> range = req.heights;
+      std::sort(range.begin(), range.end());
+      
+      if (topIndex < range.back()) {
         throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_TOO_BIG_HEIGHT,
-          std::string("Invalid height: ") + std::to_string(req.heights.back()) + ", current blockchain height = " + std::to_string(topIndex) };
+          std::string("Invalid height: ") + std::to_string(range.back()) + ", current blockchain height = " + std::to_string(topIndex) };
       }
 
-      fillTransactionsWithOutputGlobalIndexesByHeights(req.heights.front(), req.heights.back() - req.heights.front(), req.include_miner_txs, rsp.transactions);
+      if (range.back() - range.front() > BLOCK_LIST_MAX_COUNT) {
+        throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM,
+          std::string("Requested blocks count: ") + std::to_string(range.back() - range.front()) + " exceeded max limit of " + std::to_string(BLOCK_LIST_MAX_COUNT) };
+      }
+
+      fillTransactionsWithOutputGlobalIndexesByHeights(range.front(), range.back() - range.front(), req.include_miner_txs, rsp.transactions);
     }
     else {
+      if (req.heights.size() > BLOCK_LIST_MAX_COUNT) {
+        throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM,
+          std::string("Requested blocks count: ") + std::to_string(req.heights.size()) + " exceeded max limit of " + std::to_string(BLOCK_LIST_MAX_COUNT) };
+      }
+
       for (const uint32_t& height : req.heights) {
         if (topIndex < height) {
           throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_TOO_BIG_HEIGHT,
