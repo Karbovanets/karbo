@@ -11,8 +11,9 @@
 // newest version is called "current".  Older versions may be kept
 // around to provide a consistent view to live iterators.
 //
-// Each Version keeps track of a set of Table files per level.  The
-// entire set of versions is maintained in a VersionSet.
+// Each Version keeps track of a set of table files per level, as well as a
+// set of blob files. The entire set of versions is maintained in a
+// VersionSet.
 //
 // Version,VersionSet are thread-compatible, but require external
 // synchronization on all accesses.
@@ -28,6 +29,7 @@
 #include <utility>
 #include <vector>
 
+#include "db/blob/blob_file_meta.h"
 #include "db/column_family.h"
 #include "db/compaction/compaction.h"
 #include "db/compaction/compaction_picker.h"
@@ -102,7 +104,7 @@ extern void DoGenerateLevelFilesBrief(LevelFilesBrief* file_level,
 
 // Information of the storage associated with each Version, including number of
 // levels of LSM tree, files information at each level, files marked for
-// compaction, etc.
+// compaction, blob files, etc.
 class VersionStorageInfo {
  public:
   VersionStorageInfo(const InternalKeyComparator* internal_comparator,
@@ -118,6 +120,8 @@ class VersionStorageInfo {
   void Reserve(int level, size_t size) { files_[level].reserve(size); }
 
   void AddFile(int level, FileMetaData* f, Logger* info_log = nullptr);
+
+  void AddBlobFile(std::shared_ptr<BlobFileMetaData> blob_file_meta);
 
   void SetFinalized();
 
@@ -278,6 +282,10 @@ class VersionStorageInfo {
   const std::vector<FileMetaData*>& LevelFiles(int level) const {
     return files_[level];
   }
+
+  // REQUIRES: This version has been saved (see VersionSet::SaveTo)
+  using BlobFiles = std::map<uint64_t, std::shared_ptr<BlobFileMetaData>>;
+  const BlobFiles& GetBlobFiles() const { return blob_files_; }
 
   const ROCKSDB_NAMESPACE::LevelFilesBrief& LevelFilesBrief(int level) const {
     assert(level < static_cast<int>(level_files_brief_.size()));
@@ -453,6 +461,9 @@ class VersionStorageInfo {
   // in increasing order of keys
   std::vector<FileMetaData*>* files_;
 
+  // Map of blob files in version by number.
+  BlobFiles blob_files_;
+
   // Level that L0 data should be compacted to. All levels < base_level_ should
   // be empty. -1 if it is not level-compaction so it's not applicable.
   int base_level_;
@@ -553,8 +564,8 @@ class VersionStorageInfo {
 };
 
 using MultiGetRange = MultiGetContext::Range;
-// A column family's version consists of the SST files owned by the column
-// family at a certain point in time.
+// A column family's version consists of the table and blob files owned by
+// the column family at a certain point in time.
 class Version {
  public:
   // Append to *iters a sequence of iterators that will
@@ -562,11 +573,13 @@ class Version {
   // REQUIRES: This version has been saved (see VersionSet::SaveTo)
   void AddIterators(const ReadOptions&, const FileOptions& soptions,
                     MergeIteratorBuilder* merger_iter_builder,
-                    RangeDelAggregator* range_del_agg);
+                    RangeDelAggregator* range_del_agg,
+                    bool allow_unprepared_value);
 
   void AddIteratorsForLevel(const ReadOptions&, const FileOptions& soptions,
                             MergeIteratorBuilder* merger_iter_builder,
-                            int level, RangeDelAggregator* range_del_agg);
+                            int level, RangeDelAggregator* range_del_agg,
+                            bool allow_unprepared_value);
 
   Status OverlapWithLevelIterator(const ReadOptions&, const FileOptions&,
                                   const Slice& smallest_user_key,
@@ -595,7 +608,7 @@ class Version {
   //    merge_context.operands_list and don't merge the operands
   // REQUIRES: lock is not held
   void Get(const ReadOptions&, const LookupKey& key, PinnableSlice* value,
-           Status* status, MergeContext* merge_context,
+           std::string* timestamp, Status* status, MergeContext* merge_context,
            SequenceNumber* max_covering_tombstone_seq,
            bool* value_found = nullptr, bool* key_exists = nullptr,
            SequenceNumber* seq = nullptr, ReadCallback* callback = nullptr,
@@ -688,6 +701,8 @@ class Version {
   FileSystem* fs_;
   friend class ReactiveVersionSet;
   friend class VersionSet;
+  friend class VersionEditHandler;
+  friend class VersionEditHandlerPointInTime;
 
   const InternalKeyComparator* internal_comparator() const {
     return storage_info_.internal_comparator_;
@@ -695,10 +710,6 @@ class Version {
   const Comparator* user_comparator() const {
     return storage_info_.user_comparator_;
   }
-
-  bool PrefixMayMatch(const ReadOptions& read_options,
-                      InternalIterator* level_iter,
-                      const Slice& internal_prefix) const;
 
   // Returns true if the filter blocks in the specified level will not be
   // checked during read operations. In certain cases (trivial move or preload),
@@ -778,6 +789,19 @@ struct ObsoleteFileInfo {
   }
 };
 
+class ObsoleteBlobFileInfo {
+ public:
+  ObsoleteBlobFileInfo(uint64_t blob_file_number, std::string path)
+      : blob_file_number_(blob_file_number), path_(std::move(path)) {}
+
+  uint64_t GetBlobFileNumber() const { return blob_file_number_; }
+  const std::string& GetPath() const { return path_; }
+
+ private:
+  uint64_t blob_file_number_;
+  std::string path_;
+};
+
 class BaseReferencedVersionBuilder;
 
 class AtomicGroupReadBuffer {
@@ -822,7 +846,7 @@ class VersionSet {
   Status LogAndApply(
       ColumnFamilyData* column_family_data,
       const MutableCFOptions& mutable_cf_options, VersionEdit* edit,
-      InstrumentedMutex* mu, Directory* db_directory = nullptr,
+      InstrumentedMutex* mu, FSDirectory* db_directory = nullptr,
       bool new_descriptor_log = false,
       const ColumnFamilyOptions* column_family_options = nullptr) {
     autovector<ColumnFamilyData*> cfds;
@@ -842,7 +866,7 @@ class VersionSet {
       ColumnFamilyData* column_family_data,
       const MutableCFOptions& mutable_cf_options,
       const autovector<VersionEdit*>& edit_list, InstrumentedMutex* mu,
-      Directory* db_directory = nullptr, bool new_descriptor_log = false,
+      FSDirectory* db_directory = nullptr, bool new_descriptor_log = false,
       const ColumnFamilyOptions* column_family_options = nullptr) {
     autovector<ColumnFamilyData*> cfds;
     cfds.emplace_back(column_family_data);
@@ -861,7 +885,7 @@ class VersionSet {
       const autovector<ColumnFamilyData*>& cfds,
       const autovector<const MutableCFOptions*>& mutable_cf_options_list,
       const autovector<autovector<VersionEdit*>>& edit_lists,
-      InstrumentedMutex* mu, Directory* db_directory = nullptr,
+      InstrumentedMutex* mu, FSDirectory* db_directory = nullptr,
       bool new_descriptor_log = false,
       const ColumnFamilyOptions* new_cf_options = nullptr);
 
@@ -875,6 +899,17 @@ class VersionSet {
   // are not opened
   Status Recover(const std::vector<ColumnFamilyDescriptor>& column_families,
                  bool read_only = false, std::string* db_id = nullptr);
+
+  Status TryRecover(const std::vector<ColumnFamilyDescriptor>& column_families,
+                    bool read_only, std::string* db_id,
+                    bool* has_missing_table_file);
+
+  // Try to recover the version set to the most recent consistent state
+  // recorded in the specified manifest.
+  Status TryRecoverFromOneManifest(
+      const std::string& manifest_path,
+      const std::vector<ColumnFamilyDescriptor>& column_families,
+      bool read_only, std::string* db_id, bool* has_missing_table_file);
 
   // Reads a manifest file and returns a list of column families in
   // column_families.
@@ -1038,7 +1073,12 @@ class VersionSet {
   // This function doesn't support leveldb SST filenames
   void GetLiveFilesMetaData(std::vector<LiveFileMetaData> *metadata);
 
+  void AddObsoleteBlobFile(uint64_t blob_file_number, std::string path) {
+    obsolete_blob_files_.emplace_back(blob_file_number, std::move(path));
+  }
+
   void GetObsoleteFiles(std::vector<ObsoleteFileInfo>* files,
+                        std::vector<ObsoleteBlobFileInfo>* blob_files,
                         std::vector<std::string>* manifest_filenames,
                         uint64_t min_pending_output);
 
@@ -1055,10 +1095,18 @@ class VersionSet {
 
   static uint64_t GetTotalSstFilesSize(Version* dummy_versions);
 
+  // Get the IO Status returned by written Manifest.
+  IOStatus io_status() const { return io_status_; }
+
+  // Set the IO Status to OK. Called before Manifest write if needed.
+  void SetIOStatusOK() { io_status_ = IOStatus::OK(); }
+
  protected:
   struct ManifestWriter;
 
   friend class Version;
+  friend class VersionEditHandler;
+  friend class VersionEditHandlerPointInTime;
   friend class DBImpl;
   friend class DBImplReadOnly;
 
@@ -1068,6 +1116,8 @@ class VersionSet {
       if (this->status->ok()) *this->status = s;
     }
   };
+
+  void Reset();
 
   // Returns approximated offset of a key in a file for a given version.
   uint64_t ApproximateOffsetOf(Version* v, const FdWithKeyRange& f,
@@ -1091,7 +1141,7 @@ class VersionSet {
   void AppendVersion(ColumnFamilyData* column_family_data, Version* v);
 
   ColumnFamilyData* CreateColumnFamily(const ColumnFamilyOptions& cf_options,
-                                       VersionEdit* edit);
+                                       const VersionEdit* edit);
 
   Status ReadAndRecover(
       log::Reader* reader, AtomicGroupReadBuffer* read_buffer,
@@ -1115,8 +1165,10 @@ class VersionSet {
                                     const VersionEdit& from_edit,
                                     VersionEditParams* version_edit_params);
 
-  std::unique_ptr<ColumnFamilySet> column_family_set_;
+  Status VerifyFileMetadata(const std::string& fpath,
+                            const FileMetaData& meta) const;
 
+  std::unique_ptr<ColumnFamilySet> column_family_set_;
   Env* const env_;
   FileSystem* const fs_;
   const std::string dbname_;
@@ -1160,6 +1212,7 @@ class VersionSet {
   uint64_t manifest_file_size_;
 
   std::vector<ObsoleteFileInfo> obsolete_files_;
+  std::vector<ObsoleteBlobFileInfo> obsolete_blob_files_;
   std::vector<std::string> obsolete_manifests_;
 
   // env options for all reads and writes except compactions
@@ -1167,10 +1220,13 @@ class VersionSet {
 
   BlockCacheTracer* const block_cache_tracer_;
 
+  // Store the IO status when Manifest is written
+  IOStatus io_status_;
+
  private:
   // REQUIRES db mutex at beginning. may release and re-acquire db mutex
   Status ProcessManifestWrites(std::deque<ManifestWriter>& writers,
-                               InstrumentedMutex* mu, Directory* db_directory,
+                               InstrumentedMutex* mu, FSDirectory* db_directory,
                                bool new_descriptor_log,
                                const ColumnFamilyOptions* new_cf_options);
 
@@ -1237,7 +1293,7 @@ class ReactiveVersionSet : public VersionSet {
       const autovector<ColumnFamilyData*>& /*cfds*/,
       const autovector<const MutableCFOptions*>& /*mutable_cf_options_list*/,
       const autovector<autovector<VersionEdit*>>& /*edit_lists*/,
-      InstrumentedMutex* /*mu*/, Directory* /*db_directory*/,
+      InstrumentedMutex* /*mu*/, FSDirectory* /*db_directory*/,
       bool /*new_descriptor_log*/,
       const ColumnFamilyOptions* /*new_cf_option*/) override {
     return Status::NotSupported("not supported in reactive mode");

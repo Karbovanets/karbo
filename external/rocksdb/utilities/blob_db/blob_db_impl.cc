@@ -12,7 +12,7 @@
 #include <memory>
 #include <sstream>
 
-#include "db/blob_index.h"
+#include "db/blob/blob_index.h"
 #include "db/db_impl/db_impl.h"
 #include "db/write_batch_internal.h"
 #include "env/composite_env_wrapper.h"
@@ -209,7 +209,7 @@ Status BlobDBImpl::Open(std::vector<ColumnFamilyHandle*>* handles) {
   if (!s.ok()) {
     return s;
   }
-  db_impl_ = static_cast_with_check<DBImpl, DB>(db_->GetRootDB());
+  db_impl_ = static_cast_with_check<DBImpl>(db_->GetRootDB());
 
   // Initialize SST file <-> oldest blob file mapping if garbage collection
   // is enabled.
@@ -622,7 +622,7 @@ void BlobDBImpl::MarkUnreferencedBlobFilesObsolete() {
   const SequenceNumber obsolete_seq = GetLatestSequenceNumber();
 
   MarkUnreferencedBlobFilesObsoleteImpl(
-      [=](const std::shared_ptr<BlobFile>& blob_file) {
+      [this, obsolete_seq](const std::shared_ptr<BlobFile>& blob_file) {
         WriteLock file_lock(&blob_file->mutex_);
         return MarkBlobFileObsoleteIfNeeded(blob_file, obsolete_seq);
       });
@@ -630,7 +630,7 @@ void BlobDBImpl::MarkUnreferencedBlobFilesObsolete() {
 
 void BlobDBImpl::MarkUnreferencedBlobFilesObsoleteDuringOpen() {
   MarkUnreferencedBlobFilesObsoleteImpl(
-      [=](const std::shared_ptr<BlobFile>& blob_file) {
+      [this](const std::shared_ptr<BlobFile>& blob_file) {
         return MarkBlobFileObsoleteIfNeeded(blob_file, /* obsolete_seq */ 0);
       });
 }
@@ -1482,15 +1482,24 @@ Status BlobDBImpl::GetRawBlobFromFile(const Slice& key, uint64_t file_number,
   const uint64_t record_size = sizeof(uint32_t) + key.size() + size;
 
   // Allocate the buffer. This is safe in C++11
-  std::string buffer_str(static_cast<size_t>(record_size), static_cast<char>(0));
-  char* buffer = &buffer_str[0];
+  std::string buf;
+  AlignedBuf aligned_buf;
 
   // A partial blob record contain checksum, key and value.
   Slice blob_record;
 
   {
     StopWatch read_sw(env_, statistics_, BLOB_DB_BLOB_FILE_READ_MICROS);
-    s = reader->Read(record_offset, static_cast<size_t>(record_size), &blob_record, buffer);
+    if (reader->use_direct_io()) {
+      s = reader->Read(IOOptions(), record_offset,
+                       static_cast<size_t>(record_size), &blob_record, nullptr,
+                       &aligned_buf);
+    } else {
+      buf.reserve(static_cast<size_t>(record_size));
+      s = reader->Read(IOOptions(), record_offset,
+                       static_cast<size_t>(record_size), &blob_record, &buf[0],
+                       nullptr);
+    }
     RecordTick(statistics_, BLOB_DB_BLOB_FILE_BYTES_READ, blob_record.size());
   }
 
@@ -1552,7 +1561,8 @@ Status BlobDBImpl::GetRawBlobFromFile(const Slice& key, uint64_t file_number,
 Status BlobDBImpl::Get(const ReadOptions& read_options,
                        ColumnFamilyHandle* column_family, const Slice& key,
                        PinnableSlice* value) {
-  return Get(read_options, column_family, key, value, nullptr /*expiration*/);
+  return Get(read_options, column_family, key, value,
+             static_cast<uint64_t*>(nullptr) /*expiration*/);
 }
 
 Status BlobDBImpl::Get(const ReadOptions& read_options,

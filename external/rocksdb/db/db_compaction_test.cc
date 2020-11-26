@@ -157,21 +157,21 @@ Options DeletionTriggerOptions(Options options) {
 bool HaveOverlappingKeyRanges(
     const Comparator* c,
     const SstFileMetaData& a, const SstFileMetaData& b) {
-  if (c->Compare(a.smallestkey, b.smallestkey) >= 0) {
-    if (c->Compare(a.smallestkey, b.largestkey) <= 0) {
+  if (c->CompareWithoutTimestamp(a.smallestkey, b.smallestkey) >= 0) {
+    if (c->CompareWithoutTimestamp(a.smallestkey, b.largestkey) <= 0) {
       // b.smallestkey <= a.smallestkey <= b.largestkey
       return true;
     }
-  } else if (c->Compare(a.largestkey, b.smallestkey) >= 0) {
+  } else if (c->CompareWithoutTimestamp(a.largestkey, b.smallestkey) >= 0) {
     // a.smallestkey < b.smallestkey <= a.largestkey
     return true;
   }
-  if (c->Compare(a.largestkey, b.largestkey) <= 0) {
-    if (c->Compare(a.largestkey, b.smallestkey) >= 0) {
+  if (c->CompareWithoutTimestamp(a.largestkey, b.largestkey) <= 0) {
+    if (c->CompareWithoutTimestamp(a.largestkey, b.smallestkey) >= 0) {
       // b.smallestkey <= a.largestkey <= b.largestkey
       return true;
     }
-  } else if (c->Compare(a.smallestkey, b.largestkey) <= 0) {
+  } else if (c->CompareWithoutTimestamp(a.smallestkey, b.largestkey) <= 0) {
     // a.smallestkey <= b.largestkey < a.largestkey
     return true;
   }
@@ -591,6 +591,72 @@ TEST_P(DBCompactionTestWithParam, CompactionDeletionTriggerReopen) {
     // this time we're expecting significant drop in size.
     ASSERT_GT(db_size[0] / 3, db_size[2]);
   }
+}
+
+TEST_F(DBCompactionTest, CompactRangeBottomPri) {
+  ASSERT_OK(Put(Key(50), ""));
+  ASSERT_OK(Flush());
+  ASSERT_OK(Put(Key(100), ""));
+  ASSERT_OK(Flush());
+  ASSERT_OK(Put(Key(200), ""));
+  ASSERT_OK(Flush());
+
+  {
+    CompactRangeOptions cro;
+    cro.change_level = true;
+    cro.target_level = 2;
+    dbfull()->CompactRange(cro, nullptr, nullptr);
+  }
+  ASSERT_EQ("0,0,3", FilesPerLevel(0));
+
+  ASSERT_OK(Put(Key(1), ""));
+  ASSERT_OK(Put(Key(199), ""));
+  ASSERT_OK(Flush());
+  ASSERT_OK(Put(Key(2), ""));
+  ASSERT_OK(Put(Key(199), ""));
+  ASSERT_OK(Flush());
+  ASSERT_EQ("2,0,3", FilesPerLevel(0));
+
+  // Now we have 2 L0 files, and 3 L2 files, and a manual compaction will
+  // be triggered.
+  // Two compaction jobs will run. One compacts 2 L0 files in Low Pri Pool
+  // and one compact to L2 in bottom pri pool.
+  int low_pri_count = 0;
+  int bottom_pri_count = 0;
+  SyncPoint::GetInstance()->SetCallBack(
+      "ThreadPoolImpl::Impl::BGThread:BeforeRun", [&](void* arg) {
+        Env::Priority* pri = reinterpret_cast<Env::Priority*>(arg);
+        // First time is low pri pool in the test case.
+        if (low_pri_count == 0 && bottom_pri_count == 0) {
+          ASSERT_EQ(Env::Priority::LOW, *pri);
+        }
+        if (*pri == Env::Priority::LOW) {
+          low_pri_count++;
+        } else {
+          bottom_pri_count++;
+        }
+      });
+  SyncPoint::GetInstance()->EnableProcessing();
+  env_->SetBackgroundThreads(1, Env::Priority::BOTTOM);
+  dbfull()->CompactRange(CompactRangeOptions(), nullptr, nullptr);
+  ASSERT_EQ(1, low_pri_count);
+  ASSERT_EQ(1, bottom_pri_count);
+  ASSERT_EQ("0,0,2", FilesPerLevel(0));
+
+  // Recompact bottom most level uses bottom pool
+  CompactRangeOptions cro;
+  cro.bottommost_level_compaction = BottommostLevelCompaction::kForce;
+  dbfull()->CompactRange(cro, nullptr, nullptr);
+  ASSERT_EQ(1, low_pri_count);
+  ASSERT_EQ(2, bottom_pri_count);
+
+  env_->SetBackgroundThreads(0, Env::Priority::BOTTOM);
+  dbfull()->CompactRange(cro, nullptr, nullptr);
+  // Low pri pool is used if bottom pool has size 0.
+  ASSERT_EQ(2, low_pri_count);
+  ASSERT_EQ(2, bottom_pri_count);
+
+  SyncPoint::GetInstance()->DisableProcessing();
 }
 
 TEST_F(DBCompactionTest, DisableStatsUpdateReopen) {
@@ -2459,7 +2525,7 @@ TEST_P(DBCompactionTestWithParam, ManualCompaction) {
     ASSERT_EQ("1,1,1", FilesPerLevel(1));
 
     // Compaction range overlaps files
-    Compact(1, "p1", "p9");
+    Compact(1, "p", "q");
     ASSERT_EQ("0,0,1", FilesPerLevel(1));
 
     // Populate a different range
@@ -2526,7 +2592,7 @@ TEST_P(DBCompactionTestWithParam, ManualLevelCompactionOutputPathId) {
     ASSERT_EQ("3", FilesPerLevel(1));
 
     // Compaction range overlaps files
-    Compact(1, "p1", "p9", 1);
+    Compact(1, "p", "q", 1);
     ASSERT_OK(dbfull()->TEST_WaitForCompact());
     ASSERT_EQ("0,1", FilesPerLevel(1));
     ASSERT_EQ(1, GetSstFileCount(options.db_paths[1].path));
@@ -4655,7 +4721,7 @@ TEST_P(DBCompactionDirectIOTest, DirectIO) {
   CreateAndReopenWithCF({"pikachu"}, options);
   MakeTables(3, "p", "q", 1);
   ASSERT_EQ("1,1,1", FilesPerLevel(1));
-  Compact(1, "p1", "p9");
+  Compact(1, "p", "q");
   ASSERT_EQ(readahead, options.use_direct_reads);
   ASSERT_EQ("0,0,1", FilesPerLevel(1));
   Destroy(options);
@@ -4696,7 +4762,7 @@ TEST_P(CompactionPriTest, Test) {
   for (int i = 0; i < kNKeys; i++) {
     keys[i] = i;
   }
-  std::random_shuffle(std::begin(keys), std::end(keys));
+  RandomShuffle(std::begin(keys), std::end(keys), rnd.Next());
 
   for (int i = 0; i < kNKeys; i++) {
     ASSERT_OK(Put(Key(keys[i]), RandomString(&rnd, 102)));

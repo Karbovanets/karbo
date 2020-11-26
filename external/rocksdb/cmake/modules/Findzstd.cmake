@@ -7,11 +7,11 @@
 
 find_path(zstd_INCLUDE_DIRS
   NAMES zstd.h
-  HINTS ${CMAKE_SOURCE_DIR}/external/zstd)
+  HINTS ${zstd_ROOT_DIR}/include)
 
 find_library(zstd_LIBRARIES
-  NAMES "zstd_static" "libzstd_static" "zstd" "libzstd"
-  HINTS ${PROJECT_BINARY_DIR}/external/zstd)
+  NAMES zstd
+  HINTS ${zstd_ROOT_DIR}/lib)
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(zstd DEFAULT_MSG zstd_LIBRARIES zstd_INCLUDE_DIRS)

@@ -24,7 +24,7 @@
 #endif
 
 #include "cache/lru_cache.h"
-#include "db/blob_index.h"
+#include "db/blob/blob_index.h"
 #include "db/db_impl/db_impl.h"
 #include "db/db_test_util.h"
 #include "db/dbformat.h"
@@ -1421,7 +1421,7 @@ TEST_F(DBTest, ApproximateSizesMemTable) {
     keys[i * 3 + 1] = i * 5 + 1;
     keys[i * 3 + 2] = i * 5 + 2;
   }
-  std::random_shuffle(std::begin(keys), std::end(keys));
+  RandomShuffle(std::begin(keys), std::end(keys));
 
   for (int i = 0; i < N * 3; i++) {
     ASSERT_OK(Put(Key(keys[i] + 1000), RandomString(&rnd, 1024)));
@@ -4297,7 +4297,7 @@ TEST_P(DBTestWithParam, PreShutdownManualCompaction) {
     ASSERT_EQ("1,1,1", FilesPerLevel(1));
 
     // Compaction range overlaps files
-    Compact(1, "p1", "p9");
+    Compact(1, "p", "q");
     ASSERT_EQ("0,0,1", FilesPerLevel(1));
 
     // Populate a different range
@@ -4530,7 +4530,7 @@ TEST_F(DBTest, DynamicLevelCompressionPerLevel) {
   for (int i = 0; i < kNKeys; i++) {
     keys[i] = i;
   }
-  std::random_shuffle(std::begin(keys), std::end(keys));
+  RandomShuffle(std::begin(keys), std::end(keys));
 
   Random rnd(301);
   Options options;
@@ -4613,7 +4613,7 @@ TEST_F(DBTest, DynamicLevelCompressionPerLevel2) {
   for (int i = 0; i < kNKeys; i++) {
     keys[i] = i;
   }
-  std::random_shuffle(std::begin(keys), std::end(keys));
+  RandomShuffle(std::begin(keys), std::end(keys));
 
   Random rnd(301);
   Options options;
@@ -5370,6 +5370,8 @@ class DelayedMergeOperator : public MergeOperator {
   const char* Name() const override { return "DelayedMergeOperator"; }
 };
 
+// TODO: hangs in CircleCI's Windows env
+#ifndef OS_WIN
 TEST_F(DBTest, MergeTestTime) {
   std::string one, two, three;
   PutFixed64(&one, 1);
@@ -5417,6 +5419,7 @@ TEST_F(DBTest, MergeTestTime) {
 #endif  // ROCKSDB_USING_THREAD_STATUS
   this->env_->time_elapse_only_sleep_ = false;
 }
+#endif // OS_WIN
 
 #ifndef ROCKSDB_LITE
 TEST_P(DBTestWithParam, MergeCompactionTimeTest) {
@@ -5500,7 +5503,7 @@ TEST_F(DBTest, EmptyCompactedDB) {
 #endif  // ROCKSDB_LITE
 
 #ifndef ROCKSDB_LITE
-TEST_F(DBTest, SuggestCompactRangeTest) {
+TEST_F(DBTest, DISABLED_SuggestCompactRangeTest) {
   class CompactionFilterFactoryGetContext : public CompactionFilterFactory {
    public:
     std::unique_ptr<CompactionFilter> CreateCompactionFilter(
@@ -5607,6 +5610,7 @@ TEST_F(DBTest, SuggestCompactRangeTest) {
   ASSERT_EQ(0, NumTableFilesAtLevel(0));
   ASSERT_EQ(1, NumTableFilesAtLevel(1));
 }
+
 
 TEST_F(DBTest, PromoteL0) {
   Options options = CurrentOptions();

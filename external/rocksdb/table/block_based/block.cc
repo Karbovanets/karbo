@@ -293,7 +293,7 @@ bool DataBlockIter::SeekForGetImpl(const Slice& target) {
 
   if (entry == kNoEntry) {
     // Even if we cannot find the user_key in this block, the result may
-    // exist in the next block. Consider this exmpale:
+    // exist in the next block. Consider this example:
     //
     // Block N:    [aab@100, ... , app@120]
     // bounary key: axy@50 (we make minimal assumption about a boundary key)
@@ -301,7 +301,7 @@ bool DataBlockIter::SeekForGetImpl(const Slice& target) {
     //
     // If seek_key = axy@60, the search will starts from Block N.
     // Even if the user_key is not found in the hash map, the caller still
-    // have to conntinue searching the next block.
+    // have to continue searching the next block.
     //
     // In this case, we pretend the key is the the last restart interval.
     // The while-loop below will search the last restart interval for the
@@ -376,13 +376,13 @@ bool DataBlockIter::SeekForGetImpl(const Slice& target) {
 
 void IndexBlockIter::Seek(const Slice& target) {
   TEST_SYNC_POINT("IndexBlockIter::Seek:0");
-  Slice seek_key = target;
-  if (!key_includes_seq_) {
-    seek_key = ExtractUserKey(target);
-  }
   PERF_TIMER_GUARD(block_seek_nanos);
   if (data_ == nullptr) {  // Not init yet
     return;
+  }
+  Slice seek_key = target;
+  if (!key_includes_seq_) {
+    seek_key = ExtractUserKey(target);
   }
   status_ = Status::OK();
   uint32_t index = 0;
@@ -520,11 +520,14 @@ bool DataBlockIter::ParseNextDataKey(const char* limit) {
     return false;
   } else {
     if (shared == 0) {
-      // If this key dont share any bytes with prev key then we dont need
-      // to decode it and can use it's address in the block directly.
+      // If this key doesn't share any bytes with prev key then we don't need
+      // to decode it and can use its address in the block directly.
       key_.SetKey(Slice(p, non_shared), false /* copy */);
       key_pinned_ = true;
     } else {
+      if (global_seqno_ != kDisableGlobalSequenceNumber) {
+        key_.UpdateInternalKey(stored_seqno_, stored_value_type_);
+      }
       // This key share `shared` bytes with prev key, we need to decode it
       key_.TrimAppend(shared, p, non_shared);
       key_pinned_ = false;
@@ -536,11 +539,12 @@ bool DataBlockIter::ParseNextDataKey(const char* limit) {
       // type is kTypeValue, kTypeMerge, kTypeDeletion, or kTypeRangeDeletion.
       assert(GetInternalKeySeqno(key_.GetInternalKey()) == 0);
 
-      ValueType value_type = ExtractValueType(key_.GetKey());
-      assert(value_type == ValueType::kTypeValue ||
-             value_type == ValueType::kTypeMerge ||
-             value_type == ValueType::kTypeDeletion ||
-             value_type == ValueType::kTypeRangeDeletion);
+      uint64_t packed = ExtractInternalKeyFooter(key_.GetKey());
+      UnPackSequenceAndType(packed, &stored_seqno_, &stored_value_type_);
+      assert(stored_value_type_ == ValueType::kTypeValue ||
+             stored_value_type_ == ValueType::kTypeMerge ||
+             stored_value_type_ == ValueType::kTypeDeletion ||
+             stored_value_type_ == ValueType::kTypeRangeDeletion);
 
       if (key_pinned_) {
         // TODO(tec): Investigate updating the seqno in the loaded block
@@ -552,7 +556,7 @@ bool DataBlockIter::ParseNextDataKey(const char* limit) {
         key_pinned_ = false;
       }
 
-      key_.UpdateInternalKey(global_seqno_, value_type);
+      key_.UpdateInternalKey(global_seqno_, stored_value_type_);
     }
 
     value_ = Slice(p + non_shared, value_length);
@@ -592,8 +596,8 @@ bool IndexBlockIter::ParseNextIndexKey() {
     return false;
   }
   if (shared == 0) {
-    // If this key dont share any bytes with prev key then we dont need
-    // to decode it and can use it's address in the block directly.
+    // If this key doesn't share any bytes with prev key then we don't need
+    // to decode it and can use its address in the block directly.
     key_.SetKey(Slice(p, non_shared), false /* copy */);
     key_pinned_ = true;
   } else {
@@ -623,7 +627,7 @@ bool IndexBlockIter::ParseNextIndexKey() {
 // restart_point n-1: k, v (off, sz), k, v (delta-sz), ..., k, v (delta-sz)
 // where, k is key, v is value, and its encoding is in parenthesis.
 // The format of each key is (shared_size, non_shared_size, shared, non_shared)
-// The format of each value, i.e., block hanlde, is (offset, size) whenever the
+// The format of each value, i.e., block handle, is (offset, size) whenever the
 // shared_size is 0, which included the first entry in each restart point.
 // Otherwise the format is delta-size = block handle size - size of last block
 // handle.
@@ -865,14 +869,13 @@ Block::~Block() {
   // TEST_SYNC_POINT("Block::~Block");
 }
 
-Block::Block(BlockContents&& contents, SequenceNumber _global_seqno,
-             size_t read_amp_bytes_per_bit, Statistics* statistics)
+Block::Block(BlockContents&& contents, size_t read_amp_bytes_per_bit,
+             Statistics* statistics)
     : contents_(std::move(contents)),
       data_(contents_.data.data()),
       size_(contents_.data.size()),
       restart_offset_(0),
-      num_restarts_(0),
-      global_seqno_(_global_seqno) {
+      num_restarts_(0) {
   TEST_SYNC_POINT("Block::Block:0");
   if (size_ < sizeof(uint32_t)) {
     size_ = 0;  // Error marker
@@ -925,6 +928,7 @@ Block::Block(BlockContents&& contents, SequenceNumber _global_seqno,
 
 DataBlockIter* Block::NewDataIterator(const Comparator* cmp,
                                       const Comparator* ucmp,
+                                      SequenceNumber global_seqno,
                                       DataBlockIter* iter, Statistics* stats,
                                       bool block_contents_pinned) {
   DataBlockIter* ret_iter;
@@ -943,7 +947,7 @@ DataBlockIter* Block::NewDataIterator(const Comparator* cmp,
     return ret_iter;
   } else {
     ret_iter->Initialize(
-        cmp, ucmp, data_, restart_offset_, num_restarts_, global_seqno_,
+        cmp, ucmp, data_, restart_offset_, num_restarts_, global_seqno,
         read_amp_bitmap_.get(), block_contents_pinned,
         data_block_hash_index_.Valid() ? &data_block_hash_index_ : nullptr);
     if (read_amp_bitmap_) {
@@ -958,10 +962,10 @@ DataBlockIter* Block::NewDataIterator(const Comparator* cmp,
 }
 
 IndexBlockIter* Block::NewIndexIterator(
-    const Comparator* cmp, const Comparator* ucmp, IndexBlockIter* iter,
-    Statistics* /*stats*/, bool total_order_seek, bool have_first_key,
-    bool key_includes_seq, bool value_is_full, bool block_contents_pinned,
-    BlockPrefixIndex* prefix_index) {
+    const Comparator* cmp, const Comparator* ucmp, SequenceNumber global_seqno,
+    IndexBlockIter* iter, Statistics* /*stats*/, bool total_order_seek,
+    bool have_first_key, bool key_includes_seq, bool value_is_full,
+    bool block_contents_pinned, BlockPrefixIndex* prefix_index) {
   IndexBlockIter* ret_iter;
   if (iter != nullptr) {
     ret_iter = iter;
@@ -980,7 +984,7 @@ IndexBlockIter* Block::NewIndexIterator(
     BlockPrefixIndex* prefix_index_ptr =
         total_order_seek ? nullptr : prefix_index;
     ret_iter->Initialize(cmp, ucmp, data_, restart_offset_, num_restarts_,
-                         global_seqno_, prefix_index_ptr, have_first_key,
+                         global_seqno, prefix_index_ptr, have_first_key,
                          key_includes_seq, value_is_full,
                          block_contents_pinned);
   }

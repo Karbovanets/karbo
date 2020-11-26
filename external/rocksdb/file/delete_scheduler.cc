@@ -32,13 +32,13 @@ DeleteScheduler::DeleteScheduler(Env* env, FileSystem* fs,
       bytes_max_delete_chunk_(bytes_max_delete_chunk),
       closing_(false),
       cv_(&mu_),
+      bg_thread_(nullptr),
       info_log_(info_log),
       sst_file_manager_(sst_file_manager),
       max_trash_db_ratio_(max_trash_db_ratio) {
   assert(sst_file_manager != nullptr);
   assert(max_trash_db_ratio >= 0);
-  bg_thread_.reset(
-      new port::Thread(&DeleteScheduler::BackgroundEmptyTrash, this));
+  MaybeCreateBackgroundThread();
 }
 
 DeleteScheduler::~DeleteScheduler() {
@@ -216,7 +216,7 @@ void DeleteScheduler::BackgroundEmptyTrash() {
       const FileAndDir& fad = queue_.front();
       std::string path_in_trash = fad.fname;
 
-      // We dont need to hold the lock while deleting the file
+      // We don't need to hold the lock while deleting the file
       mu_.Unlock();
       uint64_t deleted_bytes = 0;
       bool is_complete = true;
@@ -349,6 +349,13 @@ void DeleteScheduler::WaitForEmptyTrash() {
   InstrumentedMutexLock l(&mu_);
   while (pending_files_ > 0 && !closing_) {
     cv_.Wait();
+  }
+}
+
+void DeleteScheduler::MaybeCreateBackgroundThread() {
+  if(bg_thread_ == nullptr && rate_bytes_per_sec_.load() > 0) {
+    bg_thread_.reset(
+        new port::Thread(&DeleteScheduler::BackgroundEmptyTrash, this));
   }
 }
 

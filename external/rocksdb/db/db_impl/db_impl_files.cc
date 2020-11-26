@@ -14,6 +14,7 @@
 #include "db/event_helpers.h"
 #include "db/memtable_list.h"
 #include "file/file_util.h"
+#include "file/filename.h"
 #include "file/sst_file_manager_impl.h"
 #include "util/autovector.h"
 
@@ -85,9 +86,9 @@ void DBImpl::FindObsoleteFiles(JobContext* job_context, bool force,
 
   // Get obsolete files.  This function will also update the list of
   // pending files in VersionSet().
-  versions_->GetObsoleteFiles(&job_context->sst_delete_files,
-                              &job_context->manifest_delete_files,
-                              job_context->min_pending_output);
+  versions_->GetObsoleteFiles(
+      &job_context->sst_delete_files, &job_context->blob_delete_files,
+      &job_context->manifest_delete_files, job_context->min_pending_output);
 
   // Mark the elements in job_context->sst_delete_files as grabbedForPurge
   // so that other threads calling FindObsoleteFiles with full_scan=true
@@ -662,6 +663,74 @@ uint64_t PrecomputeMinLogNumberToKeep(
     min_log_number_to_keep = min_log_refed_by_mem;
   }
   return min_log_number_to_keep;
+}
+
+Status DBImpl::FinishBestEffortsRecovery() {
+  mutex_.AssertHeld();
+  std::vector<std::string> paths;
+  paths.push_back(NormalizePath(dbname_ + std::string(1, kFilePathSeparator)));
+  for (const auto& db_path : immutable_db_options_.db_paths) {
+    paths.push_back(
+        NormalizePath(db_path.path + std::string(1, kFilePathSeparator)));
+  }
+  for (const auto* cfd : *versions_->GetColumnFamilySet()) {
+    for (const auto& cf_path : cfd->ioptions()->cf_paths) {
+      paths.push_back(
+          NormalizePath(cf_path.path + std::string(1, kFilePathSeparator)));
+    }
+  }
+  // Dedup paths
+  std::sort(paths.begin(), paths.end());
+  paths.erase(std::unique(paths.begin(), paths.end()), paths.end());
+
+  uint64_t next_file_number = versions_->current_next_file_number();
+  uint64_t largest_file_number = next_file_number;
+  std::set<std::string> files_to_delete;
+  for (const auto& path : paths) {
+    std::vector<std::string> files;
+    env_->GetChildren(path, &files);
+    for (const auto& fname : files) {
+      uint64_t number = 0;
+      FileType type;
+      if (!ParseFileName(fname, &number, &type)) {
+        continue;
+      }
+      // path ends with '/' or '\\'
+      const std::string normalized_fpath = path + fname;
+      largest_file_number = std::max(largest_file_number, number);
+      if (type == kTableFile && number >= next_file_number &&
+          files_to_delete.find(normalized_fpath) == files_to_delete.end()) {
+        files_to_delete.insert(normalized_fpath);
+      }
+    }
+  }
+  if (largest_file_number > next_file_number) {
+    versions_->next_file_number_.store(largest_file_number + 1);
+  }
+
+  VersionEdit edit;
+  edit.SetNextFile(versions_->next_file_number_.load());
+  assert(versions_->GetColumnFamilySet());
+  ColumnFamilyData* default_cfd = versions_->GetColumnFamilySet()->GetDefault();
+  assert(default_cfd);
+  // Even if new_descriptor_log is false, we will still switch to a new
+  // MANIFEST and update CURRENT file, since this is in recovery.
+  Status s = versions_->LogAndApply(
+      default_cfd, *default_cfd->GetLatestMutableCFOptions(), &edit, &mutex_,
+      directories_.GetDbDir(), /*new_descriptor_log*/ false);
+  if (!s.ok()) {
+    return s;
+  }
+
+  mutex_.Unlock();
+  for (const auto& fname : files_to_delete) {
+    s = env_->DeleteFile(fname);
+    if (!s.ok()) {
+      break;
+    }
+  }
+  mutex_.Lock();
+  return s;
 }
 
 }  // namespace ROCKSDB_NAMESPACE
