@@ -17,8 +17,8 @@ jobs:
           fetch-depth: 0
           ref: master
 
-      - name: Get specific version CMake
-        uses: lukka/get-cmake@v3.17.2
+      - name: Get CMake
+        uses: lukka/get-cmake@latest
 
       - name: Install OpenSSL
         run: choco install openssl
@@ -33,8 +33,8 @@ jobs:
           $release_name = "Karbo-cli-win64-${krb_ver}"
           mkdir "$build_folder"
           cd "$build_folder"
-          cmake -G "Visual Studio 16 2019" -A x64 -DARCH=default -DBoost_USE_STATIC_LIBS=ON -DBoost_NO_BOOST_CMAKE=ON -DBOOST_ROOT="C:\hostedtoolcache\windows\Boost\1.69.0\X86_64" ..
-          MSBuild Karbo.sln /p:Configuration=Release /p:PlatformToolset=v141 /m
+          cmake -G "Visual Studio 16 2019" -A x64 -DARCH=default -DBOOST_ROOT="$env:BOOST_ROOT_1_72_0" -DBOOST_INCLUDEDIR="$env:BOOST_ROOT_1_72_0/boost/include" -DBOOST_INCLUDEDIR="$env:BOOST_ROOT_1_72_0/lib" ..
+          MSBuild Karbo.sln /p:Configuration=Release /m
           cd src\Release
           Compress-Archive -Path *.exe -DestinationPath "$release_name.zip"
           $sha256 = (Get-FileHash "$release_name.zip").Hash
@@ -64,8 +64,8 @@ jobs:
           fetch-depth: 0
           ref: master
 
-      - name: Get specific version CMake
-        uses: lukka/get-cmake@v3.17.2
+      - name: Get CMake
+        uses: lukka/get-cmake@latest
 
       - name: Build
         id: build
@@ -158,8 +158,8 @@ jobs:
           fetch-depth: 0
           ref: master
 
-      - name: Get specific version CMake
-        uses: lukka/get-cmake@v3.17.2
+      - name: Get CMake
+        uses: lukka/get-cmake@latest
 
       - name: Build
         id: build
