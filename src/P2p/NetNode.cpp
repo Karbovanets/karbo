@@ -1288,7 +1288,7 @@ std::string print_banlist_to_string(std::map<uint32_t, time_t> list) {
 
     m_peerlist.get_peerlist_full(rsp.local_peerlist_anchor, rsp.local_peerlist_gray, rsp.local_peerlist_white);
     rsp.my_id = m_config.m_peer_id;
-    rsp.local_time = time(NULL);
+    rsp.local_time = time(nullptr);
     return 1;
   }
 
