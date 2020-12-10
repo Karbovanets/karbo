@@ -1381,7 +1381,18 @@ std::string print_banlist_to_string(std::map<uint32_t, time_t> list) {
 
     //fill response
     rsp.local_time = time(nullptr);
-    m_peerlist.get_peerlist_head(rsp.local_peerlist);
+
+    std::vector<PeerlistEntry> local_peerlist_new;
+    m_peerlist.get_peerlist_head(local_peerlist_new);
+    //only include out peers we did not already send
+    rsp.local_peerlist.reserve(local_peerlist_new.size());
+    for (auto &pe : local_peerlist_new)
+    {
+      if (!context.sent_addresses.insert(pe.adr).second)
+        continue;
+      rsp.local_peerlist.push_back(std::move(pe));
+    }
+    
     m_payload_handler.get_payload_sync_data(rsp.payload_data);
     logger(Logging::TRACE) << context << "COMMAND_TIMED_SYNC";
     return 1;
@@ -1445,6 +1456,8 @@ std::string print_banlist_to_string(std::map<uint32_t, time_t> list) {
 
     //fill response
     m_peerlist.get_peerlist_head(rsp.local_peerlist);
+    for (const auto &e : rsp.local_peerlist)
+      context.sent_addresses.insert(e.adr);
     get_local_node_data(rsp.node_data);
     m_payload_handler.get_payload_sync_data(rsp.payload_data);
 
