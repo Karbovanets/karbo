@@ -1430,7 +1430,11 @@ std::string print_banlist_to_string(std::map<uint32_t, time_t> list) {
   //-----------------------------------------------------------------------------------
   bool NodeServer::log_banlist()
   {
-    logger(INFO) << "Banned nodes:" << ENDL << print_banlist_to_string(m_blocked_hosts) << ENDL;
+    if (m_blocked_hosts.empty())
+      logger(INFO) << "No banned nodes";
+    else
+     logger(INFO) << "Banned nodes:" << ENDL << print_banlist_to_string(m_blocked_hosts) << ENDL;
+
     return true;
   }
 
