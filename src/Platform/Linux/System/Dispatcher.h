@@ -23,6 +23,7 @@
 #include <functional>
 #include <queue>
 #include <stack>
+#include <stdint.h>
 #ifndef __GLIBC__
 #include <bits/reg.h>
 #endif
@@ -93,6 +94,8 @@ public:
 # endif
 #elif __aarch64__
   static const int SIZEOF_PTHREAD_MUTEX_T = 48;
+#elif __ppc64__
+  static const int SIZEOF_PTHREAD_MUTEX_T = 40;
 #else
   static const int SIZEOF_PTHREAD_MUTEX_T = 24;
 #endif
