@@ -7,6 +7,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
+#if defined(OS_WIN)
+
 #include "port/win/env_win.h"
 #include "port/win/win_thread.h"
 #include <algorithm>
@@ -14,7 +16,6 @@
 #include <thread>
 
 #include <errno.h>
-#include <process.h> // _getpid
 #include <io.h> // _access
 #include <direct.h> // _rmdir, _mkdir, _getcwd
 #include <sys/types.h>
@@ -35,7 +36,6 @@
 
 #include <rpc.h>  // for uuid generation
 #include <windows.h>
-#include <winioctl.h>
 #include <shlwapi.h>
 #include "strsafe.h"
 
@@ -907,7 +907,7 @@ Status WinEnvIO::GetTestDirectory(std::string* result) {
   CreateDir(output);
 
   output.append("\\testrocksdb-");
-  output.append(std::to_string(_getpid()));
+  output.append(std::to_string(GetCurrentProcessId()));
 
   CreateDir(output);
 
@@ -1551,3 +1551,5 @@ std::string Env::GenerateUniqueId() {
 }
 
 }  // namespace ROCKSDB_NAMESPACE
+
+#endif
