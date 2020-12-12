@@ -24,6 +24,7 @@
 #include <queue>
 #include <stack>
 #include <stdint.h>
+#include <stdexcept>
 #ifndef __GLIBC__
 #include <bits/reg.h>
 #endif
