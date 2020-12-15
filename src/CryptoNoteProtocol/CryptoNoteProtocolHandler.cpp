@@ -713,7 +713,7 @@ bool CryptoNoteProtocolHandler::on_idle() {
   m_dandelionStemSelectInterval.call([&]() { return select_dandelion_stem(); });
   m_dandelionStemFluffInterval.call([&]() { return fluffStemPool(); });
 
-  return true;
+  return m_core.on_idle();
 }
 
 int CryptoNoteProtocolHandler::doPushLiteBlock(NOTIFY_NEW_LITE_BLOCK::request arg, CryptoNoteConnectionContext &context, std::vector<BinaryArray> missingTxs)
@@ -917,6 +917,8 @@ bool CryptoNoteProtocolHandler::on_connection_synchronized() {
       << ENDL
       << "Use \"help\" command to see the list of available commands." << ENDL
       << "**********************************************************************" << ENDL;
+
+    m_core.onSynchronized();
 
     m_observerManager.notify(&ICryptoNoteProtocolObserver::blockchainSynchronized, m_core.getTopBlockIndex());
   }
