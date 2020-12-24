@@ -79,8 +79,10 @@ DaemonCommandsHandler::DaemonCommandsHandler(CryptoNote::Core& core, CryptoNote:
   m_consoleHandler.setHandler("print_pool", boost::bind(&DaemonCommandsHandler::print_pool, this, boost::arg<1>()), "Print transaction pool (long format)");
   m_consoleHandler.setHandler("print_pool_sh", boost::bind(&DaemonCommandsHandler::print_pool_sh, this, boost::arg<1>()), "Print transaction pool (short format)");
   m_consoleHandler.setHandler("print_mp", boost::bind(&DaemonCommandsHandler::print_pool_count, this, boost::arg<1>()), "Print number of transactions in memory pool");
-  //m_consoleHandler.setHandler("show_hr", boost::bind(&DaemonCommandsHandler::show_hr, this, boost::arg<1>()), "Start showing hash rate");
-  //m_consoleHandler.setHandler("hide_hr", boost::bind(&DaemonCommandsHandler::hide_hr, this, boost::arg<1>()), "Stop showing hash rate");
+  m_consoleHandler.setHandler("start_mining", boost::bind(&DaemonCommandsHandler::start_mining, this, boost::placeholders::_1), "Start mining for specified address, start_mining <addr> [threads=1]");
+  m_consoleHandler.setHandler("stop_mining", boost::bind(&DaemonCommandsHandler::stop_mining, this, boost::placeholders::_1), "Stop mining");
+  m_consoleHandler.setHandler("show_hr", boost::bind(&DaemonCommandsHandler::show_hr, this, boost::arg<1>()), "Start showing hash rate");
+  m_consoleHandler.setHandler("hide_hr", boost::bind(&DaemonCommandsHandler::hide_hr, this, boost::arg<1>()), "Stop showing hash rate");
   m_consoleHandler.setHandler("set_log", boost::bind(&DaemonCommandsHandler::set_log, this, boost::arg<1>()), "set_log <level> - Change current log level, <level> is a number 0-4");
   m_consoleHandler.setHandler("print_diff", boost::bind(&DaemonCommandsHandler::print_diff, this, boost::arg<1>()), "Difficulty for next block");
   m_consoleHandler.setHandler("print_ban", boost::bind(&DaemonCommandsHandler::print_ban, this, boost::arg<1>()), "Print banned nodes");
@@ -183,6 +185,25 @@ bool DaemonCommandsHandler::status(const std::vector<std::string>& args) {
 //--------------------------------------------------------------------------------
 bool DaemonCommandsHandler::print_pl(const std::vector<std::string>& args) {
   m_srv.log_peerlist();
+  return true;
+}
+//--------------------------------------------------------------------------------
+bool DaemonCommandsHandler::show_hr(const std::vector<std::string>& args)
+{
+  if (!m_core.get_miner().is_mining())
+  {
+    std::cout << "Mining is not started. You need to start mining before you can see hash rate." << ENDL;
+  }
+  else
+  {
+    m_core.get_miner().do_print_hashrate(true);
+  }
+  return true;
+}
+//--------------------------------------------------------------------------------
+bool DaemonCommandsHandler::hide_hr(const std::vector<std::string>& args)
+{
+  m_core.get_miner().do_print_hashrate(false);
   return true;
 }
 //--------------------------------------------------------------------------------
@@ -394,13 +415,39 @@ bool DaemonCommandsHandler::print_pool_count(const std::vector<std::string>& arg
   logger(Logging::INFO) << "Pending transactions in mempool: " << m_core.getPoolTransactionsCount() << std::endl;
   return true;
 }
+//--------------------------------------------------------------------------------
+bool DaemonCommandsHandler::start_mining(const std::vector<std::string>& args) {
+  if (!args.size()) {
+    std::cout << "Please, specify wallet address to mine for: start_mining <addr> [threads=1]" << std::endl;
+    return true;
+  }
 
+  CryptoNote::AccountPublicAddress adr;
+  if (!m_core.getCurrency().parseAccountAddressString(args.front(), adr)) {
+    std::cout << "target account address has wrong format" << std::endl;
+    return true;
+  }
+
+  size_t threads_count = 1;
+  if (args.size() > 1) {
+    bool ok = Common::fromString(args[1], threads_count);
+    threads_count = (ok && 0 < threads_count) ? threads_count : 1;
+  }
+
+  m_core.get_miner().start(adr, threads_count);
+  return true;
+}
+//--------------------------------------------------------------------------------
+bool DaemonCommandsHandler::stop_mining(const std::vector<std::string>& args) {
+  m_core.get_miner().stop();
+  return true;
+}
 //--------------------------------------------------------------------------------
 bool DaemonCommandsHandler::print_ban(const std::vector<std::string>& args) {
   m_srv.log_banlist();
   return true;
 }
-
+//--------------------------------------------------------------------------------
 bool DaemonCommandsHandler::ban(const std::vector<std::string>& args)
 {
   if (args.size() != 1 && args.size() != 2) return false;
@@ -427,7 +474,7 @@ bool DaemonCommandsHandler::ban(const std::vector<std::string>& args)
   }
   return m_srv.ban_host(ip, seconds);
 }
-
+//--------------------------------------------------------------------------------
 bool DaemonCommandsHandler::unban(const std::vector<std::string>& args)
 {
   if (args.size() != 1) return false;

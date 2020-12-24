@@ -242,6 +242,8 @@ void PaymentGateService::runInProcess(Logging::LoggerRef& log) {
 
   uint32_t transactionValidationThreads = std::thread::hardware_concurrency();
 
+  CryptoNote::MinerConfig emptyMiner;
+
   CryptoNote::Core core(
     currency,
     logger,
@@ -250,7 +252,7 @@ void PaymentGateService::runInProcess(Logging::LoggerRef& log) {
     std::unique_ptr<CryptoNote::IBlockchainCacheFactory>(new CryptoNote::DatabaseBlockchainCacheFactory(database, log.getLogger())),
     transactionValidationThreads);
 
-  core.load();
+  core.load(emptyMiner);
 
   CryptoNote::CryptoNoteProtocolHandler protocol(currency, *dispatcher, core, nullptr, logger);
   CryptoNote::NodeServer p2pNode(*dispatcher, protocol, logger);

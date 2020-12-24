@@ -141,6 +141,7 @@ int main(int argc, char* argv[])
     RpcServerConfig::initOptions(desc_cmd_sett);
     NetNodeConfig::initOptions(desc_cmd_sett);
     DataBaseConfig::initOptions(desc_cmd_sett);
+    MinerConfig::initOptions(desc_cmd_sett);
 
     po::options_description desc_options("Allowed options");
     desc_options.add(desc_cmd_only).add(desc_cmd_sett);
@@ -265,6 +266,9 @@ int main(int argc, char* argv[])
     netNodeConfig.init(vm);
     netNodeConfig.setTestnet(testnet_mode);
 
+    MinerConfig minerConfig;
+    minerConfig.init(vm);
+
     RpcServerConfig rpcConfig;
     rpcConfig.init(vm);
 
@@ -318,7 +322,7 @@ int main(int argc, char* argv[])
       dispatcher,
       std::unique_ptr<IBlockchainCacheFactory>(new DatabaseBlockchainCacheFactory(database, logger.getLogger())),
       transactionValidationThreads);
-    ccore.load();
+    ccore.load(minerConfig);
     logger(INFO) << "Core initialized OK";
 
     if (command_line::has_arg(vm, arg_rollback)) {

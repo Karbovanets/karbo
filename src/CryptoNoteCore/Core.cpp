@@ -38,6 +38,7 @@
 #include "CryptoNoteCore/ITimeProvider.h"
 #include "CryptoNoteCore/CoreErrors.h"
 #include "CryptoNoteCore/MemoryBlockchainStorage.h"
+#include "CryptoNoteCore/Miner.h"
 #include "CryptoNoteCore/TransactionExtra.h"
 #include "CryptoNoteCore/TransactionPool.h"
 #include "CryptoNoteCore/TransactionPoolCleaner.h"
@@ -196,7 +197,9 @@ Core::Core(const Currency& currency, Logging::ILogger& logger, Checkpoints&& che
            std::unique_ptr<IBlockchainCacheFactory>&& blockchainCacheFactory, const uint32_t transactionValidationThreads)
          : currency(currency), dispatcher(dispatcher), contextGroup(dispatcher), logger(logger, "Core"), checkpoints(std::move(checkpoints)),
            upgradeManager(new UpgradeManager()), blockchainCacheFactory(std::move(blockchainCacheFactory)), initialized(false), 
-           m_transactionValidationThreadPool(transactionValidationThreads) {
+           m_transactionValidationThreadPool(transactionValidationThreads),
+           m_miner(new miner(currency, *this, logger))
+{
 
   upgradeManager->addMajorBlockVersion(BLOCK_MAJOR_VERSION_2, currency.upgradeHeight(BLOCK_MAJOR_VERSION_2));
   upgradeManager->addMajorBlockVersion(BLOCK_MAJOR_VERSION_3, currency.upgradeHeight(BLOCK_MAJOR_VERSION_3));
@@ -211,6 +214,7 @@ Core::Core(const Currency& currency, Logging::ILogger& logger, Checkpoints&& che
 }
 
 Core::~Core() {
+  m_miner->stop();
   contextGroup.interrupt();
   contextGroup.wait();
 }
@@ -1025,6 +1029,50 @@ void Core::notifyOnSuccess(error::AddBlockErrorCode opResult, uint32_t previousB
   }
 }
 
+bool Core::on_idle() {
+  m_miner->on_idle();
+
+  return true;
+}
+
+void Core::pauseMining() {
+  m_miner->pause();
+}
+
+void Core::updateBlockTemplateAndResumeMining() {
+  if (update_miner_block_template()) {
+    m_miner->resume();
+    logger(Logging::DEBUGGING) << "updated block template and resumed mining";
+  }
+  else {
+    logger(Logging::ERROR) << "updating block template failed, mining not resumed";
+    m_miner->stop();
+  }
+}
+
+bool Core::update_miner_block_template() {
+  return m_miner->on_block_chain_update();
+}
+
+void Core::onSynchronized() {
+  m_miner->on_synchronized();
+}
+
+bool Core::handleBlockFound(BlockTemplate& b) {
+  pauseMining();
+
+  auto add_result = submitBlock(toBinaryArray(b));
+  if (add_result != error::AddBlockErrorCode::ADDED_TO_MAIN &&
+      add_result != error::AddBlockErrorCode::ADDED_TO_ALTERNATIVE && 
+      add_result != error::AddBlockErrorCode::ADDED_TO_ALTERNATIVE_AND_SWITCHED) {
+    return false;
+  }
+
+  updateBlockTemplateAndResumeMining();
+
+  return true;
+}
+
 std::error_code Core::addBlock(RawBlock&& rawBlock) {
   throwIfNotInitialized();
 
@@ -1691,8 +1739,11 @@ void Core::save() {
   chainsLeaves[0]->save();
 }
 
-void Core::load() {
+void Core::load(const MinerConfig& minerConfig) {
   initRootSegment();
+
+  bool r = m_miner->init(minerConfig);
+  if (!(r)) { throw std::runtime_error("Failed to initialize miner"); }
 
   start_time = std::time(nullptr);
 

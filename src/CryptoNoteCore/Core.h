@@ -40,6 +40,7 @@
 #include "TransactionValidatorState.h"
 #include "SwappedVector.h"
 #include "Common/ThreadPool.h"
+#include "CryptoNoteCore/IMinerHandler.h"
 #include "CryptoNoteCore/MinerConfig.h"
 #include <System/ContextGroup.h>
 
@@ -47,7 +48,9 @@ namespace CryptoNote {
 
 using Utilities::ThreadPool;
 
-class Core : public ICore, public ICoreInformation {
+class miner;
+
+class Core : public ICore, public IMinerHandler, public ICoreInformation {
 public:
   Core(const Currency& currency, Logging::ILogger& logger, Checkpoints&& checkpoints, System::Dispatcher& dispatcher,
        std::unique_ptr<IBlockchainCacheFactory>&& blockchainCacheFactory, uint32_t transactionValidationThreads);
@@ -103,7 +106,16 @@ public:
   virtual bool getPoolChangesLite(const Crypto::Hash& lastBlockHash, const std::vector<Crypto::Hash>& knownHashes, std::vector<TransactionPrefixInfo>& addedTransactions,
     std::vector<Crypto::Hash>& deletedTransactions) const override;
 
+  //IMinerHandler
+  virtual bool handleBlockFound(BlockTemplate& b); //override;
   virtual bool getBlockTemplate(BlockTemplate& b, const AccountPublicAddress& adr, const BinaryArray& extraNonce, Difficulty& difficulty, uint32_t& height) const override;
+
+  miner& get_miner() { return *m_miner; }
+
+  bool on_idle() override;
+  void pauseMining() override;
+  void updateBlockTemplateAndResumeMining() override;
+  void onSynchronized() override;
 
   virtual CoreStatistics getCoreStatistics() const override;
   
@@ -126,7 +138,7 @@ public:
   const Currency& getCurrency() const;
 
   virtual void save() override;
-  virtual void load() override;
+  virtual void load(const MinerConfig& minerConfig) override;
 
   virtual BlockDetails getBlockDetails(const Crypto::Hash& blockHash) const override;
   virtual BlockDetails getBlockDetails(const uint32_t blockHeight, const uint32_t attempt = 0) const override;
@@ -165,6 +177,7 @@ private:
   std::vector<IBlockchainCache*> chainsLeaves;
   std::unique_ptr<ITransactionPoolCleanWrapper> transactionPool;
   std::unordered_set<IBlockchainCache*> mainChainSet;
+  std::unique_ptr<miner> m_miner;
 
   std::string dataFolder;
 
@@ -182,6 +195,9 @@ private:
 
   std::error_code validateTransaction(const CachedTransaction& transaction, TransactionValidatorState& state, IBlockchainCache* cache, 
     Utilities::ThreadPool<bool> &threadPool, uint64_t& fee, uint64_t minFee, uint32_t blockIndex, const bool isPoolTransaction);
+
+  bool update_miner_block_template();
+  bool on_update_blocktemplate_interval();
 
   uint32_t findBlockchainSupplement(const std::vector<Crypto::Hash>& remoteBlockIds) const;
   std::vector<Crypto::Hash> getBlockHashes(uint32_t startBlockIndex, uint32_t maxCount) const;
