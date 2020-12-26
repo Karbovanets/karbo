@@ -975,7 +975,11 @@ int CryptoNoteProtocolHandler::handle_response_chain_entry(int command, NOTIFY_R
     }
   }
 
-  request_missing_objects(context, false);
+  if (!request_missing_objects(context, false)) {
+    logger(Logging::DEBUGGING) << context << "Failed to request missing objects, dropping connection";
+    m_p2p->drop_connection(context, true);
+  }
+
   return 1;
 }
 
