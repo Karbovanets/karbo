@@ -2211,12 +2211,14 @@ bool simple_wallet::transfer(const std::vector<std::string> &args) {
       return true;
     }
 
-    std::error_code sendError = sent.wait(tx);
-    removeGuard.removeObserver();
+    if (!m_do_not_relay_tx) {
+      std::error_code sendError = sent.wait(tx);
+      removeGuard.removeObserver();
 
-    if (sendError) {
-      fail_msg_writer() << sendError.message();
-      return true;
+      if (sendError) {
+        fail_msg_writer() << sendError.message();
+        return true;
+      }
     }
 
     CryptoNote::WalletLegacyTransaction txInfo;
