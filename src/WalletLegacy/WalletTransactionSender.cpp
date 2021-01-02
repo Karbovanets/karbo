@@ -211,7 +211,7 @@ std::string WalletTransactionSender::makeRawTransaction(TransactionId& transacti
 
     if (scanty_it != context->outs.end()) {
       throw std::system_error(make_error_code(error::MIXIN_COUNT_TOO_BIG));
-      return false;
+      return raw_tx;
     }
   }
 
