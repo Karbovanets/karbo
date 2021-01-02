@@ -241,6 +241,8 @@ std::string WalletTransactionSender::makeRawTransaction(TransactionId& transacti
     notifyBalanceChanged(events);
 
     raw_tx = Common::toHex(toBinaryArray(tx));
+
+    events.push_back(makeCompleteEvent(m_transactionsCache, context->transactionId, std::error_code()));
   }
   catch (std::system_error& ec) {
     events.push_back(makeCompleteEvent(m_transactionsCache, context->transactionId, ec.code()));
