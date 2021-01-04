@@ -140,7 +140,7 @@ bool DaemonCommandsHandler::help(const std::vector<std::string>& args) {
 
 //--------------------------------------------------------------------------------
 bool DaemonCommandsHandler::status(const std::vector<std::string>& args) {
-  uint32_t topBlkIndex = m_core.getCurrentBlockchainHeight() - 1;
+  uint32_t top_index = m_core.getTopBlockIndex();
   uint64_t difficulty = m_core.getDifficultyForNextBlock();
   size_t tx_pool_size = m_core.getPoolTransactionsCount();
   size_t alt_blocks_count = m_core.getAlternativeBlocksCount();
@@ -153,20 +153,20 @@ bool DaemonCommandsHandler::status(const std::vector<std::string>& args) {
   size_t grey_peerlist_size = m_srv.getPeerlistManager().get_gray_peers_count();
   uint32_t hashrate = (uint32_t)round(difficulty / CryptoNote::parameters::DIFFICULTY_TARGET);
   std::time_t uptime = std::time(nullptr) - m_core.getStartTime();
-  uint8_t majorVersion = m_core.getBlockMajorVersionForHeight(topBlkIndex);
-  bool synced = ((uint32_t)topBlkIndex == (uint32_t)last_known_block_index);
+  uint8_t major_version = m_core.getBlockMajorVersionForHeight(top_index);
+  bool synced = ((uint32_t)top_index == (uint32_t)last_known_block_index);
   Crypto::Hash last_block_hash = m_core.getTopBlockHash();
 
   std::cout << std::endl
     << (synced ? ColouredMsg("Synchronized ", Common::Console::Color::BrightGreen) : ColouredMsg("Synchronizing ", Common::Console::Color::BrightYellow))
-    << ColouredMsg(std::to_string(topBlkIndex), Common::Console::Color::BrightWhite)
+    << ColouredMsg(std::to_string(top_index), Common::Console::Color::BrightWhite)
     << "/" << ColouredMsg(std::to_string(last_known_block_index), Common::Console::Color::BrightWhite)
-    << " (" << ColouredMsg(std::to_string(get_sync_percentage(topBlkIndex, last_known_block_index)).substr(0, 5) + "%", Common::Console::Color::BrightWhite) << ") "
+    << " (" << ColouredMsg(std::to_string(get_sync_percentage(top_index, last_known_block_index)).substr(0, 5) + "%", Common::Console::Color::BrightWhite) << ") "
     << "on " << ColouredMsg((m_core.getCurrency().isTestnet() ? "testnet" : "mainnet"), Common::Console::Color::BrightWhite) << ", "
     << "last block hash:\n" << ColouredMsg(Common::podToHex(last_block_hash), Common::Console::Color::BrightWhite) << ",\n"
     << "next difficulty: " << ColouredMsg(std::to_string(difficulty), Common::Console::Color::BrightWhite) << ", "
     << "est. network hashrate: " << ColouredMsg(get_mining_speed(hashrate), Common::Console::Color::BrightWhite) << ",\n"
-    << "block v. " << ColouredMsg(std::to_string((int)majorVersion), Common::Console::Color::BrightWhite) << ", "
+    << "block v. " << ColouredMsg(std::to_string((int)major_version), Common::Console::Color::BrightWhite) << ", "
     << "alt. blocks: " << ColouredMsg(std::to_string(alt_blocks_count), Common::Console::Color::BrightWhite) << ", "
     << "transactions in mempool: " << ColouredMsg(std::to_string(tx_pool_size), Common::Console::Color::BrightWhite) << ",\n"
     << "connections: " << ColouredMsg(std::to_string(outgoing_connections_count), Common::Console::Color::BrightWhite) << " OUT "

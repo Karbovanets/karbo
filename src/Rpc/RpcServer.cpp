@@ -701,7 +701,7 @@ bool RpcServer::onGetIndex(const COMMAND_HTTP::request& req, COMMAND_HTTP::respo
   const std::time_t uptime = std::time(nullptr) - m_core.getStartTime();
   const std::string uptime_str = std::to_string((unsigned int)floor(uptime / 60.0 / 60.0 / 24.0)) + "d " + std::to_string((unsigned int)floor(fmod((uptime / 60.0 / 60.0), 24.0))) + "h "
     + std::to_string((unsigned int)floor(fmod((uptime / 60.0), 60.0))) + "m " + std::to_string((unsigned int)fmod(uptime, 60.0)) + "s";
-  uint32_t top_block_index = m_core.getCurrentBlockchainHeight() - 1;
+  uint32_t top_block_index = m_core.getTopBlockIndex();
   uint32_t top_known_block_index = std::max(static_cast<uint32_t>(1), m_protocol.getObservedHeight() - 1);
   size_t outConn = m_p2p.get_outgoing_connections_count();
   size_t incConn = m_p2p.get_connections_count() - outConn;
@@ -932,7 +932,7 @@ bool RpcServer::onGetTransactionDetailsByHeights(const COMMAND_RPC_GET_TRANSACTI
           std::string("The range is set to true but heights size is not equal to 2") };
       }
 
-      uint32_t upperBound = std::min<uint32_t>(req.heights[1], m_core.getCurrentBlockchainHeight());
+      uint32_t upperBound = std::min<uint32_t>(req.heights[1], m_core.getTopBlockIndex());
       
       for (size_t i = 0; i < (upperBound - req.heights[0]); i++) {
         heights.push_back(req.heights[0] + i);
