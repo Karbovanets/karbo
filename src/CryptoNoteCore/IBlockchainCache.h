@@ -98,6 +98,7 @@ public:
   virtual RawBlock getBlockByIndex(uint32_t index) const = 0;
   virtual BinaryArray getRawTransaction(uint32_t blockIndex, uint32_t transactionIndex) const = 0;
   virtual std::unique_ptr<IBlockchainCache> split(uint32_t splitBlockIndex) = 0;
+  virtual void rewind(const uint32_t blockIndex) = 0;
   virtual void pushBlock(
       const CachedBlock& cachedBlock,
       const std::vector<CachedTransaction>& cachedTransactions,

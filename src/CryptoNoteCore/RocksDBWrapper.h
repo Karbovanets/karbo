@@ -45,6 +45,7 @@ public:
   void init();
   void shutdown();
   void destroy(); //Be careful with this method!
+  void recreate() override;
 
   std::error_code write(IWriteBatch& batch) override;
   std::error_code writeSync(IWriteBatch& batch) override;

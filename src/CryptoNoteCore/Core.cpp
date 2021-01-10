@@ -1766,7 +1766,17 @@ void Core::initRootSegment() {
 }
 
 void Core::rewind(const uint32_t blockIndex) {
-  cutSegment(*chainsLeaves[0], blockIndex);
+  IBlockchainCache *mainChain = chainsLeaves[0];
+
+  if (mainChain->getTopBlockIndex() < blockIndex)
+  {
+    logger(Logging::INFO) << "Rewind height is too big, current top block index is " << std::to_string(mainChain->getTopBlockIndex());
+    return;
+  }
+
+  mainChain->rewind(blockIndex);
+
+  logger(Logging::INFO) << "Blockchain rewound to: " << blockIndex << std::endl;
 }
 
 void Core::cutSegment(IBlockchainCache& segment, uint32_t startIndex) {

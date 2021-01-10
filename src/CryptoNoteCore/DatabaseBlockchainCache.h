@@ -60,6 +60,7 @@ public:
    * BlockchainCache type.
    */
   std::unique_ptr<IBlockchainCache> split(uint32_t splitBlockIndex) override;
+  void rewind(const uint32_t blockIndex) override;
   void pushBlock(const CachedBlock& cachedBlock, const std::vector<CachedTransaction>& cachedTransactions,
                  const TransactionValidatorState& validatorState, size_t blockSize, uint64_t generatedCoins,
                  Difficulty blockDifficulty, RawBlock&& rawBlock) override;

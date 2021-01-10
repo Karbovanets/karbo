@@ -103,6 +103,7 @@ public:
   //Returns upper part of segment. [this] remains lower part.
   //All of indexes on blockIndex == splitBlockIndex belong to upper part
   std::unique_ptr<IBlockchainCache> split(uint32_t splitBlockIndex) override;
+  void rewind(const uint32_t height) override;
   virtual void pushBlock(const CachedBlock& cachedBlock,
     const std::vector<CachedTransaction>& cachedTransactions,
     const TransactionValidatorState& validatorState,

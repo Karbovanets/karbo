@@ -112,6 +112,16 @@ void RocksDBWrapper::destroy() {
   }
 }
 
+void RocksDBWrapper::recreate() {
+  if (state.load() == INITIALIZED)
+  {
+    shutdown();
+  }
+
+  destroy();
+  init();
+}
+
 std::error_code RocksDBWrapper::write(IWriteBatch& batch) {
   if (state.load() != INITIALIZED) {
     throw std::system_error(make_error_code(CryptoNote::error::DataBaseErrorCodes::NOT_INITIALIZED));
@@ -155,7 +165,7 @@ std::error_code RocksDBWrapper::write(IWriteBatch& batch, bool sync) {
 
 std::error_code RocksDBWrapper::read(IReadBatch& batch) {
   if (state.load() != INITIALIZED) {
-    throw std::runtime_error("Not initialized.");
+    throw std::system_error(make_error_code(CryptoNote::error::DataBaseErrorCodes::NOT_INITIALIZED));
   }
 
   rocksdb::ReadOptions readOptions;
@@ -186,11 +196,16 @@ std::error_code RocksDBWrapper::read(IReadBatch& batch) {
 
 std::error_code RocksDBWrapper::readThreadSafe(IReadBatch &batch) {
   if (state.load() != INITIALIZED) {
-    throw std::runtime_error("Not initialized.");
+    throw std::system_error(make_error_code(CryptoNote::error::DataBaseErrorCodes::NOT_INITIALIZED));
   }
 
   rocksdb::ReadOptions readOptions;
   std::vector<std::string> rawKeys(batch.getRawKeys());
+  if (rawKeys.size() == 0) {
+    logger(ERROR) << "RocksDBWrapper::read: detected rawKeys.size() == 0!";
+    return make_error_code(CryptoNote::error::DataBaseErrorCodes::INTERNAL_ERROR);
+  }
+
   std::vector<std::string> values(rawKeys.size());
   std::vector<bool> resultStates;
   int i = 0;
