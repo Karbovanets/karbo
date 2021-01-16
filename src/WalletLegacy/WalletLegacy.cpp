@@ -144,6 +144,7 @@ WalletLegacy::WalletLegacy(const CryptoNote::Currency& currency, INode& node, Lo
   m_isStopping(false),
   m_lastNotifiedActualBalance(0),
   m_lastNotifiedPendingBalance(0),
+  m_lastNotifiedUnmixableBalance(0),
   m_blockchainSync(node, m_logger.getLogger(), currency.genesisBlockHash()),
   m_transfersSync(currency, m_logger.getLogger(), m_blockchainSync, node),
   m_transferDetails(nullptr),
@@ -427,6 +428,7 @@ void WalletLegacy::shutdown() {
     m_transactionsCache.reset();
     m_lastNotifiedActualBalance = 0;
     m_lastNotifiedPendingBalance = 0;
+    m_lastNotifiedUnmixableBalance = 0;
   }
 }
 
@@ -982,11 +984,11 @@ void WalletLegacy::notifyIfBalanceChanged() {
     m_observerManager.notify(&IWalletLegacyObserver::pendingBalanceUpdated, pending);
   }
 
-  auto dust = unmixableBalance();
-  auto prevDust = m_lastNotifiedUnmixableBalance.exchange(dust);
+  auto unmixable = unmixableBalance();
+  auto prevUnmixable = m_lastNotifiedUnmixableBalance.exchange(unmixable);
 
-  if (prevDust != dust) {
-    m_observerManager.notify(&IWalletLegacyObserver::unmixableBalanceUpdated, dust);
+  if (prevUnmixable != unmixable) {
+    m_observerManager.notify(&IWalletLegacyObserver::unmixableBalanceUpdated, unmixable);
   }
 
 }
