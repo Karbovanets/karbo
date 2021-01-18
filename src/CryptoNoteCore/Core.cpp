@@ -2505,6 +2505,20 @@ TransactionDetails Core::getTransactionDetails(const Transaction& rawTransaction
   return transactionDetails;
 }
 
+bool Core::getBlockIndexContainingTransaction(const Crypto::Hash& transactionHash, uint32_t& blockIndex) {
+  throwIfNotInitialized();
+
+  IBlockchainCache* segment = findSegmentContainingTransaction(transactionHash);
+  if (segment == nullptr) {
+    blockIndex = boost::value_initialized<uint32_t>();
+    return false;
+  }
+
+  blockIndex = segment->getBlockIndexContainingTx(transactionHash);
+
+  return true;
+}
+
 std::vector<Crypto::Hash> Core::getAlternativeBlockHashesByIndex(uint32_t blockIndex) const {
   throwIfNotInitialized();
 
