@@ -2002,6 +2002,24 @@ bool RpcServer::onCheckReserveProof(const COMMAND_RPC_CHECK_RESERVE_PROOF::reque
   for (size_t i = 0; i < proofs.size(); ++i) {
     transactionHashes.push_back(proofs[i].transaction_id);
   }
+
+  // first check against height if provided to spare further checks
+  // in case request is to check proof of funds that didn't exist yet at this height
+  if (req.height != 0) {
+    for (const auto& h : transactionHashes) {
+      uint32_t txBlockIndex;
+      if (!m_core.getBlockIndexContainingTransaction(h, txBlockIndex)) {
+        throw JsonRpc::JsonRpcError(CORE_RPC_ERROR_CODE_WRONG_PARAM, 
+          std::string("Couldn't find block index containing transaction ") + Common::podToHex(h) + std::string(" of reserve proof"));
+      }
+
+      if (req.height < txBlockIndex) {
+        throw JsonRpc::JsonRpcError(CORE_RPC_ERROR_CODE_WRONG_PARAM, std::string("Funds from transaction ")
+          + Common::podToHex(h) + std::string(" in block ") + std::to_string(txBlockIndex) + std::string(" didn't exist at requested height"));
+      }
+    }
+  }
+
   std::vector<Hash> missed_txs;
   std::vector<BinaryArray> txs;
   m_core.getTransactions(transactionHashes, txs, missed_txs);
@@ -2075,7 +2093,6 @@ bool RpcServer::onCheckReserveProof(const COMMAND_RPC_CHECK_RESERVE_PROOF::reque
     {
       throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Unknown error" };
     }
-
   }
 
   // check signature for address spend keys
