@@ -2014,7 +2014,8 @@ bool RpcServer::onCheckReserveProof(const COMMAND_RPC_CHECK_RESERVE_PROOF::reque
       }
 
       if (req.height < txBlockIndex) {
-        throw JsonRpc::JsonRpcError(CORE_RPC_ERROR_CODE_WRONG_PARAM, std::string("Funds didn't exist at this height"));
+        throw JsonRpc::JsonRpcError(CORE_RPC_ERROR_CODE_WRONG_PARAM, std::string("Funds from transaction ")
+          + Common::podToHex(h) + std::string(" in block ") + std::to_string(txBlockIndex) + std::string(" didn't exist at requested height"));
       }
     }
   }
