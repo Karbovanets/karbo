@@ -197,10 +197,8 @@ Core::Core(const Currency& currency, Logging::ILogger& logger, Checkpoints&& che
            std::unique_ptr<IBlockchainCacheFactory>&& blockchainCacheFactory, const uint32_t transactionValidationThreads)
          : currency(currency), dispatcher(dispatcher), contextGroup(dispatcher), logger(logger, "Core"), checkpoints(std::move(checkpoints)),
            upgradeManager(new UpgradeManager()), blockchainCacheFactory(std::move(blockchainCacheFactory)), initialized(false), 
-           m_transactionValidationThreadPool(transactionValidationThreads),
-           m_miner(new miner(currency, *this, logger))
+           m_transactionValidationThreadPool(transactionValidationThreads), m_miner(new miner(currency, *this, logger))
 {
-
   upgradeManager->addMajorBlockVersion(BLOCK_MAJOR_VERSION_2, currency.upgradeHeight(BLOCK_MAJOR_VERSION_2));
   upgradeManager->addMajorBlockVersion(BLOCK_MAJOR_VERSION_3, currency.upgradeHeight(BLOCK_MAJOR_VERSION_3));
   upgradeManager->addMajorBlockVersion(BLOCK_MAJOR_VERSION_4, currency.upgradeHeight(BLOCK_MAJOR_VERSION_4));
@@ -277,7 +275,7 @@ uint64_t Core::getBlockTimestampByIndex(uint32_t blockIndex) const {
   throwIfNotInitialized();
 
   auto timestamps = chainsLeaves[0]->getLastTimestamps(1, blockIndex, addGenesisBlock);
-  assert(!(timestamps.size() == 1));
+  //assert(!(timestamps.size() == 1));
 
   return timestamps[0];
 }
@@ -549,6 +547,85 @@ std::vector<Crypto::Hash> Core::findBlockchainSupplement(const std::vector<Crypt
   return getBlockHashes(startBlockIndex, static_cast<uint32_t>(maxCount));
 }
 
+bool Core::checkProofOfWork(Crypto::cn_context& context, const CachedBlock& block, Difficulty currentDifficulty) {
+  if (block.getBlock().majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5) {
+    return currency.checkProofOfWork(context, block, currentDifficulty);
+  }
+
+  Crypto::Hash proofOfWork;
+
+  if (!getBlockLongHash(context, block, proofOfWork)) {
+    return false;
+  }
+
+  if (!check_hash(proofOfWork, currentDifficulty)) {
+    return false;
+  }
+
+  return true;
+}
+
+bool Core::getBlockLongHash(Crypto::cn_context &context, const CachedBlock& b, Crypto::Hash& res) {
+  if (b.getBlock().majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5) {
+    res = b.getBlockLongHash(context);
+    return true;
+  }
+
+  BinaryArray pot, bd = b.getBlockHashingBinaryArray();
+
+  // Phase 1
+
+  Crypto::Hash hash_1, hash_2;
+
+  // Hashing the current blockdata (preprocessing it)
+  cn_fast_hash(bd.data(), bd.size(), hash_1);
+
+  // Phase 2
+
+  // throw our block into common pot
+  pot.insert(std::end(pot), std::begin(bd), std::end(bd));
+
+  // Get the corresponding 8 blocks from blockchain based on preparatory hash_1
+  // and throw them into the pot too
+  auto cache = findSegmentContainingBlock(b.getBlock().previousBlockHash);
+  uint32_t maxHeight = std::min<uint32_t>(getTopBlockIndex(), b.getBlockIndex() - 1 - currency.minedMoneyUnlockWindow());
+
+  for (uint8_t i = 1; i <= 8; i++) {
+    uint8_t chunk[4] = {
+      hash_1.data[i * 4 - 4],
+      hash_1.data[i * 4 - 3],
+      hash_1.data[i * 4 - 2],
+      hash_1.data[i * 4 - 1]
+    };
+
+    uint32_t n = (chunk[0] << 24) |
+                 (chunk[1] << 16) |
+                 (chunk[2] << 8)  |
+                 (chunk[3]);
+
+    uint32_t height_i = n % maxHeight;
+    try {
+      RawBlock rawBlock = cache->getBlockByIndex(height_i);
+      BlockTemplate blockTemplate = extractBlockTemplate(rawBlock);
+      BinaryArray ba = CachedBlock(blockTemplate).getBlockHashingBinaryArray();
+      pot.insert(std::end(pot), std::begin(ba), std::end(ba));
+    }
+    catch (const std::runtime_error& e) {
+      logger(Logging::ERROR, Logging::BRIGHT_RED) << "Error getting block " << height_i << ": " << *e.what();
+      return false;
+    }
+  }
+
+  // Phase 3
+
+  // stir the pot - hashing the 1 + 8 blocks as one continuous data
+  Crypto::y_slow_hash(pot.data(), pot.size(), hash_1, hash_2);
+
+  res = hash_2;
+
+  return true;
+}
+
 // Calculate ln(p) of Poisson distribution
 // Original idea : https://stackoverflow.com/questions/30156803/implementing-poisson-distribution-in-c
 // Using logarithms avoids dealing with very large (k!) and very small (p < 10^-44) numbers
@@ -681,7 +758,7 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
   auto lastBlocksSizes = cache->getLastBlocksSizes(currency.rewardBlocksWindow(), previousBlockIndex, addGenesisBlock);
   auto blocksSizeMedian = Common::medianValue(lastBlocksSizes);
 
-  if (!currency.getBlockReward(cachedBlock.getBlock().majorVersion, blocksSizeMedian,
+  if (!currency.getBlockReward(blockTemplate.majorVersion, blocksSizeMedian,
                                cumulativeBlockSize, alreadyGeneratedCoins, cumulativeFee, reward, emissionChange)) {
     logger(Logging::WARNING) << "Block " << blockHash << " has too big cumulative size";
     return error::BlockValidationError::CUMULATIVE_BLOCK_SIZE_TOO_BIG;
@@ -689,7 +766,7 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
 
   if (minerReward != reward) {
     logger(Logging::WARNING) << "Block reward mismatch for block " << blockHash
-                             << ". Expected reward: " << reward << ", got reward: " << minerReward;
+                             << ". Expected reward: " << currency.formatAmount(reward) << ", got reward: " << currency.formatAmount(minerReward);
     return error::BlockValidationError::BLOCK_REWARD_MISMATCH;
   }
 
@@ -698,8 +775,8 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
       logger(Logging::WARNING) << "Checkpoint block hash mismatch for block " << blockHash;
       return error::BlockValidationError::CHECKPOINT_BLOCK_HASH_MISMATCH;
     }
-  } else if (!currency.checkProofOfWork(cryptoContext, cachedBlock, currentDifficulty)) {
-    logger(Logging::WARNING) << "Proof of work too weak for block " << blockHash;
+  } else if (!checkProofOfWork(cryptoContext, cachedBlock, currentDifficulty)) {
+    logger(Logging::WARNING) << "Proof of work too weak for block " << cachedBlock.getBlockHash();
     return error::BlockValidationError::PROOF_OF_WORK_TOO_WEAK;
   }
 
