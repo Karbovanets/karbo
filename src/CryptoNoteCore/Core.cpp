@@ -1851,7 +1851,7 @@ void Core::rewind(const uint32_t blockIndex) {
     return;
   }
 
-  mainChain->rewind(blockIndex);
+  mainChain->rewind(blockIndex + 1);
 
   logger(Logging::INFO) << "Blockchain rewound to: " << blockIndex << std::endl;
 }
