@@ -882,8 +882,9 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
         uint32_t txBlockIndex = cache->getBlockIndexContainingTx(c.transaction_id);
 
         if (txBlockIndex >= currentBlockchainHeight - currency.minedMoneyUnlockWindow()) {
-          logger(Logging::WARNING) << "Transactions in stake's reserve proof are too recent, wait " << currency.minedMoneyUnlockWindow() << " blocks to use that proof";
-          return error::BlockValidationError::STAKE_TOO_FRESH;
+          logger(Logging::WARNING) << "Immature stake: too recent transactions in stake's reserve proof, wait " 
+            << currency.minedMoneyUnlockWindow() << " blocks before mining with proof that uses fresh transactions";
+          return error::BlockValidationError::STAKE_IMMATURE;
         }
       }
     }
