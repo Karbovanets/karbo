@@ -24,8 +24,12 @@
 namespace CryptoNote {
   struct IMinerHandler {
     virtual bool handleBlockFound(BlockTemplate& b) = 0;
-    virtual bool getBlockTemplate(BlockTemplate& b, const AccountPublicAddress& adr, const BinaryArray& extraNonce, Difficulty& difficulty, uint32_t& height) const = 0;
+    virtual bool getBlockTemplate(BlockTemplate& b, const AccountPublicAddress& adr, const BinaryArray& extraNonce, const ReserveProof& reserveProof, Difficulty& difficulty, uint32_t& height) const = 0;
     virtual bool getBlockLongHash(Crypto::cn_context &context, const CachedBlock& block, Crypto::Hash& res) = 0;
+    virtual bool checkReserveProof(const ReserveProof& proof, const CryptoNote::AccountPublicAddress& address, std::string& message, uint32_t height, uint64_t& total, uint64_t& spent) = 0;
+    virtual bool getBaseStake(const uint32_t height, uint64_t& stake) = 0;
+    virtual uint64_t getBaseStake() = 0;
+    virtual uint32_t getCurrentBlockchainHeight() const = 0;
 
   protected:
     ~IMinerHandler() {}

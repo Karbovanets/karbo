@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include "CryptoNote.h"
 #include "CryptoNoteProtocol/CryptoNoteProtocolDefinitions.h"
 #include "CryptoNoteCore/CryptoNoteBasic.h"
 #include "CryptoNoteCore/Difficulty.h"
@@ -279,6 +280,7 @@ struct COMMAND_RPC_GET_INFO {
     uint64_t difficulty;
     uint64_t cumulative_difficulty;
     uint64_t next_reward;
+    uint64_t base_stake;
     uint64_t min_fee;
     uint64_t transactions_count;
     uint64_t transactions_pool_size;
@@ -304,6 +306,7 @@ struct COMMAND_RPC_GET_INFO {
       KV_MEMBER(difficulty)
       KV_MEMBER(cumulative_difficulty)
       KV_MEMBER(next_reward)
+      KV_MEMBER(base_stake)
       KV_MEMBER(min_fee)
       KV_MEMBER(transactions_count)
       KV_MEMBER(transactions_pool_size)
@@ -437,10 +440,12 @@ struct COMMAND_RPC_GETBLOCKTEMPLATE {
   struct request {
     uint64_t reserve_size; //max 255 bytes
     std::string wallet_address;
+    std::string reserve_proof;
 
     void serialize(ISerializer &s) {
       KV_MEMBER(reserve_size)
       KV_MEMBER(wallet_address)
+      KV_MEMBER(reserve_proof)
     }
   };
 
@@ -1165,36 +1170,6 @@ struct COMMAND_RPC_VERIFY_MESSAGE {
 };
 
 //-----------------------------------------------
-struct reserve_proof_entry
-{
-	Crypto::Hash transaction_id;
-	uint64_t index_in_transaction;
-	Crypto::PublicKey shared_secret;
-	Crypto::KeyImage key_image;
-	Crypto::Signature shared_secret_sig;
-	Crypto::Signature key_image_sig;
-
-	void serialize(ISerializer& s)
-	{
-		KV_MEMBER(transaction_id)
-		KV_MEMBER(index_in_transaction)
-		KV_MEMBER(shared_secret)
-		KV_MEMBER(key_image)
-		KV_MEMBER(shared_secret_sig)
-		KV_MEMBER(key_image_sig)
-	}
-};
-
-struct reserve_proof {
-	std::vector<reserve_proof_entry> proofs;
-	Crypto::Signature signature;
-
-	void serialize(ISerializer &s) {
-		KV_MEMBER(proofs)
-		KV_MEMBER(signature)
-	}
-};
-
 struct COMMAND_RPC_CHECK_RESERVE_PROOF {
   struct request {
     std::string address;

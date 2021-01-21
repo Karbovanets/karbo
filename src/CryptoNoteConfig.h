@@ -45,6 +45,11 @@ const size_t   BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW_V1          = 11;
 const uint64_t MONEY_SUPPLY                                  = UINT64_C(10000000000000000000);
 const uint64_t COIN                                          = UINT64_C(1000000000000);
 const uint64_t TAIL_EMISSION_REWARD                          = UINT64_C(1000000000000);
+
+const uint64_t STAKE_EMISSION_FRACTION                       = 4; // part of total supply engaged in stake mining, i.e. 4 stands for 25%
+const uint64_t STAKE_INTEREST_FACTOR                         = 666;
+const size_t   STAKE_RESERVE_PROOF_SIZE_LIMIT                = 10000; // in bytes
+
 const size_t CRYPTONOTE_COIN_VERSION                         = 1;
 
 const unsigned EMISSION_SPEED_FACTOR                         = 18;

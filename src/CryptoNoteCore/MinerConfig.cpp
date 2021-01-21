@@ -24,8 +24,10 @@ namespace CryptoNote {
 
 namespace {
 const command_line::arg_descriptor<std::string> arg_extra_messages =  {"extra-messages-file", "Specify file for extra messages to include into coinbase transactions", "", true};
-const command_line::arg_descriptor<std::string> arg_start_mining =    {"start-mining", "Specify wallet address to mining for", "", true};
+const command_line::arg_descriptor<std::string> arg_reserve_proof  =  {"reserve-proof", "Specify the file with the reserve proof", "", true };
+const command_line::arg_descriptor<std::string> arg_mining_address =  {"mining-address", "Specify wallet address to mining for (the reserve proof has to be for this address)", "", true};
 const command_line::arg_descriptor<uint32_t>    arg_mining_threads =  {"mining-threads", "Specify mining threads count", 0, true};
+const command_line::arg_descriptor<bool>        arg_start_miningds =  {"start-mining", "Start mining on startup", false, true};
 }
 
 MinerConfig::MinerConfig() {
@@ -34,8 +36,10 @@ MinerConfig::MinerConfig() {
 
 void MinerConfig::initOptions(boost::program_options::options_description& desc) {
   command_line::add_arg(desc, arg_extra_messages);
-  command_line::add_arg(desc, arg_start_mining);
+  command_line::add_arg(desc, arg_reserve_proof);
+  command_line::add_arg(desc, arg_mining_address);
   command_line::add_arg(desc, arg_mining_threads);
+  command_line::add_arg(desc, arg_start_miningds);
 }
 
 void MinerConfig::init(const boost::program_options::variables_map& options) {
@@ -43,12 +47,20 @@ void MinerConfig::init(const boost::program_options::variables_map& options) {
     extraMessages = command_line::get_arg(options, arg_extra_messages);
   }
 
-  if (command_line::has_arg(options, arg_start_mining)) {
-    startMining = command_line::get_arg(options, arg_start_mining);
+  if (command_line::has_arg(options, arg_reserve_proof)) {
+    reserveProof = command_line::get_arg(options, arg_reserve_proof);
+  }
+
+  if (command_line::has_arg(options, arg_mining_address)) {
+    miningAddress = command_line::get_arg(options, arg_mining_address);
   }
 
   if (command_line::has_arg(options, arg_mining_threads)) {
     miningThreads = command_line::get_arg(options, arg_mining_threads);
+  }
+
+  if (command_line::has_arg(options, arg_start_miningds)) {
+    startMining = true;
   }
 }
 

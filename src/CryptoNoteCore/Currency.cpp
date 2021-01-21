@@ -175,9 +175,7 @@ uint64_t Currency::calculateReward(uint64_t alreadyGeneratedCoins) const {
     // flat rate tail emission reward,
     // inflation slowly diminishing in relation to supply
     //baseReward = CryptoNote::parameters::TAIL_EMISSION_REWARD;
-    // changed to
-    // Friedman's k-percent rule,
-    // inflation 2% of total coins in circulation per year
+    // Friedman's k-percent rule, inflation 2% of total coins in circulation p.a.
     // according to Whitepaper v. 1, p. 16 (with change of 1% to 2%)
     const uint64_t blocksInOneYear = expectedNumberOfBlocksPerDay() * 365;
     uint64_t twoPercentOfEmission = static_cast<uint64_t>(static_cast<double>(alreadyGeneratedCoins) / 100.0 * 2.0);
@@ -185,6 +183,23 @@ uint64_t Currency::calculateReward(uint64_t alreadyGeneratedCoins) const {
   }
 
   return baseReward;
+}
+
+uint64_t Currency::calculateStake(uint64_t alreadyGeneratedCoins) const {
+  // calculate supply based stake
+  // ~25% of coins in circulation involved around the clock
+  uint64_t supplyStake = alreadyGeneratedCoins / expectedNumberOfBlocksPerDay() / CryptoNote::parameters::STAKE_EMISSION_FRACTION;
+
+  uint64_t baseReward = calculateReward(alreadyGeneratedCoins);
+
+  // caclulate stake based on reward and interest rate
+  uint64_t interStake = CryptoNote::parameters::STAKE_INTEREST_FACTOR * baseReward;
+  
+  // calculate final stake as aurea mediocritas between emission based stake
+  // and reward/profitability based stake
+  uint64_t adjustedStake = (supplyStake + interStake) / 2;
+
+  return adjustedStake;
 }
 
 bool Currency::getBlockReward(uint8_t blockMajorVersion, size_t medianSize, size_t currentBlockSize, uint64_t alreadyGeneratedCoins,
@@ -220,13 +235,14 @@ size_t Currency::maxBlockCumulativeSize(uint64_t height) const {
 }
 
 bool Currency::constructMinerTx(uint8_t blockMajorVersion, uint32_t height, size_t medianSize, uint64_t alreadyGeneratedCoins, size_t currentBlockSize,
-  uint64_t fee, const AccountPublicAddress& minerAddress, Transaction& tx, const BinaryArray& extraNonce/* = BinaryArray()*/, size_t maxOuts/* = 1*/) const {
+  uint64_t fee, const AccountPublicAddress& minerAddress, Transaction& tx, Crypto::SecretKey& txKey, const BinaryArray& extraNonce/* = BinaryArray()*/, size_t maxOuts/* = 1*/) const {
 
   tx.inputs.clear();
   tx.outputs.clear();
   tx.extra.clear();
 
   KeyPair txkey = generateKeyPair();
+  txKey = txkey.secretKey;
   addTransactionPublicKeyToExtra(tx.extra, txkey.publicKey);
   if (!extraNonce.empty()) {
     if (!addExtraNonceToTransactionExtra(tx.extra, extraNonce)) {
@@ -970,8 +986,9 @@ CurrencyBuilder::CurrencyBuilder(Logging::ILogger& log) : m_currency(log) {
 
 Transaction CurrencyBuilder::generateGenesisTransaction() {
   CryptoNote::Transaction tx;
+  Crypto::SecretKey txKey;
   CryptoNote::AccountPublicAddress ac = boost::value_initialized<CryptoNote::AccountPublicAddress>();
-  m_currency.constructMinerTx(1, 0, 0, 0, 0, 0, ac, tx); // zero fee in genesis
+  m_currency.constructMinerTx(1, 0, 0, 0, 0, 0, ac, tx, txKey); // zero fee in genesis
   return tx;
 }
 

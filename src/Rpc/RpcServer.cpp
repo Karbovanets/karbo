@@ -1148,7 +1148,8 @@ bool RpcServer::onGetInfo(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RPC_
   res.min_fee = m_core.getMinimalFee();
   uint64_t alreadyGeneratedCoins = m_core.getTotalGeneratedAmount();
   res.already_generated_coins = m_core.getCurrency().formatAmount(alreadyGeneratedCoins); // that large uint64_t number is unsafe in JavaScript environment and therefore as a JSON value so we display it as a formatted string
-  res.next_reward = m_core.calculateReward(alreadyGeneratedCoins);
+  res.next_reward = m_core.getCurrency().calculateReward(alreadyGeneratedCoins);
+  res.base_stake = m_core.getCurrency().calculateStake(alreadyGeneratedCoins);
   res.start_time = (uint64_t)m_core.getStartTime();
   res.version = PROJECT_VERSION_LONG;
   res.status = CORE_RPC_STATUS_OK;
@@ -1537,7 +1538,30 @@ bool RpcServer::onGetBlockTemplate(const COMMAND_RPC_GETBLOCKTEMPLATE::request& 
   CryptoNote::BinaryArray blob_reserve;
   blob_reserve.resize(req.reserve_size, 0);
 
-  if (!m_core.getBlockTemplate(blockTemplate, acc, blob_reserve, res.difficulty, res.height)) {
+  // reserve proof decode and check
+  std::string decoded_data;
+  uint64_t prefix;
+  if (!Tools::Base58::decode_addr(req.reserve_proof, prefix, decoded_data) || prefix != CryptoNote::parameters::CRYPTONOTE_RESERVE_PROOF_BASE58_PREFIX) {
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Reserve proof decoding error" };
+  }
+  BinaryArray ba(decoded_data.begin(), decoded_data.end());
+  ReserveProof reserve_proof;
+  if (!fromBinaryArray(reserve_proof, ba)) {
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Reserve proof parsing error" };
+  }
+  uint64_t total = 0, spent = 0;
+  std::string message = "";
+  if (!m_core.checkReserveProof(reserve_proof, acc, message, m_core.getTopBlockIndex(), total, spent)) {
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Invalid reserve proof" };
+  }
+
+  uint64_t reserve = total - spent;
+  uint64_t min_stake = m_core.getBaseStake();
+  if (reserve < min_stake) {
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Insufficient reserve proof" };
+  }
+
+  if (!m_core.getBlockTemplate(blockTemplate, acc, blob_reserve, reserve_proof, res.difficulty, res.height)) {
     logger(ERROR) << "Failed to create block template";
     throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: failed to create block template" };
   }
@@ -1974,19 +1998,19 @@ bool RpcServer::onCheckReserveProof(const COMMAND_RPC_CHECK_RESERVE_PROOF::reque
     throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Failed to parse address " + req.address + '.' };
   }
 
-  // parse sugnature
+  // parse signature
   std::string decoded_data;
   uint64_t prefix;
   if (!Tools::Base58::decode_addr(req.signature, prefix, decoded_data) || prefix != CryptoNote::parameters::CRYPTONOTE_RESERVE_PROOF_BASE58_PREFIX) {
     throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Reserve proof decoding error" };
   }
   BinaryArray ba(decoded_data.begin(), decoded_data.end());
-  reserve_proof proof_decoded;
+  ReserveProof proof_decoded;
   if (!fromBinaryArray(proof_decoded, ba)) {
     throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Reserve proof parsing error" };
   }
 
-  std::vector<reserve_proof_entry>& proofs = proof_decoded.proofs;
+  std::vector<ReserveProofEntry>& proofs = proof_decoded.proofs;
 
   // compute signature prefix hash
   std::string prefix_data = req.message;
@@ -2032,7 +2056,7 @@ bool RpcServer::onCheckReserveProof(const COMMAND_RPC_CHECK_RESERVE_PROOF::reque
   res.total = 0;
   res.spent = 0;
   for (size_t i = 0; i < proofs.size(); ++i) {
-    const reserve_proof_entry& proof = proofs[i];
+    const ReserveProofEntry& proof = proofs[i];
     Transaction tx;
     if (!fromBinaryArray(tx, txs[i])) {
       throw JsonRpc::JsonRpcError{

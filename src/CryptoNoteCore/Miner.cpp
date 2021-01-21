@@ -33,10 +33,11 @@
 #include <boost/utility/value_init.hpp>
 
 #include "crypto/crypto.h"
+#include "Common/Base58.h"
 #include "Common/CommandLine.h"
 #include "Common/StringTools.h"
 #include "Serialization/SerializationTools.h"
-
+#include "CryptoNoteTools.h"
 #include "CryptoNoteFormatUtils.h"
 #include "TransactionExtra.h"
 
@@ -114,7 +115,7 @@ namespace CryptoNote
       extra_nonce = m_extra_messages[m_config.current_extra_message_index];
     }
 
-    if(!m_handler.getBlockTemplate(bl, m_mine_address, extra_nonce, di, height)) {
+    if(!m_handler.getBlockTemplate(bl, m_mine_address, extra_nonce, m_reserve_proof, di, height)) {
       logger(ERROR) << "Failed to getBlockTemplate(), stopping mining";
       return false;
     }
@@ -199,11 +200,43 @@ namespace CryptoNote
       logger(INFO) << "Loaded " << m_extra_messages.size() << " extra messages, current index " << m_config.current_extra_message_index;
     }
 
-    if(!config.startMining.empty()) {
-      if (!m_currency.parseAccountAddressString(config.startMining, m_mine_address)) {
-        logger(ERROR) << "Target account address " << config.startMining << " has wrong format, starting daemon canceled";
+    if (!config.miningAddress.empty()) {
+      if (!m_currency.parseAccountAddressString(config.miningAddress, m_mine_address)) {
+        logger(ERROR) << "Target account address " << config.miningAddress << " has wrong format, starting daemon canceled";
         return false;
       }
+    }
+
+    if (!config.reserveProof.empty()) {
+      std::string buff;
+      if (!Common::loadFileToString(config.reserveProof, buff)) {
+        logger(ERROR, BRIGHT_RED) << "Failed to load file with reserve proof: " << config.reserveProof;
+        return false;
+      }
+
+      std::string decoded_data;
+      uint64_t prefix;
+      if (!Tools::Base58::decode_addr(buff, prefix, decoded_data) || prefix != CryptoNote::parameters::CRYPTONOTE_RESERVE_PROOF_BASE58_PREFIX) {
+        logger(ERROR, BRIGHT_RED) << "Reserve proof decoding error";
+        return false;
+      }
+      BinaryArray ba(decoded_data.begin(), decoded_data.end());
+
+      size_t reserveSize = ba.size();
+      if (reserveSize > CryptoNote::parameters::STAKE_RESERVE_PROOF_SIZE_LIMIT) {
+        logger(Logging::WARNING) << "Too large reserve proof: "
+          << reserveSize << ", whereas max is: "
+          << CryptoNote::parameters::STAKE_RESERVE_PROOF_SIZE_LIMIT;
+        return false;
+      }
+
+      if (!fromBinaryArray(m_reserve_proof, ba)) {
+        logger(ERROR, BRIGHT_RED) << "Reserve proof parsing error";
+        return false;
+      }
+    }
+
+    if (!config.miningAddress.empty() && !config.reserveProof.empty() && config.startMining) {
       m_threads_total = 1;
       m_do_mining = true;
       if(config.miningThreads > 0) {
@@ -219,13 +252,30 @@ namespace CryptoNote
     return !m_stop;
   }
   //-----------------------------------------------------------------------------------------------------
-  bool miner::start(const AccountPublicAddress& adr, size_t threads_count)
-  {   
+  bool miner::start(size_t threads_count)
+  {
     if (is_mining()) {
       logger(ERROR) << "Starting miner but it's already started";
       return false;
     }
 
+    // check proof now, because on startup Core is not available
+    uint64_t total = 0, spent = 0;
+    std::string message = "";
+    if (!m_handler.checkReserveProof(m_reserve_proof, m_mine_address, message, m_handler.getCurrentBlockchainHeight(), total, spent)) {
+      logger(ERROR, BRIGHT_RED) << "Invalid reserve proof";
+      return false;
+    }
+
+    uint64_t reserve = total - spent;
+    uint64_t min_stake = m_handler.getBaseStake();
+    if (reserve < min_stake) {
+      logger(ERROR, BRIGHT_RED) << "Insufficient reserve proof of " << m_currency.formatAmount(reserve) << ", required minimum: " << m_currency.formatAmount(min_stake);
+      return false;
+    }
+
+    logger(INFO, WHITE) << "Reserve proof: " << m_currency.formatAmount(reserve) << " (total: " << m_currency.formatAmount(total) << ", spent: " << m_currency.formatAmount(spent) << ")";
+    
     std::lock_guard<std::mutex> lk(m_threads_lock);
 
     if(!m_threads.empty()) {
@@ -233,7 +283,6 @@ namespace CryptoNote
       return false;
     }
 
-    m_mine_address = adr;
     m_threads_total = static_cast<uint32_t>(threads_count);
     m_starter_nonce = Random::randomValue<uint32_t>();
 
@@ -285,7 +334,7 @@ namespace CryptoNote
   void miner::on_synchronized()
   {
     if(m_do_mining) {
-      start(m_mine_address, m_threads_total);
+      start(m_threads_total);
     }
   }
   //-----------------------------------------------------------------------------------------------------
