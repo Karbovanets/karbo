@@ -150,7 +150,8 @@ WalletConfiguration PaymentGateService::getWalletConfig() const {
     config.gateConfiguration.secretViewKey,
     config.gateConfiguration.secretSpendKey,
     config.gateConfiguration.mnemonicSeed,
-    config.gateConfiguration.generateDeterministic
+    config.gateConfiguration.generateDeterministic,
+    config.gateConfiguration.scanHeight
   };
 }
 
@@ -334,7 +335,7 @@ void PaymentGateService::runRpcProxy(Logging::LoggerRef& log) {
     PaymentService::NodeFactory::createNode(
       config.remoteNodeConfig.m_daemon_host,
       config.remoteNodeConfig.m_daemon_port,
-      "/", // TODO: need to add implementation after merge
+      "/", // TODO: get service path from config, althouh by default / is correct
       false,
       log.getLogger()));
 

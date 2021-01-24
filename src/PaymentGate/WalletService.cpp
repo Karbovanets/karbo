@@ -336,6 +336,7 @@ std::vector<CryptoNote::WalletOrder> convertWalletRpcOrdersToWalletOrders(const 
 void generateNewWallet(const CryptoNote::Currency& currency, const WalletConfiguration& conf, Logging::ILogger& logger, System::Dispatcher& dispatcher) {
   Logging::LoggerRef log(logger, "generateNewWallet");
 
+  // neer real node here
   CryptoNote::INode* nodeStub = NodeFactory::createNodeStub();
   std::unique_ptr<CryptoNote::INode> nodeGuard(nodeStub);
 
@@ -381,7 +382,14 @@ void generateNewWallet(const CryptoNote::Currency& currency, const WalletConfigu
     }
 
     CryptoNote::AccountBase::generateViewFromSpend(private_spend_key, private_view_key);
-    wallet->initializeWithViewKey(conf.walletFile, conf.walletPassword, private_view_key);
+
+    if (conf.scanHeight != 0) {
+      wallet->initializeWithViewKey(conf.walletFile, conf.walletPassword, private_view_key, conf.scanHeight);
+    }
+    else {
+      wallet->initializeWithViewKey(conf.walletFile, conf.walletPassword, private_view_key);
+    }
+
     address = wallet->createAddress(private_spend_key);
     log(Logging::INFO, Logging::BRIGHT_WHITE) << "Imported wallet successfully.";
   }
@@ -406,8 +414,14 @@ void generateNewWallet(const CryptoNote::Currency& currency, const WalletConfigu
       }
       Crypto::SecretKey private_spend_key = *(struct Crypto::SecretKey *) &private_spend_key_hash;
       Crypto::SecretKey private_view_key = *(struct Crypto::SecretKey *) &private_view_key_hash;
+     
+      if (conf.scanHeight != 0) {
+        wallet->initializeWithViewKey(conf.walletFile, conf.walletPassword, private_view_key, conf.scanHeight);
+      }
+      else {
+        wallet->initializeWithViewKey(conf.walletFile, conf.walletPassword, private_view_key);
+      }
 
-      wallet->initializeWithViewKey(conf.walletFile, conf.walletPassword, private_view_key);
       address = wallet->createAddress(private_spend_key);
       log(Logging::INFO, Logging::BRIGHT_WHITE) << "Wallet imported successfully.";
     }
