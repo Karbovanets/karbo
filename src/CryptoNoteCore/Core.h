@@ -108,6 +108,7 @@ public:
 
   virtual uint64_t getBaseStake() override;
   virtual bool getBaseStake(const uint32_t height, uint64_t& stake) override;
+  virtual bool checkStakeLimit(const ReserveProof& reserve_proof, const AccountPublicAddress& address) override;
 
   //IMinerHandler
   virtual bool handleBlockFound(BlockTemplate& b); //override;

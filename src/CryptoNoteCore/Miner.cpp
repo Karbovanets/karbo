@@ -102,6 +102,11 @@ namespace CryptoNote
       return true;
     }
 
+    // check if stake qualifies to mine
+    if (!m_handler.checkStakeLimit(m_reserve_proof, m_mine_address)) {
+      return false;
+    }
+
     return request_block_template();
   }
   //-----------------------------------------------------------------------------------------------------

@@ -29,6 +29,7 @@ namespace CryptoNote {
     virtual bool checkReserveProof(const ReserveProof& proof, const CryptoNote::AccountPublicAddress& address, std::string& message, uint32_t height, uint64_t& total, uint64_t& spent) = 0;
     virtual bool getBaseStake(const uint32_t height, uint64_t& stake) = 0;
     virtual uint64_t getBaseStake() = 0;
+    virtual bool checkStakeLimit(const ReserveProof& reserve_proof, const AccountPublicAddress& address) = 0;
     virtual uint32_t getCurrentBlockchainHeight() const = 0;
 
   protected:

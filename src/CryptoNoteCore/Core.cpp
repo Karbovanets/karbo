@@ -626,6 +626,48 @@ bool Core::getBlockLongHash(Crypto::cn_context &context, const CachedBlock& b, C
   return true;
 }
 
+bool Core::checkStakeLimit(const ReserveProof& reserve_proof, const AccountPublicAddress& address) {
+  uint32_t topIndex = chainsLeaves[0]->getTopBlockIndex();
+
+  if (topIndex <= CryptoNote::parameters::UPGRADE_HEIGHT_V5)
+    return true;
+
+  uint64_t alreadyGeneratedCoins = chainsLeaves[0]->getAlreadyGeneratedCoins(topIndex);
+  uint64_t minStake = currency.calculateStake(alreadyGeneratedCoins);
+
+  uint64_t totalProof = 0, spentProof = 0;
+  std::string message = "";
+  if (!checkReserveProof(reserve_proof, address, message, topIndex + 1, totalProof, spentProof)) {
+    return false;
+  }
+
+  const uint64_t reserve = totalProof - spentProof;
+  const size_t allowed = reserve / minStake;
+  size_t depth = 0, found = 0;
+  Hash prev_hash = getBlockHashByIndex(topIndex);
+  while (depth <= currency.minedMoneyUnlockWindow() || found <= allowed) {
+    BlockTemplate prev_block = getBlockByHash(prev_hash);
+    if (prev_block.majorVersion < BLOCK_MAJOR_VERSION_5)
+      break;
+    prev_hash = prev_block.previousBlockHash;
+    for (const auto& c : reserve_proof.proofs) {
+      for (const auto& p : prev_block.stake.reserve_proof.proofs) {
+        if (c.key_image == p.key_image) {
+          found++;
+        }
+      }
+    }
+
+    depth++;
+  }
+
+  if (found > allowed) {
+    return false;
+  }
+
+  return true;
+}
+
 // Calculate ln(p) of Poisson distribution
 // Original idea : https://stackoverflow.com/questions/30156803/implementing-poisson-distribution-in-c
 // Using logarithms avoids dealing with very large (k!) and very small (p < 10^-44) numbers
@@ -646,6 +688,8 @@ double calc_poisson_ln(double lam, uint64_t k)
 
 std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlock) {
   throwIfNotInitialized();
+
+  pauseMining();
 
   std::lock_guard<std::recursive_mutex> lock(m_blockchain_lock);
 
@@ -1085,6 +1129,8 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
   logger(Logging::DEBUGGING) << "Block: " << blockHash << " successfully added";
   notifyOnSuccess(ret, previousBlockIndex, cachedBlock, *cache);
 
+  updateBlockTemplateAndResumeMining();
+
   return ret;
 }
 /* Take the current block spent key images and run them
@@ -1232,8 +1278,8 @@ void Core::updateBlockTemplateAndResumeMining() {
     logger(Logging::DEBUGGING) << "updated block template and resumed mining";
   }
   else {
-    logger(Logging::ERROR) << "updating block template failed, mining not resumed";
-    m_miner->stop();
+    logger(Logging::DEBUGGING) << "updating block template failed, mining not resumed";
+    //m_miner->stop();
   }
 }
 

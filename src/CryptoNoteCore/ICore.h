@@ -112,6 +112,7 @@ public:
 
   virtual uint64_t getBaseStake() = 0;
   virtual bool getBaseStake(const uint32_t height, uint64_t& stake) = 0;
+  virtual bool checkStakeLimit(const ReserveProof& reserve_proof, const AccountPublicAddress& address) = 0;
 
   virtual bool getBlockTemplate(BlockTemplate& b, const AccountPublicAddress& adr, const BinaryArray& extraNonce, const ReserveProof& reserveProof,
                                 Difficulty& difficulty, uint32_t& height) const = 0;
