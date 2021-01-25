@@ -54,7 +54,7 @@ struct WalletConfiguration {
   uint32_t scanHeight;
 };
 
-void generateNewWallet(const CryptoNote::Currency& currency, const WalletConfiguration& conf, Logging::ILogger& logger, System::Dispatcher& dispatcher);
+void generateNewWallet(const CryptoNote::Currency& currency, const WalletConfiguration& conf, Logging::ILogger& logger, System::Dispatcher& dispatcher, CryptoNote::INode& node);
 
 struct TransactionsInBlockInfoFilter;
 

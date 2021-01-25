@@ -318,7 +318,12 @@ void PaymentGateService::runInProcess(Logging::LoggerRef& log) {
 
   p2pStarted.wait();
 
-  runWalletService(currency, *node);
+  if (config.gateConfiguration.generateNewContainer) {
+    generateNewWallet(currency, getWalletConfig(), logger, *dispatcher, *node);
+  }
+  else {
+    runWalletService(currency, *node);
+  }
 
   p2pNode.sendStopSignal();
   context.get();
@@ -335,11 +340,16 @@ void PaymentGateService::runRpcProxy(Logging::LoggerRef& log) {
     PaymentService::NodeFactory::createNode(
       config.remoteNodeConfig.m_daemon_host,
       config.remoteNodeConfig.m_daemon_port,
-      "/", // TODO: get service path from config, althouh by default / is correct
-      false,
+      "/",   // TODO: add to config, i.e. make configurable
+      false, // TODO: add to config, i.e. make configurable or determine by URL protocol and port
       log.getLogger()));
 
-  runWalletService(currency, *node);
+  if (config.gateConfiguration.generateNewContainer) {
+    generateNewWallet(currency, getWalletConfig(), logger, *dispatcher, *node);
+  }
+  else {
+    runWalletService(currency, *node);
+  }
 }
 
 void PaymentGateService::runWalletService(const CryptoNote::Currency& currency, CryptoNote::INode& node) {

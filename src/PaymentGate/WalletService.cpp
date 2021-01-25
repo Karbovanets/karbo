@@ -43,7 +43,6 @@
 #include <System/RemoteContext.h>
 
 #include "PaymentServiceJsonRpcMessages.h"
-#include "NodeFactory.h"
 
 #include "Wallet/WalletGreen.h"
 #include "Wallet/LegacyKeysImporter.h"
@@ -333,14 +332,10 @@ std::vector<CryptoNote::WalletOrder> convertWalletRpcOrdersToWalletOrders(const 
 
 }
 
-void generateNewWallet(const CryptoNote::Currency& currency, const WalletConfiguration& conf, Logging::ILogger& logger, System::Dispatcher& dispatcher) {
+void generateNewWallet(const CryptoNote::Currency& currency, const WalletConfiguration& conf, Logging::ILogger& logger, System::Dispatcher& dispatcher, CryptoNote::INode& node) {
   Logging::LoggerRef log(logger, "generateNewWallet");
 
-  // neer real node here
-  CryptoNote::INode* nodeStub = NodeFactory::createNodeStub();
-  std::unique_ptr<CryptoNote::INode> nodeGuard(nodeStub);
-
-  CryptoNote::IWallet* wallet = new CryptoNote::WalletGreen(dispatcher, currency, *nodeStub, logger);
+  CryptoNote::IWallet* wallet = new CryptoNote::WalletGreen(dispatcher, currency, node, logger);
   std::unique_ptr<CryptoNote::IWallet> walletGuard(wallet);
 
   std::string address;
