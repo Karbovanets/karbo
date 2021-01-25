@@ -319,6 +319,7 @@ endif ()
 
 add_subdirectory(external)
 add_subdirectory(src)
+add_subdirectory(include)
 
 ## We need to setup the RocksDB build environment to match our system
 include_directories(${CMAKE_SOURCE_DIR}/external/zstd/lib)
