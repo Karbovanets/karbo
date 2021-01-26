@@ -1292,7 +1292,7 @@ void Core::onSynchronized() {
 }
 
 bool Core::handleBlockFound(BlockTemplate& b) {
-  pauseMining();
+  //pauseMining();
 
   auto add_result = submitBlock(toBinaryArray(b));
   if (add_result != error::AddBlockErrorCode::ADDED_TO_MAIN &&
@@ -1301,7 +1301,7 @@ bool Core::handleBlockFound(BlockTemplate& b) {
     return false;
   }
 
-  updateBlockTemplateAndResumeMining();
+  //updateBlockTemplateAndResumeMining();
 
   return true;
 }
