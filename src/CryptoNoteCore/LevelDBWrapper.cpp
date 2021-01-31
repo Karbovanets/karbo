@@ -31,6 +31,8 @@ LevelDBWrapper::~LevelDBWrapper() {}
 
 void LevelDBWrapper::init()
 {
+    logger(INFO) << "LevelDB v. " << leveldb::kMajorVersion << "." << leveldb::kMinorVersion << ".0";
+
     // Set up database connection information and open database
     leveldb::DB* dbPtr;
 
@@ -262,4 +264,15 @@ std::string LevelDBWrapper::getDataDir(const DataBaseConfig &config)
   else {
     return config.getDataDir() + '/' + DB_NAME;
   }
+}
+
+void LevelDBWrapper::recreate()
+{
+  if (state.load() == INITIALIZED)
+  {
+    shutdown();
+  }
+
+  destroy();
+  init();
 }

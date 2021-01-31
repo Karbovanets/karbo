@@ -39,6 +39,8 @@ namespace CryptoNote
         std::error_code read(IReadBatch &batch) override;
         std::error_code readThreadSafe(IReadBatch &batch) override;
 
+        void recreate() override;
+
       private:
         std::error_code write(IWriteBatch &batch, bool sync);
 
@@ -53,6 +55,6 @@ namespace CryptoNote
         Logging::LoggerRef logger;
         std::unique_ptr<leveldb::DB> db;
         std::atomic<State> state;
-		const DataBaseConfig m_config;
+  		  const DataBaseConfig m_config;
     };
 } // namespace CryptoNote
