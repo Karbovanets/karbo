@@ -30,8 +30,8 @@ using namespace CryptoNote;
 using namespace Logging;
 
 namespace {
-  const std::string DB_NAME = "DB";
-  const std::string TESTNET_DB_NAME = "testnet_DB";
+  const std::string DB_NAME = "RocksDB";
+  const std::string TESTNET_DB_NAME = "testnet_RocksDB";
 }
 
 RocksDBWrapper::RocksDBWrapper(Logging::ILogger& logger, const DataBaseConfig &config) : 
