@@ -333,5 +333,3 @@ if(NOT MSVC)
   set_directory_properties(PROPERTIES ADDITIONAL_MAKE_CLEAN_FILES "${PROJECT_BINARY_DIR}/rocksdb/librocksdb.a")
 endif()
 
-endif()
-
