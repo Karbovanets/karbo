@@ -1,19 +1,18 @@
 # Read project version from git tag.
-cmake_policy(SET CMP0007 OLD)
 find_package(Git)
-message(STATUS "Found Git: ${GIT_FOUND}")
-if(GIT_FOUND)
+message(STATUS "Found Git: ${GIT_FOUND}, preparing version...")
+if(Git_FOUND OR GIT_FOUND)
   execute_process(
-    COMMAND "${GIT_EXECUTABLE}" describe --tags --abbrev=0 --match "v*"
-    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    COMMAND "${GIT_EXECUTABLE}" describe --tags --abbrev=0 --match "v.*"
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
     RESULT_VARIABLE PROJECT_GIT_RESULT
     OUTPUT_VARIABLE PROJECT_GIT_TAG
     ERROR_VARIABLE PROJECT_GIT_ERROR
     OUTPUT_STRIP_TRAILING_WHITESPACE
     ERROR_STRIP_TRAILING_WHITESPACE)
   if(NOT PROJECT_GIT_RESULT EQUAL 0)
-    set(PROJECT_GIT_TAG "0.0.0")
-    set(PROJECT_VERSION_MAJOR 0)
+    set(PROJECT_GIT_TAG "v.2.0.0")
+    set(PROJECT_VERSION_MAJOR 2)
     set(PROJECT_VERSION_MINOR 0)
     set(PROJECT_VERSION_PATCH 0)
     message(WARNING "Failed to execute Git: ${PROJECT_GIT_ERROR}")
@@ -28,16 +27,16 @@ if(GIT_FOUND)
     set(PROJECT_VERSION_MINOR ${version_minor})
     list(GET VERSION_MATCHES 2 version_patch)
     set(PROJECT_VERSION_PATCH ${version_patch})
-
-    message(STATUS "Git tag: ${PROJECT_GIT_TAG}")
-    message(STATUS "VERSION_MAJOR: ${PROJECT_VERSION_MAJOR}")
-    message(STATUS "VERSION_MINOR: ${PROJECT_VERSION_MINOR}")
-    message(STATUS "VERSION_PATCH: ${PROJECT_VERSION_PATCH}")
   endif()
+
+  message(STATUS "Git tag: ${PROJECT_GIT_TAG}")
+  message(STATUS "VERSION_MAJOR: ${PROJECT_VERSION_MAJOR}")
+  message(STATUS "VERSION_MINOR: ${PROJECT_VERSION_MINOR}")
+  message(STATUS "VERSION_PATCH: ${PROJECT_VERSION_PATCH}")
 
   execute_process(
     COMMAND "${GIT_EXECUTABLE}" rev-parse --short HEAD
-    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
     RESULT_VARIABLE PROJECT_GIT_RESULT
     OUTPUT_VARIABLE PROJECT_GIT_COMMIT_ID
     ERROR_VARIABLE PROJECT_GIT_ERROR
@@ -51,7 +50,7 @@ if(GIT_FOUND)
   endif()
 
   execute_process(
-    COMMAND "${GIT_EXECUTABLE}" rev-list --count ${PROJECT_GIT_COMMIT_ID}
+    COMMAND "${GIT_EXECUTABLE}" rev-list --count HEAD
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     OUTPUT_VARIABLE PROJECT_GIT_COMMIT_COUNT
     OUTPUT_STRIP_TRAILING_WHITESPACE)
@@ -62,6 +61,6 @@ if(GIT_FOUND)
     message(STATUS "Git commit count: ${PROJECT_GIT_COMMIT_COUNT}")
     set(PROJECT_VERSION_REV ${PROJECT_GIT_COMMIT_COUNT})
   endif()
-
-  configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in" "${TO}")
+else()
+  message(STATUS "WARNING: Git was not found!")
 endif()

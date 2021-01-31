@@ -54,6 +54,7 @@ public:
   virtual uint64_t getWhitePeerlistSize() const { return 0; }
   virtual uint64_t getGreyPeerlistSize() const { return 0; }
   virtual std::string getNodeVersion() const { return std::string(); }
+  virtual bool isConnected() const override { return true; }
 
   virtual void getBlockHashesByTimestamps(uint64_t timestampBegin, size_t secondsCount, std::vector<Crypto::Hash>& blockHashes, const Callback& callback) override {
     callback(std::error_code());
@@ -88,33 +89,37 @@ public:
   }
 
   virtual void getBlocks(const std::vector<uint32_t>& blockHeights, std::vector<std::vector<CryptoNote::BlockDetails>>& blocks,
-    const Callback& callback) override { }
+    const Callback& callback) override { callback(std::error_code()); }
 
   virtual void getBlocks(const std::vector<Crypto::Hash>& blockHashes, std::vector<CryptoNote::BlockDetails>& blocks,
-    const Callback& callback) override { }
+    const Callback& callback) override { callback(std::error_code()); }
 
-  virtual void getBlock(const uint32_t blockHeight, CryptoNote::BlockDetails &block, const Callback& callback) override { }
+  virtual void getBlock(const uint32_t blockHeight, CryptoNote::BlockDetails &block, const Callback& callback) override { callback(std::error_code()); }
 
-  virtual void getBlockTimestamp(uint32_t height, uint64_t& timestamp, const Callback& callback) override { }
+  virtual void getBlockTimestamp(uint32_t height, uint64_t& timestamp, const Callback& callback) override { callback(std::error_code()); }
 
-  virtual void getTransaction(const Crypto::Hash& transactionHash, CryptoNote::Transaction& transaction, const Callback& callback) override {}
+  virtual void getTransaction(const Crypto::Hash& transactionHash, CryptoNote::Transaction& transaction, const Callback& callback) override { callback(std::error_code()); }
 
   virtual void getTransactions(const std::vector<Crypto::Hash>& transactionHashes, std::vector<CryptoNote::TransactionDetails>& transactions,
-    const Callback& callback) override { }
+    const Callback& callback) override { callback(std::error_code()); }
 
   virtual void getTransactionsByPaymentId(const Crypto::Hash& paymentId, std::vector<CryptoNote::TransactionDetails>& transactions,
-    const Callback& callback) override { }
+    const Callback& callback) override { callback(std::error_code()); }
 
   virtual void getMultisignatureOutputByGlobalIndex(uint64_t amount, uint32_t gindex, CryptoNote::MultisignatureOutput& out,
-    const Callback& callback) override { }
+    const Callback& callback) override { callback(std::error_code()); }
 
-  virtual void isSynchronized(bool& syncStatus, const Callback& callback) override { }
+  virtual void isSynchronized(bool& syncStatus, const Callback& callback) override { callback(std::error_code()); }
 
-  virtual void getConnections(std::vector<CryptoNote::p2pConnection>& connections, const Callback& callback) override { }
+  virtual void getConnections(std::vector<CryptoNote::p2pConnection>& connections, const Callback& callback) override { callback(std::error_code()); }
 
   virtual std::string feeAddress() const override { return std::string(); }
 
   virtual uint64_t feeAmount() const override { return 0; }
+
+  virtual void setRootCert(const std::string &path) { }
+
+  virtual void disableVerify() { }
 
 };
 
@@ -148,8 +153,12 @@ NodeFactory::NodeFactory() {
 NodeFactory::~NodeFactory() {
 }
 
-CryptoNote::INode* NodeFactory::createNode(const std::string& daemonAddress, uint16_t daemonPort, Logging::ILogger& logger) {
-  std::unique_ptr<CryptoNote::INode> node(new CryptoNote::NodeRpcProxy(daemonAddress, daemonPort, logger));
+CryptoNote::INode* NodeFactory::createNode(const std::string& daemonAddress,
+                                           uint16_t daemonPort,
+                                           const std::string &daemonPath,
+                                           const bool &daemonSSL,
+                                           Logging::ILogger& logger) {
+  std::unique_ptr<CryptoNote::INode> node(new CryptoNote::NodeRpcProxy(daemonAddress, daemonPort, daemonPath, daemonSSL, logger));
 
   NodeInitObserver initObserver;
   node->init(std::bind(&NodeInitObserver::initCompleted, &initObserver, std::placeholders::_1));

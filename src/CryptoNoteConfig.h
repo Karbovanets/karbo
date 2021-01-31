@@ -33,6 +33,7 @@ const size_t   CRYPTONOTE_MAX_TX_SIZE                        = 1000000000;
 const uint64_t CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX       = 111;         // addresses start with "K"
 const uint64_t CRYPTONOTE_TX_PROOF_BASE58_PREFIX             = 3576968;     // (0x369488), starts with "Proof..."
 const uint64_t CRYPTONOTE_RESERVE_PROOF_BASE58_PREFIX        = 44907175188; // (0xa74ad1d14), starts with "RsrvPrf..."
+const uint64_t CRYPTONOTE_KEYS_SIGNATURE_BASE58_PREFIX       = 176103705;   // (0xa7f2119), starts with "SigV1..."
 const size_t   CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW          = 10;
 const size_t   CRYPTONOTE_TX_SPENDABLE_AGE                   = 6;
 const uint64_t CRYPTONOTE_BLOCK_FUTURE_TIME_LIMIT            = DIFFICULTY_TARGET * 7;
@@ -144,6 +145,14 @@ const size_t   COMMAND_RPC_GET_BLOCKS_FAST_MAX_COUNT         =  1000;
 
 const int      P2P_DEFAULT_PORT                              =  32347;
 const int      RPC_DEFAULT_PORT                              =  32348;
+const int      RPC_DEFAULT_SSL_PORT                          =  32448;
+const int      WALLET_RPC_DEFAULT_PORT                       =  15000;
+const int      WALLET_RPC_DEFAULT_SSL_PORT                   =  15100;
+const int      GATE_RPC_DEFAULT_PORT                         =  16000;
+const int      GATE_RPC_DEFAULT_SSL_PORT                     =  16100;
+const char     RPC_DEFAULT_CHAIN_FILE[]                      = "rpc_server.crt";
+const char     RPC_DEFAULT_KEY_FILE[]                        = "rpc_server.key";
+const char     RPC_DEFAULT_DH_FILE[]                         = "rpc_server.pem";
 
 const size_t   P2P_LOCAL_WHITE_PEERLIST_LIMIT                =  1000;
 const size_t   P2P_LOCAL_GRAY_PEERLIST_LIMIT                 =  5000;
@@ -165,12 +174,13 @@ const uint8_t  P2P_UPGRADE_WINDOW                            = 2;
 const uint8_t  P2P_LITE_BLOCKS_PROPOGATION_VERSION           = 3;
 
 const size_t   P2P_CONNECTION_MAX_WRITE_BUFFER_SIZE          = 64 * 1024 * 1024; // 64 MB
-const uint32_t P2P_DEFAULT_CONNECTIONS_COUNT                 = 8;
+const uint32_t P2P_DEFAULT_CONNECTIONS_COUNT                 = 12;
 const size_t   P2P_DEFAULT_ANCHOR_CONNECTIONS_COUNT          = 2;
 const size_t   P2P_DEFAULT_WHITELIST_CONNECTIONS_PERCENT     = 70;
 const uint32_t P2P_DEFAULT_HANDSHAKE_INTERVAL                = 60;            // seconds
 const uint32_t P2P_DEFAULT_PACKET_MAX_SIZE                   = 100000000;     // 100000000 bytes maximum packet size
 const uint32_t P2P_DEFAULT_PEERS_IN_HANDSHAKE                = 250;
+const uint32_t P2P_MAX_PEERS_IN_HANDSHAKE                    = 256;
 const uint32_t P2P_DEFAULT_CONNECTION_TIMEOUT                = 5000;          // 5 seconds
 const uint32_t P2P_DEFAULT_PING_CONNECTION_TIMEOUT           = 2000;          // 2 seconds
 const uint64_t P2P_DEFAULT_INVOKE_TIMEOUT                    = 60 * 2 * 1000; // 2 minutes
@@ -192,9 +202,7 @@ const char* const SEED_NODES[] = {
   "108.61.198.115:32347",
   "45.32.232.11:32347",
   "46.149.182.151:32347",
-  "144.91.94.65:32347",
-  "95.216.195.104:32347",
-  "45.151.175.158:32347"
+  "144.91.94.65:32347"
 };
 
 } // CryptoNote

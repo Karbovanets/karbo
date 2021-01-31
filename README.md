@@ -1,4 +1,6 @@
-This is the alternative version of Karbo codebase, fully functional and compatible. Yet we recommend to stick to our native version.
+![Build check](https://github.com/Karbovanets/karbo/workflows/Build%20check/badge.svg)
+
+This is the alternative version of Karbo codebase, compatible on P2P layer, however Karbo 1 wallets are incompatible with Karbo 2 nodes (built from this repo) and vice versa. In other words don't use Karbo node v. 2.\*.\* in wallets v. 1.\*.\* and Karbo nodes v. 1.\*.\* in wallets v. 2.\*.\*.
 
 The Karbo (Karbovanets) is cryptocurrency of Ukrainian origin, just like Bitcoin but more anonymous and privacy centric with opaque and more analysis resistant blockchain. It is people's electronic cash, not connected to government or officials.
 

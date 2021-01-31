@@ -23,7 +23,6 @@
 #include <boost/variant.hpp>
 
 #include "android.h"
-#include "json.hpp"
 #include "BinaryArray.hpp"
 #include "CryptoTypes.h"
 #include <Common/StringTools.h>
@@ -125,52 +124,5 @@ struct RawBlock {
   BinaryArray block; //BlockTemplate
   std::vector<BinaryArray> transactions;
 };
-
-inline void to_json(nlohmann::json &j, const CryptoNote::KeyInput &k)
-{
-    j = {
-        {"amount", k.amount},
-        {"key_offsets", k.outputIndexes},
-        {"k_image", k.keyImage}
-    };
-}
-
-inline void from_json(const nlohmann::json &j, CryptoNote::KeyInput &k)
-{
-    k.amount = j.at("amount").get<uint64_t>();
-    k.outputIndexes = j.at("key_offsets").get<std::vector<uint32_t>>();
-    k.keyImage = j.at("k_image").get<Crypto::KeyImage>();
-}
-
-inline void to_json(nlohmann::json &j, const CryptoNote::RawBlock &block)
-{
-    std::vector<std::string> transactions;
-
-    for (auto transaction : block.transactions)
-    {
-        transactions.push_back(Common::toHex(transaction));
-    }
-
-    j = {
-        {"block", Common::toHex(block.block)},
-        {"transactions", transactions}
-    };
-}
-
-inline void from_json(const nlohmann::json &j, CryptoNote::RawBlock &block)
-{
-    block.transactions.clear();
-
-    std::string blockString = j.at("block").get<std::string>();
-
-    block.block = Common::fromHex(blockString);
-
-    std::vector<std::string> transactions = j.at("transactions").get<std::vector<std::string>>();
-
-    for (const auto transaction : transactions)
-    {
-        block.transactions.push_back(Common::fromHex(transaction));
-    }
-}
 
 }

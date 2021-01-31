@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2018-2019, The TurtleCoin Developers
 // Copyright (c) 2016-2019, The Karbo developers
 //
 // This file is part of Karbo.
@@ -17,6 +18,9 @@
 // along with Karbo.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
+
+#include <boost/optional.hpp>
+
 #include "CachedTransaction.h"
 
 namespace CryptoNote {
@@ -28,6 +32,7 @@ public:
   virtual ~ITransactionPool() {}
   virtual bool pushTransaction(CachedTransaction&& tx, TransactionValidatorState&& transactionState) = 0;
   virtual const CachedTransaction& getTransaction(const Crypto::Hash& hash) const = 0;
+  virtual const boost::optional<CachedTransaction> tryGetTransaction(const Crypto::Hash &hash) const = 0;
   virtual bool removeTransaction(const Crypto::Hash& hash) = 0;
 
   virtual size_t getTransactionCount() const = 0;

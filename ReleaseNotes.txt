@@ -1,12 +1,74 @@
-Release notes 2.1.2
+Release notes v.2.3.7
 
+- Some bandwidth saving in the exchange of peer lists
+- Increase the diffusion speed of peer addresses
+- Gray peer list housekeeping system
+- Ban functionality improvements, added --ban-list option to load ban list from file
+- Drop peers that spam peer lists
+- Protocol: reject empty incoming block messages
+- Increase the default number of connections from 8 to 12
+- Removed unused code, some code clean up
+- Made daemon's built-in miner working again (just in case of future use)
+
+Release notes v.2.3.6
+
+- New RPC methods (for faster 'web' wallet syncing)
+- New output selection for transaction sending - 'smart' input ordering
+- RocksDB updated to v. 6.10.2
+- Base64 implementation replaced to capable of encoding binary data i.a.
+
+
+Release notes v.2.3.5
+
+- Fixed synchronization issues that may have happen for some users.
+
+Release notes v.2.3.4
+
+- Added SSL support for RPC
+- Block transactions blob consistency check: the block header transactions hash vector is checked against the included blobs hashes.
+- Fixed synchronization issues where node may stuck at some block (especially after reorg) with "random access index" error
+- Other fixes and improvements
+
+Release notes v.2.3.3
+
+- Fixed race conditions
+- TransactionPool validation speedup on add Block
+- Uncommented few log messages
+- Added minor changes to code style
+
+Release notes v.2.3.2
+
+- Fixed a bug in transaction fee validation.
+
+Release notes v.2.3.1
+
+- Fixed JSON serialization of float numbers
+- An error is returned if some of the reserve proof's transactions couldn't be found
+- Limit the number of requested blocks in some methods
+- Improve error handling in some methods
+
+
+Release notes v.2.3.0
+
+- New JSON RPC methods
+- Lite Blocks
+- Flat-rate fee for public nodes
+- Fee per byte for tx extra
+- RocksDB updated to v. 6.8.1
+- Reduced the size of blockchain on disk due to ZSTD compression and removing of duplicating flat-file main chain storage
+- Synchronization speed-up (in comparison to prev. version of this implementation, not so fast as Karbo-1, sadly)
+- Synchronization speed-up of recent blocks not in checkpoints zone thanks to multi-threading transactions validation
+- Many other compatibility changes, updates and fixes
+
+Release notes v.2.2.0
+
+- Various changes for compatibility with Karbo
 - Updated RocksDB to release 5.15.10
-- Limit reorganization depth by mined money unlock window
-- Poisson check during deep reorganization
-- Transactions comparison check during reorganization
-- Burning bug and other bugs fixed
 - Added GreenWallet (CLI wallet based on WalletGreen library)
-- Various changes for compatibility with Karbo 
+- Limit reorganization depth by mined money unlock window
+- Transactions comparison check during reorganization
+- Poisson check during deep reorganization
+- Burning bug and other bugs fixed
 - Other various changes and fixes
 
 Release notes 2.1.1

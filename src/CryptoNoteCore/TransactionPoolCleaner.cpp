@@ -50,6 +50,10 @@ const CachedTransaction& TransactionPoolCleanWrapper::getTransaction(const Crypt
   return transactionPool->getTransaction(hash);
 }
 
+const boost::optional<CachedTransaction> TransactionPoolCleanWrapper::tryGetTransaction(const Crypto::Hash &hash) const {
+  return transactionPool->tryGetTransaction(hash);
+}
+
 bool TransactionPoolCleanWrapper::removeTransaction(const Crypto::Hash& hash) {
   return transactionPool->removeTransaction(hash);
 }

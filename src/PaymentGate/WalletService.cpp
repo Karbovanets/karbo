@@ -43,7 +43,6 @@
 #include <System/RemoteContext.h>
 
 #include "PaymentServiceJsonRpcMessages.h"
-#include "NodeFactory.h"
 
 #include "Wallet/WalletGreen.h"
 #include "Wallet/LegacyKeysImporter.h"
@@ -333,13 +332,10 @@ std::vector<CryptoNote::WalletOrder> convertWalletRpcOrdersToWalletOrders(const 
 
 }
 
-void generateNewWallet(const CryptoNote::Currency& currency, const WalletConfiguration& conf, Logging::ILogger& logger, System::Dispatcher& dispatcher) {
+void generateNewWallet(const CryptoNote::Currency& currency, const WalletConfiguration& conf, Logging::ILogger& logger, System::Dispatcher& dispatcher, CryptoNote::INode& node) {
   Logging::LoggerRef log(logger, "generateNewWallet");
 
-  CryptoNote::INode* nodeStub = NodeFactory::createNodeStub();
-  std::unique_ptr<CryptoNote::INode> nodeGuard(nodeStub);
-
-  CryptoNote::IWallet* wallet = new CryptoNote::WalletGreen(dispatcher, currency, *nodeStub, logger);
+  CryptoNote::IWallet* wallet = new CryptoNote::WalletGreen(dispatcher, currency, node, logger);
   std::unique_ptr<CryptoNote::IWallet> walletGuard(wallet);
 
   std::string address;
@@ -381,7 +377,14 @@ void generateNewWallet(const CryptoNote::Currency& currency, const WalletConfigu
     }
 
     CryptoNote::AccountBase::generateViewFromSpend(private_spend_key, private_view_key);
-    wallet->initializeWithViewKey(conf.walletFile, conf.walletPassword, private_view_key);
+
+    if (conf.scanHeight != 0) {
+      wallet->initializeWithViewKey(conf.walletFile, conf.walletPassword, private_view_key, conf.scanHeight);
+    }
+    else {
+      wallet->initializeWithViewKey(conf.walletFile, conf.walletPassword, private_view_key);
+    }
+
     address = wallet->createAddress(private_spend_key);
     log(Logging::INFO, Logging::BRIGHT_WHITE) << "Imported wallet successfully.";
   }
@@ -406,8 +409,14 @@ void generateNewWallet(const CryptoNote::Currency& currency, const WalletConfigu
       }
       Crypto::SecretKey private_spend_key = *(struct Crypto::SecretKey *) &private_spend_key_hash;
       Crypto::SecretKey private_view_key = *(struct Crypto::SecretKey *) &private_view_key_hash;
+     
+      if (conf.scanHeight != 0) {
+        wallet->initializeWithViewKey(conf.walletFile, conf.walletPassword, private_view_key, conf.scanHeight);
+      }
+      else {
+        wallet->initializeWithViewKey(conf.walletFile, conf.walletPassword, private_view_key);
+      }
 
-      wallet->initializeWithViewKey(conf.walletFile, conf.walletPassword, private_view_key);
       address = wallet->createAddress(private_spend_key);
       log(Logging::INFO, Logging::BRIGHT_WHITE) << "Wallet imported successfully.";
     }
@@ -1180,6 +1189,40 @@ std::error_code WalletService::getReserveProof(std::string& reserveProof, const 
     return make_error_code(CryptoNote::error::INTERNAL_WALLET_ERROR);
   }
 
+  return std::error_code();
+}
+
+std::error_code WalletService::signMessage(const std::string& message, const std::string& address, std::string& signature) {
+  try {
+    System::EventLock lk(readyEvent);
+
+    signature = wallet.signMessage(message, address);
+  }
+  catch (std::system_error& x) {
+    logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Error while signing message: " << x.what();
+    return x.code();
+  }
+  catch (std::exception& x) {
+    logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Error while signing message: " << x.what();
+    return make_error_code(CryptoNote::error::INTERNAL_WALLET_ERROR);
+  }
+  return std::error_code();
+}
+
+std::error_code WalletService::verifyMessage(const std::string& message, const std::string& signature, const std::string& address, bool& isValid) {
+  try {
+    System::EventLock lk(readyEvent);
+
+    isValid = wallet.verifyMessage(message, address, signature);
+  }
+  catch (std::system_error& x) {
+    logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Error while verifying message: " << x.what();
+    return x.code();
+  }
+  catch (std::exception& x) {
+    logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Error while verifying message: " << x.what();
+    return make_error_code(CryptoNote::error::INTERNAL_WALLET_ERROR);
+  }
   return std::error_code();
 }
 

@@ -12,7 +12,7 @@
 #include <iostream>
 #include <string>
 
-namespace rocksdb {
+namespace ROCKSDB_NAMESPACE {
 
 class DBEncryptionTest : public DBTestBase {
  public:
@@ -83,12 +83,40 @@ TEST_F(DBEncryptionTest, CheckEncrypted) {
   }
 }
 
+TEST_F(DBEncryptionTest, ReadEmptyFile) {
+  auto defaultEnv = Env::Default();
+
+  // create empty file for reading it back in later
+  auto envOptions = EnvOptions(CurrentOptions());
+  auto filePath = dbname_ + "/empty.empty";
+
+  Status status;
+  {
+    std::unique_ptr<WritableFile> writableFile;
+    status = defaultEnv->NewWritableFile(filePath, &writableFile, envOptions);
+    ASSERT_OK(status);
+  }
+
+  std::unique_ptr<SequentialFile> seqFile;
+  status = defaultEnv->NewSequentialFile(filePath, &seqFile, envOptions);
+  ASSERT_OK(status);
+
+  std::string scratch;
+  Slice data;
+  // reading back 16 bytes from the empty file shouldn't trigger an assertion.
+  // it should just work and return an empty string
+  status = seqFile->Read(16, &data, (char*)scratch.data());
+  ASSERT_OK(status);
+
+  ASSERT_TRUE(data.empty());
+}
+
 #endif // ROCKSDB_LITE
 
-}  // namespace rocksdb
+}  // namespace ROCKSDB_NAMESPACE
 
 int main(int argc, char** argv) {
-  rocksdb::port::InstallStackTraceHandler();
+  ROCKSDB_NAMESPACE::port::InstallStackTraceHandler();
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

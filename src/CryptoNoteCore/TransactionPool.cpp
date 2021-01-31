@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2018-2019, The TurtleCoin Developers
 // Copyright (c) 2016-2019, The Karbo developers
 //
 // This file is part of Karbo.
@@ -73,6 +74,8 @@ bool TransactionPool::pushTransaction(CachedTransaction&& transaction, Transacti
     pendingTx.paymentId = paymentId;
   }
 
+  std::lock_guard<decltype(m_transactions_lock)> lock(m_transactions_lock);
+
   if (transactionHashIndex.count(pendingTx.getTransactionHash()) > 0) {
     logger(Logging::DEBUGGING) << "pushTransaction: transaction hash already present in index";
     return false;
@@ -90,13 +93,25 @@ bool TransactionPool::pushTransaction(CachedTransaction&& transaction, Transacti
 }
 
 const CachedTransaction& TransactionPool::getTransaction(const Crypto::Hash& hash) const {
+  std::lock_guard<decltype(m_transactions_lock)> lock(m_transactions_lock);
   auto it = transactionHashIndex.find(hash);
   assert(it != transactionHashIndex.end());
 
   return it->cachedTransaction;
 }
 
+const boost::optional<CachedTransaction> TransactionPool::tryGetTransaction(const Crypto::Hash &hash) const {
+  std::lock_guard<decltype(m_transactions_lock)> lock(m_transactions_lock);
+  auto it = transactionHashIndex.find(hash);
+  if (it != transactionHashIndex.end()) {
+    return it->cachedTransaction;
+  }
+
+  return boost::none;
+}
+
 bool TransactionPool::removeTransaction(const Crypto::Hash& hash) {
+  std::lock_guard<decltype(m_transactions_lock)> lock(m_transactions_lock);
   auto it = transactionHashIndex.find(hash);
   if (it == transactionHashIndex.end()) {
     logger(Logging::DEBUGGING) << "removeTransaction: transaction not found";
@@ -111,10 +126,12 @@ bool TransactionPool::removeTransaction(const Crypto::Hash& hash) {
 }
 
 size_t TransactionPool::getTransactionCount() const {
+  std::lock_guard<decltype(m_transactions_lock)> lock(m_transactions_lock);
   return transactionHashIndex.size();
 }
 
 std::vector<Crypto::Hash> TransactionPool::getTransactionHashes() const {
+  std::lock_guard<decltype(m_transactions_lock)> lock(m_transactions_lock);
   std::vector<Crypto::Hash> hashes;
   for (auto it = transactionCostIndex.begin(); it != transactionCostIndex.end(); ++it) {
     hashes.push_back(it->getTransactionHash());
@@ -124,6 +141,7 @@ std::vector<Crypto::Hash> TransactionPool::getTransactionHashes() const {
 }
 
 bool TransactionPool::checkIfTransactionPresent(const Crypto::Hash& hash) const {
+  std::lock_guard<decltype(m_transactions_lock)> lock(m_transactions_lock);
   return transactionHashIndex.find(hash) != transactionHashIndex.end();
 }
 
@@ -132,6 +150,7 @@ const TransactionValidatorState& TransactionPool::getPoolTransactionValidationSt
 }
 
 std::vector<CachedTransaction> TransactionPool::getPoolTransactions() const {
+  std::lock_guard<decltype(m_transactions_lock)> lock(m_transactions_lock);
   std::vector<CachedTransaction> result;
   result.reserve(transactionCostIndex.size());
 
@@ -143,6 +162,7 @@ std::vector<CachedTransaction> TransactionPool::getPoolTransactions() const {
 }
 
 uint64_t TransactionPool::getTransactionReceiveTime(const Crypto::Hash& hash) const {
+  std::lock_guard<decltype(m_transactions_lock)> lock(m_transactions_lock);
   auto it = transactionHashIndex.find(hash);
   assert(it != transactionHashIndex.end());
 
@@ -150,6 +170,7 @@ uint64_t TransactionPool::getTransactionReceiveTime(const Crypto::Hash& hash) co
 }
 
 std::vector<Crypto::Hash> TransactionPool::getTransactionHashesByPaymentId(const Crypto::Hash& paymentId) const {
+  std::lock_guard<decltype(m_transactions_lock)> lock(m_transactions_lock);
   boost::optional<Crypto::Hash> p(paymentId);
 
   auto range = paymentIdIndex.equal_range(p);

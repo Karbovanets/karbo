@@ -158,9 +158,13 @@ public:
   virtual uint64_t getWhitePeerlistSize() const = 0;
   virtual uint64_t getGreyPeerlistSize() const = 0;
   virtual std::string getNodeVersion() const = 0;
+  virtual bool isConnected() const = 0;
 
   virtual std::string feeAddress() const = 0;
   virtual uint64_t feeAmount() const = 0;
+
+  virtual void setRootCert(const std::string &path) = 0;
+  virtual void disableVerify() = 0;
 
   virtual void getBlockHashesByTimestamps(uint64_t timestampBegin, size_t secondsCount, std::vector<Crypto::Hash>& blockHashes, const Callback& callback) = 0;
   virtual void getTransactionHashesByPaymentId(const Crypto::Hash& paymentId, std::vector<Crypto::Hash>& transactionHashes, const Callback& callback) = 0;

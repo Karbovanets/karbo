@@ -41,5 +41,7 @@ public:
 #if !defined (USE_LEVELDB)
   virtual std::error_code readThreadSafe(IReadBatch &batch) = 0;
 #endif 
+
+  virtual void recreate() = 0;
 };
 }

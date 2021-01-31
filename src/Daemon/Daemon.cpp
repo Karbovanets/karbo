@@ -1,7 +1,7 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2016, The Forknote developers
 // Copyright (c) 2018, The TurtleCoin developers
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -35,7 +35,7 @@
 #include "Common/FormatTools.h"
 #include "Common/Util.h"
 #include "crypto/hash.h"
-#include "CheckpointsData.h"
+#include "Checkpoints/CheckpointsData.h"
 #include "CryptoNoteCore/CryptoNoteTools.h"
 #include "CryptoNoteCore/Core.h"
 #include "CryptoNoteCore/Currency.h"
@@ -57,6 +57,7 @@
 
 #if defined(WIN32)
 #include <crtdbg.h>
+#undef ERROR
 #endif
 
 using Common::JsonValue;
@@ -143,12 +144,16 @@ int main(int argc, char* argv[])
     RpcServerConfig::initOptions(desc_cmd_sett);
     NetNodeConfig::initOptions(desc_cmd_sett);
     DataBaseConfig::initOptions(desc_cmd_sett);
+    MinerConfig::initOptions(desc_cmd_sett);
 
     po::options_description desc_options("Allowed options");
     desc_options.add(desc_cmd_only).add(desc_cmd_sett);
 
     po::variables_map vm;
     boost::filesystem::path data_dir_path;
+    boost::system::error_code ec;
+    std::string data_dir = "";
+
     bool r = command_line::handle_error_helper(desc_options, [&]()
     {
       po::store(po::parse_command_line(argc, argv, desc_options), vm);
@@ -160,7 +165,7 @@ int main(int argc, char* argv[])
         return false;
       }
 
-      std::string data_dir = command_line::get_arg(vm, command_line::arg_data_dir);
+      data_dir = command_line::get_arg(vm, command_line::arg_data_dir);
       std::string config = command_line::get_arg(vm, arg_config_file);
 
       data_dir_path = data_dir;
@@ -169,7 +174,6 @@ int main(int argc, char* argv[])
         config_path = data_dir_path / config_path;
       }
 
-      boost::system::error_code ec;
       if (boost::filesystem::exists(config_path, ec)) {
         po::store(po::parse_config_file<char>(config_path.string<std::string>().c_str(), desc_cmd_sett), vm);
       }
@@ -265,6 +269,9 @@ int main(int argc, char* argv[])
     netNodeConfig.init(vm);
     netNodeConfig.setTestnet(testnet_mode);
 
+    MinerConfig minerConfig;
+    minerConfig.init(vm);
+
     RpcServerConfig rpcConfig;
     rpcConfig.init(vm);
 
@@ -331,7 +338,7 @@ int main(int argc, char* argv[])
       dispatcher,
       std::unique_ptr<IBlockchainCacheFactory>(new DatabaseBlockchainCacheFactory(*database, logger.getLogger())),
       transactionValidationThreads);
-    ccore.load();
+    ccore.load(minerConfig);
     logger(INFO) << "Core initialized OK";
 
     if (command_line::has_arg(vm, arg_rollback)) {
@@ -369,10 +376,36 @@ int main(int argc, char* argv[])
       dch.start_handling();
     }
 
-    logger(INFO) << "Starting core rpc server on address " << rpcConfig.getBindAddress();
-    rpcServer.start(rpcConfig.bindIp, rpcConfig.bindPort);
-
-    rpcServer.restrictRPC(rpcConfig.restrictedRpc);
+    boost::filesystem::path chain_file_path(rpcConfig.getChainFile());
+    boost::filesystem::path key_file_path(rpcConfig.getKeyFile());
+    boost::filesystem::path dh_file_path(rpcConfig.getDhFile());
+    if (!chain_file_path.has_parent_path()) {
+      chain_file_path = data_dir_path / chain_file_path;
+    }
+    if (!key_file_path.has_parent_path()) {
+      key_file_path = data_dir_path / key_file_path;
+    }
+    if (!dh_file_path.has_parent_path()) {
+      dh_file_path = data_dir_path / dh_file_path;
+    }
+    bool server_ssl_enable = false;
+    if (rpcConfig.isEnabledSSL()) {
+      if (boost::filesystem::exists(chain_file_path, ec) &&
+          boost::filesystem::exists(key_file_path, ec) &&
+          boost::filesystem::exists(dh_file_path, ec)) {
+        rpcServer.setCerts(boost::filesystem::canonical(chain_file_path).string(),
+                           boost::filesystem::canonical(key_file_path).string(),
+                           boost::filesystem::canonical(dh_file_path).string());
+        server_ssl_enable = true;
+      } else {
+        logger(ERROR, BRIGHT_RED) << "Starting RPC SSL server was canceled because certificate file(s) could not be found" << std::endl;
+      }
+    }
+    std::string ssl_info = "";
+    if (server_ssl_enable) ssl_info += ", SSL on address " + rpcConfig.getBindAddressSSL();
+    logger(INFO) << "Starting core rpc server on address " << rpcConfig.getBindAddress() << ssl_info;
+    rpcServer.start(rpcConfig.getBindIP(), rpcConfig.getBindPort(), rpcConfig.getBindPortSSL(), server_ssl_enable);
+    rpcServer.restrictRPC(rpcConfig.restrictedRPC);
     rpcServer.enableCors(rpcConfig.enableCors);
     if (!rpcConfig.nodeFeeAddress.empty() && !rpcConfig.nodeFeeAmountStr.empty()) {
       AccountPublicAddress acc = boost::value_initialized<AccountPublicAddress>();

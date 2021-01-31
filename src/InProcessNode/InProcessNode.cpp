@@ -21,19 +21,18 @@
 #include <functional>
 #include <future>
 #include <boost/utility/value_init.hpp>
-#include <CryptoNoteCore/TransactionApi.h>
 
 #include <System/RemoteContext.h>
 
 #include "CryptoNoteConfig.h"
 #include "Common/Math.h"
-#include "Common/StringTools.h"
 #include "Common/ScopeExit.h"
+#include "Common/StringTools.h"
 #include "CryptoNoteCore/CryptoNoteTools.h"
+#include "CryptoNoteCore/TransactionApi.h"
 #include "CryptoNoteCore/VerificationContext.h"
 #include "CryptoNoteProtocol/CryptoNoteProtocolHandlerCommon.h"
 #include "InProcessNodeErrors.h"
-#include "Common/StringTools.h"
 #include "P2p/ConnectionContext.h"
 #include "version.h"
 
@@ -1004,7 +1003,10 @@ void InProcessNode::getBlockTimestamp(uint32_t height, uint64_t& timestamp, cons
 }
 
 std::error_code InProcessNode::doGetBlockTimestamp(uint32_t height, uint64_t& timestamp) {
-  timestamp = core.getBlockTimestamp(height);
+  if (core.getTopBlockIndex() < height) {
+    return make_error_code(CryptoNote::error::REQUEST_ERROR);
+  }
+  timestamp = core.getBlockTimestampByIndex(height);
 
   return std::error_code();
 }
@@ -1165,6 +1167,14 @@ std::error_code InProcessNode::doGetConnections(std::vector<p2pConnection>& conn
   }
 
   return std::error_code();
+}
+
+void InProcessNode::setRootCert(const std::string &path) {
+  return;
+}
+
+void InProcessNode::disableVerify() {
+  return;
 }
 
 } //namespace CryptoNote

@@ -32,6 +32,10 @@
 #include "Rpc/CoreRpcServerCommandsDefinitions.h"
 #include "Rpc/JsonRpc.h"
 
+#if defined(WIN32)
+#undef ERROR
+#endif
+
 using namespace CryptoNote;
 
 namespace Miner {
@@ -210,7 +214,7 @@ bool MinerManager::submitBlock(const BlockTemplate& minedBlock, const std::strin
   CachedBlock cachedBlock(minedBlock);
 
   try {
-    HttpClient client(m_dispatcher, daemonHost, daemonPort);
+    HttpClient client(m_dispatcher, daemonHost, daemonPort, false);
 
     COMMAND_RPC_SUBMITBLOCK::request request;
     request.emplace_back(Common::toHex(toBinaryArray(minedBlock)));
@@ -230,7 +234,7 @@ bool MinerManager::submitBlock(const BlockTemplate& minedBlock, const std::strin
 
 BlockMiningParameters MinerManager::requestMiningParameters(System::Dispatcher& dispatcher, const std::string& daemonHost, uint16_t daemonPort, const std::string& miningAddress) {
   try {
-    HttpClient client(dispatcher, daemonHost, daemonPort);
+    HttpClient client(dispatcher, daemonHost, daemonPort, false);
 
     COMMAND_RPC_GETBLOCKTEMPLATE::request request;
     request.wallet_address = miningAddress;

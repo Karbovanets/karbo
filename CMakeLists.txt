@@ -1,29 +1,9 @@
-cmake_minimum_required(VERSION 2.8.6)
+cmake_minimum_required(VERSION 3.8)
 project(Karbo)
 
 # Required for finding Threads on ARM
 enable_language(C)
 enable_language(CXX)
-
-# Assert our compiler is good
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    # GCC 7.0 or higher
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7)
-        message(FATAL_ERROR "GCC/G++ 7.0 or greater is required to compile. Please check the README.md for detailed compilation instructions.")
-    endif ()
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    # Clang 6.0 or higher
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 6)
-        message(FATAL_ERROR "Clang 6.0 or greater is required to compile. Please check the README.md for detailed compilation instructions.")
-    endif ()
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    # Visual Studio 15 2017 or higher
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 19.10)
-        message(FATAL_ERROR "MSVC 19.10 or greater is required to compile (Latest Visual Studio 15 2017 should suffice). Please check the README.md for detailed compilation instructions.")
-    endif ()
-else ()
-    message(WARNING "You are using an unsupported compiler. The compilation is very likely to fail. God speed.")
-endif ()
 
 find_package(Threads)
 
@@ -31,12 +11,17 @@ set(VERSION "0.1")
 
 ## This section describes our general CMake setup options
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-set(CMAKE_CONFIGURATION_TYPES Debug RelWithDebInfo Release CACHE TYPE INTERNAL)
+set(CMAKE_CONFIGURATION_TYPES "Debug; RelWithDebInfo; Release" CACHE STRING INTERNAL)
 set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build, options are: Debug, Release, RelWithDebInfo")
 set(CMAKE_SKIP_INSTALL_RULES OFF FORCE)
 set(CMAKE_SKIP_PACKAGE_ALL_DEPENDENCY ON FORCE)
 set(CMAKE_SUPPRESS_REGENERATION ON)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+
+# Enable c++17
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 ## This section is specifically for RocksDB build options that we've disabled for maximum portability
 set(ENABLE_AVX OFF CACHE STRING "Enable RocksDB AVX/AVX2? Defaults to OFF")
@@ -102,43 +87,29 @@ if (WITH_ZSTD)
     add_definitions(-DENABLE_ZSTD_COMPRESSION)
 endif ()
 
-## We only build static binaries -- this is left here for our dependencies
+if(MSVC OR MINGW)
+  set(DEFAULT_STATIC TRUE)
+else()
+  set(DEFAULT_STATIC FALSE)
+endif()
+
 set(STATIC ON CACHE BOOL FORCE "Link libraries statically? Forced to ON")
 
 # This section helps us set up RocksDB for maximum portability
 set(ENABLE_AVX OFF CACHE STRING "Enable RocksDB AVX/AVX2 support detection? Defaults to OFF")
 
 ## This section helps us tag our builds with the git commit information
-set(COMMIT_ID_IN_VERSION ON CACHE BOOL "Include commit ID in version")
-file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/version")
-if (NOT COMMIT_ID_IN_VERSION)
-  set(VERSION "${VERSION}-unknown")
-  configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in" "${CMAKE_CURRENT_BINARY_DIR}/version/version.h")
-  add_custom_target(version ALL)
-elseif(DEFINED COMMIT)
-  string(REPLACE "." "\\." VERSION_RE "${VERSION}")
-  if(NOT REFS MATCHES "(\\(|, )tag: v${VERSION_RE}(\\)|, )")
-    set(VERSION "${VERSION}-g${COMMIT}")
-  endif()
-  configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in" "${CMAKE_CURRENT_BINARY_DIR}/version/version.h")
-  add_custom_target(version ALL)
-else()
-  find_package(Git QUIET)
-  if(Git_FOUND OR GIT_FOUND)
-    message(STATUS "Found Git: ${GIT_EXECUTABLE}")
-    add_custom_target(version ALL "${CMAKE_COMMAND}" "-D" "VERSION=${VERSION}" "-D" "GIT=${GIT_EXECUTABLE}" "-D" "TO=${CMAKE_CURRENT_BINARY_DIR}/version/version.h" "-P" "${CMAKE_CURRENT_SOURCE_DIR}/src/version.cmake" WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
-  else()
-    message(STATUS "WARNING: Git was not found!")
-    set(VERSION "${VERSION}-unknown")
-    configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in" "${CMAKE_CURRENT_BINARY_DIR}/version/version.h")
-    add_custom_target(version ALL)
-  endif()
-endif()
-include_directories(include "${CMAKE_CURRENT_BINARY_DIR}/version" src external)
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/version")
+include("${CMAKE_SOURCE_DIR}/src/version.cmake")
+set(VERSION "${VERSION}")
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in" "${CMAKE_CURRENT_BINARY_DIR}/version/version.h")
+add_custom_target(version ALL)
+
+include_directories(include src external "${CMAKE_CURRENT_BINARY_DIR}/version")  
 
 ## Platform specific code base information is applied here
 if(MSVC)
-  include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/Platform/Windows)
+  include_directories(${CMAKE_SOURCE_DIR}/src/Platform/Windows)
   set (CMAKE_MSVC_FLAGS_BASE "/D_CRT_SECURE_NO_WARNINGS /wd4996 /wd4345 /D_WIN32_WINNT=0x0600 /DWIN32_LEAN_AND_MEAN /DGTEST_HAS_TR1_TUPLE=0 /D_VARIADIC_MAX=8 /D__SSE4_1__")
   set (CMAKE_MSVC_FLAGS_EXT "/bigobj /MP /W3 /GS-")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_MSVC_FLAGS_BASE} ${CMAKE_MSVC_FLAGS_EXT}")
@@ -148,22 +119,22 @@ if(MSVC)
   foreach(VAR CMAKE_C_FLAGS_DEBUG CMAKE_CXX_FLAGS_DEBUG CMAKE_C_FLAGS_RELWITHDEBINFO CMAKE_CXX_FLAGS_RELWITHDEBINFO CMAKE_C_FLAGS_RELEASE CMAKE_CXX_FLAGS_RELEASE)
     string(REPLACE "/MD" "/MT" ${VAR} "${${VAR}}")
   endforeach()
-  include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/src/platform/msc)
+  include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/src/platform/msc)
 elseif(APPLE)
   include_directories(SYSTEM /usr/include/malloc)
   enable_language(ASM)
-  include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/Platform/OSX)
-  include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/Platform/Posix)
+  include_directories(${CMAKE_SOURCE_DIR}/src/Platform/OSX)
+  include_directories(${CMAKE_SOURCE_DIR}/src/Platform/Posix)
 elseif(FREEBSD)
   enable_language(ASM)
-  include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/Platform/FreeBSD)
-  include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/Platform/Posix)
+  include_directories(${CMAKE_SOURCE_DIR}/src/Platform/FreeBSD)
+  include_directories(${CMAKE_SOURCE_DIR}/src/Platform/Posix)
 elseif(ANDROID)
-  include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/Platform/Android)
-  include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/Platform/Posix)
+  include_directories(${CMAKE_SOURCE_DIR}/src/Platform/Android)
+  include_directories(${CMAKE_SOURCE_DIR}/src/Platform/Posix)
 else()
-  include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/Platform/Linux)
-  include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/Platform/Posix)
+  include_directories(${CMAKE_SOURCE_DIR}/src/Platform/Linux)
+  include_directories(${CMAKE_SOURCE_DIR}/src/Platform/Posix)
 endif()
 
 if(NOT MSVC)
@@ -189,7 +160,7 @@ if(NOT MSVC)
     set(WARNINGS "${WARNINGS} -Wlogical-op -Wno-error=maybe-uninitialized -Wno-error=clobbered -Wno-error=unused-but-set-variable")
   endif()
 
-  if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND NOT (CMAKE_C_COMPILER_VERSION VERSION_LESS 5.1))
+  if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
     set(WARNINGS "${WARNINGS} -Wno-error=odr")
   endif()
   set(C_WARNINGS "-Waggregate-return -Wnested-externs -Wold-style-definition -Wstrict-prototypes")
@@ -217,11 +188,13 @@ if(NOT MSVC)
   endif()
 
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 ${STATICASSERTC_FLAG} ${WARNINGS} ${C_WARNINGS} ${ARCH_FLAG} ${MAES_FLAG}")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 ${STATICASSERTCPP_FLAG} ${WARNINGS} ${CXX_WARNINGS} ${ARCH_FLAG} ${MAES_FLAG}")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 ${STATICASSERTCPP_FLAG} ${WARNINGS} ${CXX_WARNINGS} ${ARCH_FLAG} ${MAES_FLAG}")
 
-  if(APPLE)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGTEST_HAS_TR1_TUPLE=0")
-  else()
+  if (APPLE)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGTEST_HAS_TR1_TUPLE=0 -DBOOST_NO_AUTO_PTR")
+  endif ()
+
+  if(NOT APPLE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
   endif()
 
@@ -283,30 +256,82 @@ if(NOT MSVC)
 endif()
 
 ## Go get us some static BOOST libraries
+set(Boost_NO_BOOST_CMAKE ON)
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_STATIC_RUNTIME ON)
 find_package(Boost REQUIRED COMPONENTS system filesystem thread date_time chrono regex serialization program_options coroutine context atomic)
 message(STATUS "Boost Found: ${Boost_INCLUDE_DIRS}")
 include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
-if(APPLE OR OPENBSD OR ANDROID)
+if(MINGW)
+  set(Boost_LIBRARIES "${Boost_LIBRARIES};ws2_32;mswsock;iphlpapi")
+elseif(APPLE OR OPENBSD OR ANDROID)
   set(Boost_LIBRARIES "${Boost_LIBRARIES}")
 elseif(NOT MSVC)
   set(Boost_LIBRARIES "${Boost_LIBRARIES};rt")
 endif()
 
+if (STATIC)
+  set (OPENSSL_USE_STATIC_LIBS ON)
+  add_definitions("-DUPNP_STATIC -DMINIUPNP_STATICLIB -DUPNPC_BUILD_STATIC")
+endif ()
+if (MSVC)
+  set(OPENSSL_MSVC_STATIC_RT ON)
+endif ()
+
+# We have to look for Homebrew OpenSSL a bit differently
+# Borrowed from https://github.com/tarantool/tarantool/commit/6eab201af1843f53a833c8928dc58fceffa08147
+if (APPLE)
+    find_program(HOMEBREW_EXECUTABLE brew)
+    execute_process(COMMAND ${HOMEBREW_EXECUTABLE} --prefix openssl
+            OUTPUT_VARIABLE HOMEBREW_OPENSSL
+            OUTPUT_STRIP_TRAILING_WHITESPACE)
+    if (DEFINED HOMEBREW_OPENSSL)
+        if (NOT DEFINED OPENSSL_ROOT_DIR)
+            message(STATUS "Setting OpenSSL root to ${HOMEBREW_OPENSSL}")
+            set(OPENSSL_ROOT_DIR "${HOMEBREW_OPENSSL}")
+        endif ()
+    endif ()
+endif ()
+
+find_package(OpenSSL)
+
+if (NOT OPENSSL_FOUND)
+    find_package(PkgConfig)
+
+    if (PKG_CONFIG_FOUND)
+        pkg_search_module(OPENSSL openssl)
+    endif()
+endif()
+
+if (OPENSSL_FOUND)
+    ## On non MSVC build systems, we need to link ldl with the static OpenSSL library
+    if (NOT MSVC)
+        set(OPENSSL_LIBRARIES "${OPENSSL_LIBRARIES};dl")
+    endif ()
+
+    include_directories(SYSTEM ${OPENSSL_INCLUDE_DIR})
+    message(STATUS "OpenSSL Found: ${OPENSSL_INCLUDE_DIR}")
+    message(STATUS "OpenSSL Libraries: ${OPENSSL_LIBRARIES}")
+else ()
+    message(STATUS "OpenSSL Found: No... Skipping...")
+endif ()
+
 add_subdirectory(external)
 add_subdirectory(src)
+add_subdirectory(include)
 
-## We need to setup the RocksDB build environment to match our system
-include_directories(${CMAKE_SOURCE_DIR}/external/zstd)
+## We need to setup the DB build environment to match our system
+include_directories(${CMAKE_SOURCE_DIR}/external/zstd/lib)
 if(NOT MSVC)
   execute_process(
     COMMAND ${CMAKE_COMMAND} ${CMAKE_CURRENT_SOURCE_DIR}/external/leveldb -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DLEVELDB_BUILD_TESTS=OFF -DLEVELDB_BUILD_BENCHMARKS=OFF -DLEVELDB_INSTALL=OFF -B${PROJECT_BINARY_DIR}/leveldb
   )
   set_directory_properties(PROPERTIES ADDITIONAL_MAKE_CLEAN_FILES "${PROJECT_BINARY_DIR}/leveldb/libleveldb.a")
   execute_process(
-    COMMAND cmake ${CMAKE_CURRENT_SOURCE_DIR}/external/rocksdb -DARCH=${ARCH} -DWITH_ZSTD=${WITH_ZSTD} -DWITH_GFLAGS=0 -DCMAKE_BUILD_TYPE=MinSizeRel -DWITH_TESTS=OFF -DWITH_TOOLS=OFF -DPORTABLE=ON -B${PROJECT_BINARY_DIR}/rocksdb
+    COMMAND ${CMAKE_COMMAND} ${CMAKE_SOURCE_DIR}/external/rocksdb -DARCH=${ARCH} -DWITH_ZSTD=${WITH_ZSTD} -DWITH_GFLAGS=0 -DCMAKE_BUILD_TYPE=MinSizeRel -DWITH_TESTS=OFF -DWITH_TOOLS=OFF -DPORTABLE=ON -B${PROJECT_BINARY_DIR}/rocksdb
   )
   set_directory_properties(PROPERTIES ADDITIONAL_MAKE_CLEAN_FILES "${PROJECT_BINARY_DIR}/rocksdb/librocksdb.a")
+endif()
+
 endif()
 

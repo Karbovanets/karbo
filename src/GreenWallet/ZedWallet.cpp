@@ -61,11 +61,16 @@ int main(int argc, char **argv)
     const CryptoNote::Currency currency 
         = CryptoNote::CurrencyBuilder(logManager).currency();
 
-	System::Dispatcher dispatcher;
+    System::Dispatcher dispatcher;
 
     /* Our connection to daemon */
-	CryptoNote::INode* node = new CryptoNote::NodeRpcProxy(config.host, config.port, logManager);
-	std::unique_ptr<CryptoNote::INode> nodeGuard(node);
+    CryptoNote::INode* node = new CryptoNote::NodeRpcProxy(config.host, config.port, config.path, config.ssl, logManager);
+
+    // Set ssl options
+    if (!config.daemonCert.empty()) node->setRootCert(config.daemonCert);
+    if (config.disableVerify) node->disableVerify();
+
+    std::unique_ptr<CryptoNote::INode> nodeGuard(node);
 
     std::promise<std::error_code> errorPromise;
 

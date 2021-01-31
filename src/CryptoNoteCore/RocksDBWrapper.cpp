@@ -48,6 +48,8 @@ void RocksDBWrapper::init() {
     throw std::system_error(make_error_code(CryptoNote::error::DataBaseErrorCodes::ALREADY_INITIALIZED));
   }
   
+  logger(INFO) << "RocksDB v. " << ROCKSDB_MAJOR << "." << ROCKSDB_MINOR << "." << ROCKSDB_PATCH;
+
   std::string dataDir = getDataDir(m_config);
 
   logger(INFO) << "Opening DB in " << dataDir;
@@ -110,6 +112,16 @@ void RocksDBWrapper::destroy() {
   }
 }
 
+void RocksDBWrapper::recreate() {
+  if (state.load() == INITIALIZED)
+  {
+    shutdown();
+  }
+
+  destroy();
+  init();
+}
+
 std::error_code RocksDBWrapper::write(IWriteBatch& batch) {
   if (state.load() != INITIALIZED) {
     throw std::system_error(make_error_code(CryptoNote::error::DataBaseErrorCodes::NOT_INITIALIZED));
@@ -153,7 +165,7 @@ std::error_code RocksDBWrapper::write(IWriteBatch& batch, bool sync) {
 
 std::error_code RocksDBWrapper::read(IReadBatch& batch) {
   if (state.load() != INITIALIZED) {
-    throw std::runtime_error("Not initialized.");
+    throw std::system_error(make_error_code(CryptoNote::error::DataBaseErrorCodes::NOT_INITIALIZED));
   }
 
   rocksdb::ReadOptions readOptions;
@@ -184,11 +196,16 @@ std::error_code RocksDBWrapper::read(IReadBatch& batch) {
 
 std::error_code RocksDBWrapper::readThreadSafe(IReadBatch &batch) {
   if (state.load() != INITIALIZED) {
-    throw std::runtime_error("Not initialized.");
+    throw std::system_error(make_error_code(CryptoNote::error::DataBaseErrorCodes::NOT_INITIALIZED));
   }
 
   rocksdb::ReadOptions readOptions;
   std::vector<std::string> rawKeys(batch.getRawKeys());
+  if (rawKeys.size() == 0) {
+    logger(ERROR) << "RocksDBWrapper::read: detected rawKeys.size() == 0!";
+    return make_error_code(CryptoNote::error::DataBaseErrorCodes::INTERNAL_ERROR);
+  }
+
   std::vector<std::string> values(rawKeys.size());
   std::vector<bool> resultStates;
   int i = 0;
@@ -225,7 +242,7 @@ rocksdb::Options RocksDBWrapper::getDBOptions(const DataBaseConfig &config) {
   fOptions.min_write_buffer_number_to_merge = 2;
   // this means we'll use 50% extra memory in the worst case, but will reduce
   // write stalls.
-  fOptions.max_write_buffer_number = 2; // 6
+  fOptions.max_write_buffer_number = 6;
   // start flushing L0->L1 as soon as possible. each file on level0 is
   // (memtable_memory_budget / 2). This will flush level 0 when it's bigger than
   // memtable_memory_budget.

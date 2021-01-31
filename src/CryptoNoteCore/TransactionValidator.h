@@ -12,10 +12,10 @@
 
 #include "CryptoNote.h"
 #include "CachedTransaction.h"
-#include "Checkpoints.h"
 #include "Currency.h"
 #include "IBlockchainCache.h"
 #include "TransactionValidationResult.h"
+#include "Checkpoints/Checkpoints.h"
 #include "Common/ThreadPool.h"
 
 namespace CryptoNote
@@ -33,7 +33,7 @@ class TransactionValidator
             CryptoNote::IBlockchainCache *cache,
             const CryptoNote::Currency &currency,
             const CryptoNote::Checkpoints &checkpoints,
-            Tools::ThreadPool &threadPool,
+            Utilities::ThreadPool<bool> &threadPool,
             const uint32_t blockHeight,
             const uint64_t blockSizeMedian,
             const uint64_t minFee,
@@ -89,12 +89,14 @@ class TransactionValidator
 
         const bool m_isPoolTransaction;
 
+        bool m_isFusion;
+
         CryptoNote::TransactionValidationResult m_validationResult;
 
         uint64_t m_sumOfOutputs = 0;
         uint64_t m_sumOfInputs = 0;
 
-        Tools::ThreadPool &m_threadPool;
+        Utilities::ThreadPool<bool> &m_threadPool;
 };
 
 }

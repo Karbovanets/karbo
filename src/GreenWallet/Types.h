@@ -1,5 +1,5 @@
 // Copyright (c) 2018, The TurtleCoin Developers
-// Copyright (c) 2018-2019, The Karbo Developers
+// Copyright (c) 2018-2020, The Karbo Developers
 // 
 // Please see the included LICENSE file for more information.
 
@@ -81,9 +81,21 @@ struct Config
 
     /* The daemon host */
     std::string host = "127.0.0.1";
-    
+
+    /* The cert of daemon */
+    std::string daemonCert = "";
+
+    /* Disable verify cert of domain */
+    bool disableVerify = false;
+
     /* The daemon port */
     int port = CryptoNote::RPC_DEFAULT_PORT;
+
+    /* The url path */
+    std::string path = "/";
+
+    /* Enable SSL mode */
+    bool ssl = false;
 
     /* The wallet file path */
     std::string walletFile = "";

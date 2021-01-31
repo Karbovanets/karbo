@@ -425,7 +425,7 @@ int CryptoNoteProtocolHandler::handle_notify_new_transactions(int command, NOTIF
       << " Pending lite block detected, handling request as missing lite block transactions response";
     return doPushLiteBlock(context.m_pending_lite_block->request, context, std::move(arg.txs));
   } else {
-    const auto it = std::remove_if(arg.txs.begin(), arg.txs.end(), [this, &arg, &txHashes, &context](const auto &tx) {
+    const auto it = std::remove_if(arg.txs.begin(), arg.txs.end(), [this, &arg, &txHashes, &context](const BinaryArray &tx) {
       bool failed = !this->m_core.addTransactionToPool(tx);
 
       Crypto::Hash transactionHash = Crypto::cn_fast_hash(tx.data(), tx.size());
@@ -538,6 +538,13 @@ int CryptoNoteProtocolHandler::handle_request_get_objects(int command, NOTIFY_RE
 int CryptoNoteProtocolHandler::handle_response_get_objects(int command, NOTIFY_RESPONSE_GET_OBJECTS::request& arg, CryptoNoteConnectionContext& context) {
   logger(Logging::TRACE) << context << "NOTIFY_RESPONSE_GET_OBJECTS";
 
+  if (arg.blocks.empty())
+  {
+    logger(Logging::ERROR) << context << "sent wrong NOTIFY_HAVE_OBJECTS: no blocks, dropping connection";
+    m_p2p->drop_connection(context, true);
+    return 1;
+  }
+
   if (context.m_last_response_height > arg.current_blockchain_height) {
     logger(Logging::ERROR) << context << "sent wrong NOTIFY_HAVE_OBJECTS: arg.m_current_blockchain_height=" << arg.current_blockchain_height
       << " < m_last_response_height=" << context.m_last_response_height << ", dropping connection";
@@ -625,6 +632,7 @@ int CryptoNoteProtocolHandler::processObjects(CryptoNoteConnectionContext& conte
     }
 
     auto addResult = m_core.addBlock(cachedBlocks[index], std::move(rawBlocks[index]));
+
     if (addResult == error::AddBlockErrorCondition::BLOCK_VALIDATION_FAILED ||
         addResult == error::AddBlockErrorCondition::TRANSACTION_VALIDATION_FAILED ||
         addResult == error::AddBlockErrorCondition::DESERIALIZATION_FAILED) {
@@ -712,7 +720,7 @@ bool CryptoNoteProtocolHandler::on_idle() {
   m_dandelionStemSelectInterval.call([&]() { return select_dandelion_stem(); });
   m_dandelionStemFluffInterval.call([&]() { return fluffStemPool(); });
 
-  return true;
+  return m_core.on_idle();
 }
 
 int CryptoNoteProtocolHandler::doPushLiteBlock(NOTIFY_NEW_LITE_BLOCK::request arg, CryptoNoteConnectionContext &context, std::vector<BinaryArray> missingTxs)
@@ -917,6 +925,8 @@ bool CryptoNoteProtocolHandler::on_connection_synchronized() {
       << "Use \"help\" command to see the list of available commands." << ENDL
       << "**********************************************************************" << ENDL;
 
+    m_core.onSynchronized();
+
     m_observerManager.notify(&ICryptoNoteProtocolObserver::blockchainSynchronized, m_core.getTopBlockIndex());
   }
   return true;
@@ -965,7 +975,11 @@ int CryptoNoteProtocolHandler::handle_response_chain_entry(int command, NOTIFY_R
     }
   }
 
-  request_missing_objects(context, false);
+  if (!request_missing_objects(context, false)) {
+    logger(Logging::DEBUGGING) << context << "Failed to request missing objects, dropping connection";
+    m_p2p->drop_connection(context, true);
+  }
+
   return 1;
 }
 
@@ -1085,7 +1099,7 @@ void CryptoNoteProtocolHandler::relayTransactions(const std::vector<BinaryArray>
       auto transactionBinary = *tx_blob_it;
       Crypto::Hash transactionHash = Crypto::cn_fast_hash(transactionBinary.data(), transactionBinary.size());
       if (!m_stemPool.hasTransaction(transactionHash)) {
-        logger(Logging::INFO) << "Adding relayed transaction " << transactionHash << " to stempool";
+        logger(Logging::DEBUGGING) << "Adding relayed transaction " << transactionHash << " to stempool";
         BinaryArray txblob = *tx_blob_it;
         m_dispatcher.remoteSpawn([this, transactionHash, txblob] {
           m_stemPool.addTransaction(transactionHash, txblob);
@@ -1106,7 +1120,7 @@ void CryptoNoteProtocolHandler::relayTransactions(const std::vector<BinaryArray>
             r.stem = false;
             for (const auto& h : txHashes) {
               m_stemPool.removeTransaction(h);
-              logger(Logging::INFO) << h;
+              logger(Logging::WARNING) << h;
             }
 
             auto buf = LevinProtocol::encode(r);
@@ -1177,6 +1191,7 @@ void CryptoNoteProtocolHandler::updateObservedHeight(uint32_t peerHeight, const 
 
 void CryptoNoteProtocolHandler::recalculateMaxObservedHeight(const CryptoNoteConnectionContext& context) {
   //should be locked outside
+  uint32_t localHeight = m_core.getTopBlockIndex() + 1;
   uint32_t peerHeight = 0;
   m_p2p->for_each_connection([&peerHeight, &context](const CryptoNoteConnectionContext& ctx, PeerIdType peerId) {
     if (ctx.m_connection_id != context.m_connection_id) {
@@ -1184,7 +1199,7 @@ void CryptoNoteProtocolHandler::recalculateMaxObservedHeight(const CryptoNoteCon
     }
   });
 
-  m_observedHeight = std::max(peerHeight, m_core.getTopBlockIndex() + 1);
+  m_observedHeight = std::max(peerHeight, localHeight);
 }
 
 uint32_t CryptoNoteProtocolHandler::getObservedHeight() const {

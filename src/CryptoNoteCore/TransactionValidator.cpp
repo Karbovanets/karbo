@@ -21,7 +21,7 @@ TransactionValidator::TransactionValidator(
     CryptoNote::IBlockchainCache *cache,
     const CryptoNote::Currency &currency,
     const CryptoNote::Checkpoints &checkpoints,
-    Tools::ThreadPool &threadPool,
+    Utilities::ThreadPool<bool> &threadPool,
     const uint32_t blockHeight,
     const uint64_t blockSizeMedian,
     const uint64_t minFee,
@@ -36,7 +36,8 @@ TransactionValidator::TransactionValidator(
     m_blockHeight(blockHeight),
     m_blockSizeMedian(blockSizeMedian),
     m_minFee(minFee),
-    m_isPoolTransaction(isPoolTransaction)
+    m_isPoolTransaction(isPoolTransaction),
+    m_isFusion(false)
 {
 }
 
@@ -373,13 +374,13 @@ bool TransactionValidator::validateTransactionFee()
 
     const uint64_t fee = m_sumOfInputs - m_sumOfOutputs;
 
-    const bool isFusion = fee == 0 && m_currency.isFusionTransaction(
+    m_isFusion = fee == 0 && m_currency.isFusionTransaction(
         m_transaction,
         m_cachedTransaction.getTransactionBinaryArray().size(),
         m_blockHeight
     );
 
-    if (!isFusion)
+    if (!m_isFusion)
     {
         if (m_blockHeight <= CryptoNote::parameters::UPGRADE_HEIGHT_V3_1 && fee < CryptoNote::parameters::MINIMUM_FEE_V1
             ||
@@ -407,7 +408,7 @@ bool TransactionValidator::validateTransactionExtra()
         uint64_t extraSize = (uint64_t)m_transaction.extra.size();
         uint64_t feePerByte = m_currency.getFeePerByte(extraSize, m_minFee);
         min += feePerByte;
-        if (m_validationResult.fee < (min - min * 20 / 100))
+        if (m_validationResult.fee < (min - min * 20 / 100) && !m_isFusion)
         {
             m_validationResult.errorCode = CryptoNote::error::TransactionValidationError::INVALID_FEE;
             m_validationResult.errorMessage = "Transaction fee is insufficient due to additional data in extra";
@@ -463,14 +464,16 @@ bool TransactionValidator::validateTransactionInputsExpensive()
     uint64_t inputIndex = 0;
 
     std::vector<std::future<bool>> validationResults;
-    std::atomic<bool> cancelValidation = false;
+    std::atomic<bool> cancelValidation(false);
     const Crypto::Hash prefixHash = m_cachedTransaction.getTransactionPrefixHash();
 
     for (const auto &input : m_transaction.inputs)
     {
         /* Validate each input on a separate thread in our thread pool */
-        validationResults.emplace_back(m_threadPool.enqueue([inputIndex, &input, &prefixHash, &cancelValidation, this] {
-            if (cancelValidation)
+                        //emplace_back
+        validationResults.push_back(m_threadPool.addJob([inputIndex, &input, &prefixHash, &cancelValidation, this] {
+
+            if (cancelValidation.load())
             {
               return false; // fail the validation immediately if cancel requested
             }
@@ -585,7 +588,7 @@ bool TransactionValidator::validateTransactionInputsExpensive()
         if (!result.get())
         {
             valid = false;
-            cancelValidation = true;
+            cancelValidation.store(true);
         }
     }
 

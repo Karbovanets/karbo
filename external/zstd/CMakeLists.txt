@@ -26,7 +26,7 @@ function(GetZstdLibraryVersion _header _major _minor _release)
 endfunction()
 
 GetZstdLibraryVersion(${LIBRARY_DIR}/zstd.h LIBVER_MAJOR LIBVER_MINOR LIBVER_RELEASE)
-MESSAGE("ZSTD VERSION ${LIBVER_MAJOR}.${LIBVER_MINOR}.${LIBVER_RELEASE}")
+MESSAGE(STATUS "ZSTD version ${LIBVER_MAJOR}.${LIBVER_MINOR}.${LIBVER_RELEASE}")
 
 # Define library directory, where sources and header files are located
 include_directories(${LIBRARY_DIR} ${LIBRARY_DIR}/common)

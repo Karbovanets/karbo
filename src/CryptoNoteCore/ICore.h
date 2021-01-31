@@ -17,7 +17,13 @@
 // along with Karbo.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
+#include <cstdint>
+#include <list>
+#include <memory>
+#include <system_error>
 #include <vector>
+#include <utility>
+
 #include <CryptoNote.h>
 
 #include "AddBlockErrors.h"
@@ -31,6 +37,7 @@
 #include "ICoreObserver.h"
 #include "ICoreDefinitions.h"
 #include "MessageQueue.h"
+#include "MinerConfig.h"
 
 namespace CryptoNote {
 
@@ -75,7 +82,6 @@ public:
 
   virtual Difficulty getBlockDifficulty(uint32_t blockIndex) const = 0;
   virtual Difficulty getBlockCumulativeDifficulty(uint32_t blockIndex) const = 0;
-  virtual uint64_t getBlockTimestamp(uint32_t blockIndex) const = 0;
 
   virtual Difficulty getDifficultyForNextBlock() const = 0;
   virtual Difficulty getAvgDifficulty(uint32_t height, uint32_t window) const = 0;
@@ -112,19 +118,26 @@ public:
   virtual bool isInCheckpointZone(uint32_t height) const = 0;
 
   virtual void save() = 0;
-  virtual void load() = 0;
+  virtual void load(const MinerConfig& minerConfig) = 0;
+
+  virtual bool on_idle() = 0;
+  virtual void pauseMining() = 0;
+  virtual void updateBlockTemplateAndResumeMining() = 0;
+  virtual void onSynchronized() = 0;
 
   virtual BlockDetails getBlockDetails(const Crypto::Hash& blockHash) const = 0;
-  virtual BlockDetails getBlockDetails(const uint32_t blockHeight) const = 0;
+  virtual BlockDetails getBlockDetails(const uint32_t blockHeight, const uint32_t attempt = 0) const = 0;
   virtual BlockDetailsShort getBlockDetailsLite(const Crypto::Hash& blockHash) const = 0;
   virtual BlockDetailsShort getBlockDetailsLite(uint32_t blockIndex) const = 0;
   virtual TransactionDetails getTransactionDetails(const Crypto::Hash& transactionHash) const = 0;
+  virtual TransactionDetails getTransactionDetails(const Transaction& rawTransaction, const uint64_t timestamp, bool foundInPool) const = 0;
   virtual std::vector<Crypto::Hash> getAlternativeBlockHashesByIndex(uint32_t blockIndex) const = 0;
   virtual std::vector<Crypto::Hash> getBlockHashesByTimestamps(uint64_t timestampBegin, size_t secondsCount) const = 0;
   virtual std::vector<Crypto::Hash> getTransactionHashesByPaymentId(const Crypto::Hash& paymentId) const = 0;
   virtual bool getTransactionsByPaymentId(const Crypto::Hash& paymentId, std::vector<Transaction>& transactions) = 0;
+  virtual bool getBlockIndexContainingTransaction(const Crypto::Hash& transactionHash, uint32_t& blockIndex) = 0;
 
-  virtual void rewind(const uint64_t blockIndex) = 0;
+  virtual void rewind(const uint32_t blockIndex) = 0;
 
   virtual uint64_t getMinimalFee(uint32_t height) = 0;
   virtual uint64_t getMinimalFee() = 0;
@@ -134,6 +147,7 @@ public:
   virtual size_t getPoolTransactionsCount() const = 0;
   virtual size_t getBlockchainTransactionsCount() const = 0;
   virtual size_t getAlternativeBlocksCount() const = 0;
+  virtual std::vector<Crypto::Hash> getAlternativeBlocksHashes() const = 0;
   virtual uint64_t getTotalGeneratedAmount() const = 0;
   virtual uint32_t getCurrentBlockchainHeight() const = 0;
 
