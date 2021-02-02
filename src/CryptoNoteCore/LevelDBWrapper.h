@@ -1,5 +1,6 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2018-2019, The TurtleCoin Developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // Please see the included LICENSE file for more information.
 
@@ -14,7 +15,7 @@
 #include "IDataBase.h"
 #include "DataBaseConfig.h"
 
-#include <logging/LoggerRef.h>
+#include <Logging/LoggerRef.h>
 
 namespace CryptoNote
 {
