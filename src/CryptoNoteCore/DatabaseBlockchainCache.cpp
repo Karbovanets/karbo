@@ -235,7 +235,7 @@ Transaction extractTransaction(const RawBlock& block, uint32_t transactionIndex)
 
 size_t requestPaymentIdTransactionsCount(IDataBase& database, const Crypto::Hash& paymentId) {
   auto batch = BlockchainReadBatch().requestTransactionCountByPaymentId(paymentId);
-  auto error = database.readThreadSafe(batch);
+  auto error = database.read(batch);
   if (error) {
     throw std::system_error(error, "Error while reading transactions count by payment id");
   }
