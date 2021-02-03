@@ -203,8 +203,8 @@ public:
   virtual std::vector<Crypto::Hash> getTransactionHashesByPaymentId(const Crypto::Hash& paymentId) const = 0;
   virtual std::vector<Crypto::Hash> getBlockHashesByTimestamps(uint64_t timestampBegin, size_t secondsCount) const = 0;
 
-  virtual std::vector<RawBlock> getBlocksByHeight(const uint64_t startHeight, uint64_t endHeight) const = 0;
-  virtual std::vector<RawBlock> getNonEmptyBlocks(const uint64_t startHeight, const size_t blockCount) const = 0;
+  virtual std::vector<RawBlock> getBlocksByHeight(const uint32_t startHeight, uint32_t endHeight) const = 0;
+  virtual std::vector<RawBlock> getNonEmptyBlocks(const uint32_t startHeight, const size_t blockCount) const = 0;
 };
 
 }

@@ -712,7 +712,7 @@ size_t BlockchainCache::getTransactionCount() const {
   return count;
 }
 
-std::vector<RawBlock> BlockchainCache::getNonEmptyBlocks(const uint64_t startHeight, const size_t blockCount) const
+std::vector<RawBlock> BlockchainCache::getNonEmptyBlocks(const uint32_t startHeight, const size_t blockCount) const
 {
   std::vector<RawBlock> blocks;
 
@@ -726,11 +726,11 @@ std::vector<RawBlock> BlockchainCache::getNonEmptyBlocks(const uint64_t startHei
     }
   }
 
-  uint64_t startOffset = std::max(startHeight, static_cast<uint64_t>(startIndex));
+  uint32_t startOffset = std::max(startHeight, static_cast<uint32_t>(startIndex));
 
-  uint64_t storageBlockCount = storage->getBlockCount();
+  uint32_t storageBlockCount = storage->getBlockCount();
 
-  uint64_t i = startOffset;
+  uint32_t i = startOffset;
 
   while (blocks.size() < blockCount && i < startIndex + storageBlockCount)
   {
@@ -749,7 +749,7 @@ std::vector<RawBlock> BlockchainCache::getNonEmptyBlocks(const uint64_t startHei
   return blocks;
 }
 
-std::vector<RawBlock> BlockchainCache::getBlocksByHeight(const uint64_t startHeight, uint64_t endHeight) const
+std::vector<RawBlock> BlockchainCache::getBlocksByHeight(const uint32_t startHeight, uint32_t endHeight) const
 {
   if (endHeight < startIndex)
   {
@@ -763,9 +763,9 @@ std::vector<RawBlock> BlockchainCache::getBlocksByHeight(const uint64_t startHei
     blocks = parent->getBlocksByHeight(startHeight, startIndex);
   }
 
-  uint64_t startOffset = std::max(startHeight, static_cast<uint64_t>(startIndex));
+  uint32_t startOffset = std::max(startHeight, static_cast<uint32_t>(startIndex));
 
-  uint64_t blockCount = storage->getBlockCount();
+  uint32_t blockCount = storage->getBlockCount();
 
   /* Make sure we don't overflow the storage (for example, the block might
      not exist yet) */
