@@ -34,7 +34,8 @@ namespace {
 const uint64_t WRITE_BUFFER_MB_DEFAULT_SIZE     = 256; // Mb
 const uint64_t READ_BUFFER_MB_DEFAULT_SIZE      = 128; // Mb
 const uint32_t DEFAULT_MAX_OPEN_FILES           = 128; // Nr of files
-const uint16_t DEFAULT_BACKGROUND_THREADS_COUNT = 4;   // DB threads
+const uint16_t DEFAULT_BACKGROUND_THREADS_COUNT = 8;   // DB threads
+const uint64_t DEFAULT_MAX_BYTES_FOR_LEVEL_BASE = 512; // 512MB
 
 const uint64_t LEVELDB_MAX_FILE_SIZE            = 1024; // 1GB
 
@@ -45,15 +46,17 @@ const command_line::arg_descriptor<uint32_t>    argMaxOpenFiles = { "db-max-open
 const command_line::arg_descriptor<uint64_t>    argMaxFileSize = { "db-max-file-size", "Max file size that can be used by the DB", LEVELDB_MAX_FILE_SIZE};
 const command_line::arg_descriptor<uint64_t>    argWriteBufferSize = { "db-write-buffer-size", "Size of data base write buffer in megabytes", WRITE_BUFFER_MB_DEFAULT_SIZE};
 const command_line::arg_descriptor<uint64_t>    argReadCacheSize = { "db-read-cache-size", "Size of data base read cache in megabytes", READ_BUFFER_MB_DEFAULT_SIZE};
+const command_line::arg_descriptor<uint64_t>    argMaxByteLevelSize = { "db-max-byte-level-size", "Size of the database max level base in megabytes", DEFAULT_MAX_BYTES_FOR_LEVEL_BASE};
 
 } //namespace
 
 void DataBaseConfig::initOptions(boost::program_options::options_description& desc) {
-  command_line::add_arg(desc, argBackgroundThreadsCount);
   command_line::add_arg(desc, argMaxOpenFiles);
   command_line::add_arg(desc, argMaxFileSize);
-  command_line::add_arg(desc, argWriteBufferSize);
+  command_line::add_arg(desc, argMaxByteLevelSize);
   command_line::add_arg(desc, argReadCacheSize);
+  command_line::add_arg(desc, argWriteBufferSize);
+  command_line::add_arg(desc, argBackgroundThreadsCount);
 }
 
 DataBaseConfig::DataBaseConfig() :
@@ -63,6 +66,7 @@ DataBaseConfig::DataBaseConfig() :
   maxFileSize(LEVELDB_MAX_FILE_SIZE),
   writeBufferSize(WRITE_BUFFER_MB_DEFAULT_SIZE * MEGABYTE),
   readCacheSize(READ_BUFFER_MB_DEFAULT_SIZE * MEGABYTE),
+  maxByteLevelSize(DEFAULT_MAX_BYTES_FOR_LEVEL_BASE * MEGABYTE),
   testnet(false),
   compressionEnabled(true) {
 }
@@ -82,6 +86,10 @@ bool DataBaseConfig::init(const boost::program_options::variables_map& vm) {
   
   if (vm.count(argWriteBufferSize.name) != 0 && (!vm[argWriteBufferSize.name].defaulted() || writeBufferSize == 0)) {
     writeBufferSize = command_line::get_arg(vm, argWriteBufferSize) *  MEGABYTE;
+  }
+
+  if (vm.count(argReadCacheSize.name) != 0 && (!vm[argReadCacheSize.name].defaulted() || readCacheSize == 0)) {
+    readCacheSize = command_line::get_arg(vm, argReadCacheSize) * MEGABYTE;
   }
 
   if (vm.count(argReadCacheSize.name) != 0 && (!vm[argReadCacheSize.name].defaulted() || readCacheSize == 0)) {
@@ -125,6 +133,11 @@ uint64_t DataBaseConfig::getReadCacheSize() const {
   return readCacheSize;
 }
 
+uint64_t DataBaseConfig::getMaxByteLevelSize() const
+{
+  return maxByteLevelSize;
+}
+
 bool DataBaseConfig::getTestnet() const {
   return testnet;
 }
@@ -155,6 +168,10 @@ void DataBaseConfig::setWriteBufferSize(uint64_t writeBufferSize) {
 
 void DataBaseConfig::setReadCacheSize(uint64_t readCacheSize) {
   this->readCacheSize = readCacheSize;
+}
+
+void DataBaseConfig::setMaxByteLevelSize(uint64_t maxByteLevelSize) {
+  this->maxByteLevelSize = maxByteLevelSize;
 }
 
 void DataBaseConfig::setTestnet(bool testnet) {

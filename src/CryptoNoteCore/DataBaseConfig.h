@@ -40,6 +40,7 @@ public:
   uint64_t getMaxFileSize() const;
   uint64_t getWriteBufferSize() const; //Bytes
   uint64_t getReadCacheSize() const; //Bytes
+  uint64_t getMaxByteLevelSize() const; //Bytes
   bool getTestnet() const;
   bool getCompressionEnabled() const;
 
@@ -50,6 +51,7 @@ public:
   void setMaxFileSize(uint64_t maxFileSize);
   void setWriteBufferSize(uint64_t writeBufferSize); //Bytes
   void setReadCacheSize(uint64_t readCacheSize); //Bytes
+  void setMaxByteLevelSize(uint64_t maxByteLevelSize); //Bytes
   void setTestnet(bool testnet);
 
 private:
@@ -60,6 +62,7 @@ private:
   uint64_t maxFileSize;
   uint64_t writeBufferSize;
   uint64_t readCacheSize;
+  uint64_t maxByteLevelSize;
   bool testnet;
   bool compressionEnabled;
 };
