@@ -113,7 +113,7 @@ include_directories(
 SET(snappy_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../snappy")
 SET(snappy_LIBRARIES snappy)
 include_directories("${snappy_INCLUDE_DIRS}")
-set(HAVE_SNAPPY ON)
+option(HAVE_SNAPPY "build with snappy" ON)
 
 if(BUILD_SHARED_LIBS)
   # Only export LEVELDB_EXPORT symbols from the shared library.
@@ -278,7 +278,6 @@ if(HAVE_CRC32C)
   target_link_libraries(leveldb crc32c)
 endif(HAVE_CRC32C)
 if(HAVE_SNAPPY)
-  add_definitions(-DUSE_SNAPPY)
   target_link_libraries(leveldb snappy)
 endif(HAVE_SNAPPY)
 if(HAVE_TCMALLOC)
@@ -496,3 +495,4 @@ if(LEVELDB_INSTALL)
     DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
   )
 endif(LEVELDB_INSTALL)
+message(STATUS "-- LevelDB Build Flags: ${CMAKE_CXX_FLAGS}")
