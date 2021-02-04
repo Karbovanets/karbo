@@ -717,14 +717,10 @@ static inline void Report(const char *algorithm, size_t compressed_size,
 static inline uint32 ExtractLowBytes(uint32 v, int n) {
   assert(n >= 0);
   assert(n <= 4);
-#if SNAPPY_HAVE_BMI2
-  return _bzhi_u32(v, 8 * n);
-#else
   // This needs to be wider than uint32 otherwise `mask << 32` will be
   // undefined.
   uint64 mask = 0xffffffff;
   return v & ~(mask << (8 * n));
-#endif
 }
 
 static inline bool LeftShiftOverflows(uint8 value, uint32 shift) {
