@@ -774,7 +774,7 @@ std::vector<RawBlock> BlockchainCache::getBlocksByHeight(const uint32_t startHei
     endHeight = startIndex + blockCount;
   }
 
-  for (uint64_t i = startOffset; i < endHeight; i++)
+  for (uint32_t i = startOffset; i < endHeight; i++)
   {
     blocks.push_back(storage->getBlockByIndex(i - startIndex));
   }
