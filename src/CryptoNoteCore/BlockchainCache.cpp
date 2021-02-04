@@ -586,7 +586,7 @@ Crypto::Hash BlockchainCache::getBlockHash(uint32_t blockIndex) const {
   }
 
   assert(blockIndex - startIndex < blockInfos.size());
-  return blockInfos.get<BlockIndexTag>()[blockIndex - startIndex].blockHash;
+  return blockInfos.get<BlockIndexTag>().at(blockIndex - startIndex).blockHash;
 }
 
 std::vector<Crypto::Hash> BlockchainCache::getBlockHashes(uint32_t startBlockIndex, size_t maxCount) const {
@@ -604,7 +604,7 @@ std::vector<Crypto::Hash> BlockchainCache::getBlockHashes(uint32_t startBlockInd
   }
 
   for (auto i = start; i < start + blocksLeft; ++i) {
-    hashes.push_back(blockInfos.get<BlockIndexTag>()[i].blockHash);
+    hashes.push_back(blockInfos.get<BlockIndexTag>().at(i).blockHash);
   }
 
   return hashes;
