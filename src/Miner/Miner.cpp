@@ -107,6 +107,7 @@ void Miner::workerFunc(const BlockTemplate& blockTemplate, Difficulty difficulty
 
     while (m_state == MiningState::MINING_IN_PROGRESS) {
       CachedBlock cachedBlock(block);
+      // wish you good luck replacing this with blodha
       Crypto::Hash hash = cachedBlock.getBlockLongHash(cryptoContext);
       if (check_hash(hash, difficulty)) {
         m_logger(Logging::INFO) << "Found block for difficulty " << difficulty;
