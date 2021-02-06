@@ -60,7 +60,9 @@ const Crypto::Hash& CachedBlock::getBlockHash() const {
 
 const Crypto::Hash& CachedBlock::getBlockLongHash(cn_context& cryptoContext) const {
   if (!blockLongHash.is_initialized()) {
-    if (block.majorVersion == BLOCK_MAJOR_VERSION_1 || block.majorVersion >= BLOCK_MAJOR_VERSION_4) {
+    if (block.majorVersion >= BLOCK_MAJOR_VERSION_5) {
+      throw std::runtime_error("Unsupported. Use getBlockLongHash in Core.");
+    } else if (block.majorVersion == BLOCK_MAJOR_VERSION_1 || block.majorVersion >= BLOCK_MAJOR_VERSION_4) {
       const auto& rawHashingBlock = getBlockHashingBinaryArray();
       blockLongHash = Hash();
       cn_slow_hash(cryptoContext, rawHashingBlock.data(), rawHashingBlock.size(), blockLongHash.get());
