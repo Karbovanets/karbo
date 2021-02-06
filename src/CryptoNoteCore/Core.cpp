@@ -571,19 +571,16 @@ bool Core::getBlockLongHash(Crypto::cn_context &context, const CachedBlock& b, C
     return true;
   }
 
-  BinaryArray pot, bd = b.getBlockHashingBinaryArray();
+  BinaryArray pot = b.getBlockHashingBinaryArray();
 
   // Phase 1
 
   Crypto::Hash hash_1, hash_2;
 
   // Hashing the current blockdata (preprocessing it)
-  cn_fast_hash(bd.data(), bd.size(), hash_1);
+  cn_fast_hash(pot.data(), pot.size(), hash_1);
 
   // Phase 2
-
-  // throw our block into common pot
-  pot.insert(std::end(pot), std::begin(bd), std::end(bd));
 
   // Get the corresponding 8 blocks from blockchain based on preparatory hash_1
   // and throw them into the pot too
@@ -619,7 +616,10 @@ bool Core::getBlockLongHash(Crypto::cn_context &context, const CachedBlock& b, C
   // Phase 3
 
   // stir the pot - hashing the 1 + 8 blocks as one continuous data
-  Crypto::y_slow_hash(pot.data(), pot.size(), hash_1, hash_2);
+  if (!Crypto::y_slow_hash(pot.data(), pot.size(), hash_1, hash_2)) {
+    logger(Logging::ERROR, Logging::BRIGHT_RED) << "Error getting Yespower hash";
+    return false;
+  }
 
   res = hash_2;
 
