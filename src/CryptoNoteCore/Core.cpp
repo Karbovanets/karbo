@@ -1700,25 +1700,26 @@ bool Core::getBlockTemplate(BlockTemplate& b, const AccountPublicAddress& adr, c
       return false;
     }
 
-    // add the tx proof to check that the given address received the reward
-    // the reserve proof has to be for the same address
-    b.stake.address = adr;
-    Crypto::KeyImage p = *reinterpret_cast<const Crypto::KeyImage*>(&adr.viewPublicKey);
-    Crypto::KeyImage k = *reinterpret_cast<const Crypto::KeyImage*>(&tx_key);
-    Crypto::KeyImage pk = Crypto::scalarmultKey(p, k);
-    Crypto::PublicKey R;
-    b.stake.tx_proof_rA = reinterpret_cast<const PublicKey&>(pk);
-    Crypto::secret_key_to_public_key(tx_key, R);
-    try {
-      Crypto::generate_tx_proof(getObjectHash(b.baseTransaction), R, adr.viewPublicKey, b.stake.tx_proof_rA, tx_key, b.stake.tx_proof_sig);
-    }
-    catch (const std::runtime_error& e) {
-      logger(Logging::ERROR, Logging::BRIGHT_RED) << "Proof generation error: " << *e.what();
-      return false;
-    }
+    if (b.majorVersion >= BLOCK_MAJOR_VERSION_5) {
+      // add the payment proof that the reserve_proof's address received the reward
+      b.stake.address = adr;
+      Crypto::KeyImage p = *reinterpret_cast<const Crypto::KeyImage*>(&adr.viewPublicKey);
+      Crypto::KeyImage k = *reinterpret_cast<const Crypto::KeyImage*>(&tx_key);
+      Crypto::KeyImage pk = Crypto::scalarmultKey(p, k);
+      Crypto::PublicKey R;
+      b.stake.tx_proof_rA = reinterpret_cast<const PublicKey&>(pk);
+      Crypto::secret_key_to_public_key(tx_key, R);
+      try {
+        Crypto::generate_tx_proof(getObjectHash(b.baseTransaction), R, adr.viewPublicKey, b.stake.tx_proof_rA, tx_key, b.stake.tx_proof_sig);
+      }
+      catch (const std::runtime_error& e) {
+        logger(Logging::ERROR, Logging::BRIGHT_RED) << "Proof generation error: " << *e.what();
+        return false;
+      }
 
-    // reserve proof is verified in caller function
-    b.stake.reserve_proof = reserveProof;
+      // reserve proof is verified in caller function
+      b.stake.reserve_proof = reserveProof;
+    }
 
     return true;
   }
