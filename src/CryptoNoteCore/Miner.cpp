@@ -51,6 +51,8 @@ namespace CryptoNote
     logger(log, "miner"),
     m_stop(true),
     m_template(boost::value_initialized<BlockTemplate>()),
+    m_mine_address(boost::value_initialized<AccountPublicAddress>()),
+    m_reserve_proof(boost::value_initialized<ReserveProof>()),
     m_template_no(0),
     m_diffic(0),
     m_handler(handler),
@@ -103,7 +105,7 @@ namespace CryptoNote
     }
 
     // check if stake qualifies to mine
-    if (!m_handler.checkStakeLimit(m_reserve_proof, m_mine_address)) {
+    if (m_handler.getCurrentBlockchainHeight() > m_currency.upgradeHeightV5() && !m_handler.checkStakeLimit(m_reserve_proof, m_mine_address)) {
       return false;
     }
 
@@ -265,22 +267,24 @@ namespace CryptoNote
     }
 
     // check proof now, because on startup Core is not available
-    uint64_t total = 0, spent = 0;
-    std::string message = "";
-    if (!m_handler.checkReserveProof(m_reserve_proof, m_mine_address, message, m_handler.getCurrentBlockchainHeight(), total, spent)) {
-      logger(ERROR, BRIGHT_RED) << "Invalid reserve proof";
-      return false;
+    if (m_handler.getCurrentBlockchainHeight() >= m_currency.upgradeHeightV5()) {
+      uint64_t total = 0, spent = 0;
+      std::string message = "";
+      if (!m_handler.checkReserveProof(m_reserve_proof, m_mine_address, message, m_handler.getCurrentBlockchainHeight(), total, spent)) {
+        logger(ERROR, BRIGHT_RED) << "Invalid reserve proof";
+        return false;
+      }
+
+      uint64_t reserve = total - spent;
+      uint64_t min_stake = m_handler.getBaseStake();
+      if (reserve < min_stake) {
+        logger(ERROR, BRIGHT_RED) << "Insufficient reserve proof of " << m_currency.formatAmount(reserve) << ", required minimum: " << m_currency.formatAmount(min_stake);
+        return false;
+      }
+
+      logger(INFO, WHITE) << "Reserve proof: " << m_currency.formatAmount(reserve) << " (total: " << m_currency.formatAmount(total) << ", spent: " << m_currency.formatAmount(spent) << ")";
     }
 
-    uint64_t reserve = total - spent;
-    uint64_t min_stake = m_handler.getBaseStake();
-    if (reserve < min_stake) {
-      logger(ERROR, BRIGHT_RED) << "Insufficient reserve proof of " << m_currency.formatAmount(reserve) << ", required minimum: " << m_currency.formatAmount(min_stake);
-      return false;
-    }
-
-    logger(INFO, WHITE) << "Reserve proof: " << m_currency.formatAmount(reserve) << " (total: " << m_currency.formatAmount(total) << ", spent: " << m_currency.formatAmount(spent) << ")";
-    
     std::lock_guard<std::mutex> lk(m_threads_lock);
 
     if(!m_threads.empty()) {
