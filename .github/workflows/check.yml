@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@master
         with:
           fetch-depth: 0
-          ref: master
+          ref: ${{ github.ref }}
 
       - name: Get CMake
         uses: lukka/get-cmake@latest
@@ -32,7 +32,8 @@ jobs:
         run: |
           $env:PATH = "$env:PATH;$env:MSBUILD_PATH"
           $build_folder = "build"
-          $krb_ver = git describe --tags --abbrev=0
+          $sha = "${{ github.sha }}"
+          $krb_ver = $sha.SubString(0,7)
           $release_name = "karbo-cli-win64-${krb_ver}"
           mkdir "$build_folder"
           cd "$build_folder"
@@ -65,7 +66,7 @@ jobs:
       - uses: actions/checkout@master
         with:
           fetch-depth: 0
-          ref: master
+          ref: ${{ github.ref }}
 
       - name: Get CMake
         uses: lukka/get-cmake@latest
@@ -83,7 +84,7 @@ jobs:
         id: build
         run: |
           build_folder="build/"
-          krb_ver="${{steps.tagger.outputs.tag}}"
+          krb_ver=${GITHUB_SHA::7}
           release_name="Karbo-cli-macOS-${krb_ver}"
           brew install gcc boost
           brew link boost --force
@@ -120,7 +121,7 @@ jobs:
       - uses: actions/checkout@master
         with:
           fetch-depth: 0
-          ref: master
+          ref: ${{ github.ref }}
 
       - name: Get CMake
         uses: lukka/get-cmake@latest
@@ -140,7 +141,7 @@ jobs:
           sudo apt update
           sudo apt install -y libboost-all-dev libssl-dev
           build_folder="build/release"
-          krb_ver="${{steps.tagger.outputs.tag}}"
+          krb_ver=${GITHUB_SHA::7}
           release_name="Karbo-cli-ubuntu20.04-${krb_ver}"
           mkdir -p "$build_folder"
           cd "$build_folder"
@@ -169,7 +170,7 @@ jobs:
       - uses: actions/checkout@master
         with:
           fetch-depth: 0
-          ref: master
+          ref: ${{ github.ref }}
 
       - name: Find Tag
         id: tagger
@@ -186,7 +187,7 @@ jobs:
           sudo apt update
           sudo apt install -y libboost-all-dev libssl-dev
           build_folder="build/release"
-          krb_ver="${{steps.tagger.outputs.tag}}"
+          krb_ver=${GITHUB_SHA::7}
           release_name="Karbo-cli-ubuntu18.04-${krb_ver}"
           mkdir -p "$build_folder"
           cd "$build_folder"
@@ -215,7 +216,7 @@ jobs:
       - uses: actions/checkout@master
         with:
           fetch-depth: 0
-          ref: master
+          ref: ${{ github.ref }}
 
       - name: Find Tag
         id: tagger
@@ -237,7 +238,7 @@ jobs:
           sudo apt update
           sudo apt install -y libboost-all-dev libssl-dev
           build_folder="build/release"
-          krb_ver="${{steps.tagger.outputs.tag}}"
+          krb_ver=${GITHUB_SHA::7}
           release_name="Karbo-cli-ubuntu18.04-clang-6-${krb_ver}"
           mkdir -p "$build_folder"
           cd "$build_folder"

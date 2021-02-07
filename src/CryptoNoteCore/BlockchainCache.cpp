@@ -586,7 +586,7 @@ Crypto::Hash BlockchainCache::getBlockHash(uint32_t blockIndex) const {
   }
 
   assert(blockIndex - startIndex < blockInfos.size());
-  return blockInfos.get<BlockIndexTag>()[blockIndex - startIndex].blockHash;
+  return blockInfos.get<BlockIndexTag>().at(blockIndex - startIndex).blockHash;
 }
 
 std::vector<Crypto::Hash> BlockchainCache::getBlockHashes(uint32_t startBlockIndex, size_t maxCount) const {
@@ -604,7 +604,7 @@ std::vector<Crypto::Hash> BlockchainCache::getBlockHashes(uint32_t startBlockInd
   }
 
   for (auto i = start; i < start + blocksLeft; ++i) {
-    hashes.push_back(blockInfos.get<BlockIndexTag>()[i].blockHash);
+    hashes.push_back(blockInfos.get<BlockIndexTag>().at(i).blockHash);
   }
 
   return hashes;
@@ -712,7 +712,7 @@ size_t BlockchainCache::getTransactionCount() const {
   return count;
 }
 
-std::vector<RawBlock> BlockchainCache::getNonEmptyBlocks(const uint64_t startHeight, const size_t blockCount) const
+std::vector<RawBlock> BlockchainCache::getNonEmptyBlocks(const uint32_t startHeight, const size_t blockCount) const
 {
   std::vector<RawBlock> blocks;
 
@@ -726,11 +726,11 @@ std::vector<RawBlock> BlockchainCache::getNonEmptyBlocks(const uint64_t startHei
     }
   }
 
-  uint64_t startOffset = std::max(startHeight, static_cast<uint64_t>(startIndex));
+  uint32_t startOffset = std::max(startHeight, static_cast<uint32_t>(startIndex));
 
-  uint64_t storageBlockCount = storage->getBlockCount();
+  uint32_t storageBlockCount = storage->getBlockCount();
 
-  uint64_t i = startOffset;
+  uint32_t i = startOffset;
 
   while (blocks.size() < blockCount && i < startIndex + storageBlockCount)
   {
@@ -749,7 +749,7 @@ std::vector<RawBlock> BlockchainCache::getNonEmptyBlocks(const uint64_t startHei
   return blocks;
 }
 
-std::vector<RawBlock> BlockchainCache::getBlocksByHeight(const uint64_t startHeight, uint64_t endHeight) const
+std::vector<RawBlock> BlockchainCache::getBlocksByHeight(const uint32_t startHeight, uint32_t endHeight) const
 {
   if (endHeight < startIndex)
   {
@@ -763,9 +763,9 @@ std::vector<RawBlock> BlockchainCache::getBlocksByHeight(const uint64_t startHei
     blocks = parent->getBlocksByHeight(startHeight, startIndex);
   }
 
-  uint64_t startOffset = std::max(startHeight, static_cast<uint64_t>(startIndex));
+  uint32_t startOffset = std::max(startHeight, static_cast<uint32_t>(startIndex));
 
-  uint64_t blockCount = storage->getBlockCount();
+  uint32_t blockCount = storage->getBlockCount();
 
   /* Make sure we don't overflow the storage (for example, the block might
      not exist yet) */
@@ -774,7 +774,7 @@ std::vector<RawBlock> BlockchainCache::getBlocksByHeight(const uint64_t startHei
     endHeight = startIndex + blockCount;
   }
 
-  for (uint64_t i = startOffset; i < endHeight; i++)
+  for (uint32_t i = startOffset; i < endHeight; i++)
   {
     blocks.push_back(storage->getBlockByIndex(i - startIndex));
   }
