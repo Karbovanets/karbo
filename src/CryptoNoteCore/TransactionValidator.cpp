@@ -10,6 +10,7 @@
 #include "crypto/crypto.h"
 #include "../CryptoNoteConfig.h"
 #include "CryptoNoteFormatUtils.h"
+#include "CryptoNoteTools.h"
 #include "TransactionValidationErrors.h"
 #include "TransactionValidator.h"
 
@@ -475,7 +476,26 @@ bool TransactionValidator::validateTransactionInputsExpensive()
 
             if (cancelValidation.load())
             {
-              return false; // fail the validation immediately if cancel requested
+                return false; // fail the validation immediately if cancel requested
+            }
+
+            // get recent blocks for stake validation
+            std::vector<BlockTemplate> blocks;
+            if (m_blockHeight > CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
+                for (auto i = m_blockHeight - 1; i <= m_blockHeight - CryptoNote::parameters::EXPECTED_NUMBER_OF_BLOCKS_PER_DAY; --i) {
+                    RawBlock rawBlock = m_blockchainCache->getBlockByIndex(i);
+
+                    BlockTemplate blockTemplate;
+                    if (!fromBinaryArray(blockTemplate, rawBlock.block)) {
+                        throw std::runtime_error("Coulnd't deserialize BlockTemplate");
+                    }
+
+                    if (blockTemplate.majorVersion >= BLOCK_MAJOR_VERSION_5) {
+                        break;
+                    }
+
+                    blocks.push_back(blockTemplate);
+                }
             }
 
             if (input.type() == typeid(CryptoNote::KeyInput)) {
@@ -543,7 +563,21 @@ bool TransactionValidator::validateTransactionInputsExpensive()
 
                     return false;
                 }
- 
+
+                // validate against spending fresh stake
+                if (m_blockHeight > CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
+                    for (const auto& b : blocks) {
+                        for (const auto& c : b.stake.reserve_proof.proofs) {
+                            if (c.key_image == in.keyImage) {
+                                m_validationResult.errorCode = CryptoNote::error::TransactionValidationError::INPUT_SPEND_LOCKED_OUT;
+                                m_validationResult.errorMessage = "Transaction includes an input from recently mining stake";
+
+                                return false;
+                            }
+                        }
+                    }
+                }
+
             } else if (input.type() == typeid(CryptoNote::MultisignatureInput)) {
                 const CryptoNote::MultisignatureInput& in = boost::get<CryptoNote::MultisignatureInput>(input);
                 CryptoNote::MultisignatureOutput output;
