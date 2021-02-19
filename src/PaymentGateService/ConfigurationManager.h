@@ -30,6 +30,7 @@ public:
   bool init(int argc, char** argv);
 
   bool startInprocess;
+  bool levelDB;
   Configuration gateConfiguration;
   CryptoNote::NetNodeConfig netNodeConfig;
   RpcNodeConfiguration remoteNodeConfig;

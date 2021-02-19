@@ -153,7 +153,7 @@ bool Checkpoints::loadCheckpointsFromFile(const std::string& fileName) {
 #ifndef __ANDROID__
 bool Checkpoints::loadCheckpointsFromDns()
 {
-  std::string domain("checkpoints.karbo.org");
+  std::string domain(CryptoNote::DNS_CHECKPOINTS_HOST);
   std::vector<std::string>records;
 
   logger(Logging::INFO) << "Fetching DNS checkpoint records from " << domain;

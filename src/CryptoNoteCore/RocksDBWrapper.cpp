@@ -30,8 +30,8 @@ using namespace CryptoNote;
 using namespace Logging;
 
 namespace {
-  const std::string DB_NAME = "DB";
-  const std::string TESTNET_DB_NAME = "testnet_DB";
+  const std::string DB_NAME = "RocksDB";
+  const std::string TESTNET_DB_NAME = "testnet_RocksDB";
 }
 
 RocksDBWrapper::RocksDBWrapper(Logging::ILogger& logger, const DataBaseConfig &config) : 
@@ -236,6 +236,10 @@ rocksdb::Options RocksDBWrapper::getDBOptions(const DataBaseConfig &config) {
   dbOptions.max_total_wal_size = (uint64_t)1024000;
   dbOptions.db_write_buffer_size = (uint64_t)81920000;
 
+  dbOptions.skip_stats_update_on_db_open = true;
+  dbOptions.compaction_readahead_size = 2 * 1024 * 1024;
+  dbOptions.new_table_reader_for_compaction_inputs = true;
+
   rocksdb::ColumnFamilyOptions fOptions;
   fOptions.write_buffer_size = static_cast<size_t>(config.getWriteBufferSize());
   // merge two memtables when flushing to L0
@@ -254,7 +258,7 @@ rocksdb::Options RocksDBWrapper::getDBOptions(const DataBaseConfig &config) {
   // doesn't really matter much, but we don't want to create too many files
   fOptions.target_file_size_base = config.getWriteBufferSize() / 10;
   // make Level1 size equal to Level0 size, so that L0->L1 compactions are fast
-  fOptions.max_bytes_for_level_base = config.getWriteBufferSize();
+  fOptions.max_bytes_for_level_base = config.getMaxByteLevelSize();
   fOptions.num_levels = 10;
   fOptions.target_file_size_multiplier = 2;
   // level style compaction
@@ -281,7 +285,8 @@ rocksdb::Options RocksDBWrapper::getDBOptions(const DataBaseConfig &config) {
     }
   }
 
-
+  fOptions.bottommost_compression = config.getCompressionEnabled() ? rocksdb::kZSTD : rocksdb::kNoCompression;;
+  
   rocksdb::BlockBasedTableOptions tableOptions;
   tableOptions.block_cache = rocksdb::NewLRUCache(config.getReadCacheSize());
   std::shared_ptr<rocksdb::TableFactory> tfp(NewBlockBasedTableFactory(tableOptions));

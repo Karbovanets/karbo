@@ -235,7 +235,7 @@ Transaction extractTransaction(const RawBlock& block, uint32_t transactionIndex)
 
 size_t requestPaymentIdTransactionsCount(IDataBase& database, const Crypto::Hash& paymentId) {
   auto batch = BlockchainReadBatch().requestTransactionCountByPaymentId(paymentId);
-  auto error = database.readThreadSafe(batch);
+  auto error = database.read(batch);
   if (error) {
     throw std::system_error(error, "Error while reading transactions count by payment id");
   }
@@ -672,7 +672,7 @@ void DatabaseBlockchainCache::rewind(const uint32_t height)
 
   const auto blockHashes = getBlockHashes(height, currentTop - height);
 
-  uint64_t blockIndex = height;
+  uint32_t blockIndex = height;
 
   for (const auto &hash : blockHashes)
   {
@@ -1986,17 +1986,17 @@ std::vector<Crypto::Hash> DatabaseBlockchainCache::getBlockHashesByTimestamps(ui
 }
 
 std::vector<RawBlock>
-DatabaseBlockchainCache::getNonEmptyBlocks(const uint64_t startHeight, const size_t blockCount) const {
+DatabaseBlockchainCache::getNonEmptyBlocks(const uint32_t startHeight, const size_t blockCount) const {
   std::vector<RawBlock> orderedBlocks;
   const uint32_t storageBlockCount = getBlockCount();
-  uint64_t height = startHeight;
+  uint32_t height = startHeight;
   while (orderedBlocks.size() < blockCount && height < storageBlockCount) {
-    uint64_t startHeight = height;
+    uint32_t startHeight = height;
 
     /* Lets try taking the amount we need *2, to try and balance not needing
        multiple DB requests to get the amount we need of non empty blocks, with
        not taking too many */
-    uint64_t endHeight = startHeight + (blockCount * 2);
+    uint32_t endHeight = startHeight + (blockCount * 2);
 
     auto blockBatch = BlockchainReadBatch().requestRawBlocks(startHeight, endHeight);
     const auto rawBlocks = readDatabase(blockBatch).getRawBlocks();
@@ -2016,7 +2016,7 @@ DatabaseBlockchainCache::getNonEmptyBlocks(const uint64_t startHeight, const siz
 }
 
 std::vector<RawBlock>
-DatabaseBlockchainCache::getBlocksByHeight(const uint64_t startHeight, uint64_t endHeight) const {
+DatabaseBlockchainCache::getBlocksByHeight(const uint32_t startHeight, uint32_t endHeight) const {
   auto blockBatch = BlockchainReadBatch().requestRawBlocks(startHeight, endHeight);
 
   /* Get the info from the DB */
@@ -2025,7 +2025,7 @@ DatabaseBlockchainCache::getBlocksByHeight(const uint64_t startHeight, uint64_t 
   std::vector<RawBlock> orderedBlocks;
 
   /* Order, and convert from map, to vector */
-  for (uint64_t height = startHeight; height < startHeight + rawBlocks.size(); height++) {
+  for (uint32_t height = startHeight; height < startHeight + rawBlocks.size(); height++) {
     orderedBlocks.push_back(rawBlocks.at(height));
   }
 
