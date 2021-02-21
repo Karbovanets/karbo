@@ -157,8 +157,6 @@ public:
   virtual bool getTransactionsByPaymentId(const Crypto::Hash& paymentId, std::vector<Transaction>& transactions) override;
   virtual bool getBlockIndexContainingTransaction(const Crypto::Hash& transactionHash, uint32_t& blockIndex) override;
 
-  virtual uint32_t getCurrentBlockchainHeight() const;
-
   virtual void rewind(const uint32_t blockIndex) override;
 
   uint8_t getBlockMajorVersionForHeight(uint32_t height) const;

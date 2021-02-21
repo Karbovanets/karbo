@@ -588,7 +588,7 @@ uint64_t InProcessNode::getTransactionsCount() const {
     throw std::system_error(make_error_code(CryptoNote::error::NOT_INITIALIZED));
   }
 
-  return core.getBlockchainTransactionsCount() - core.getCurrentBlockchainHeight();
+  return core.getBlockchainTransactionsCount() - core.getTopBlockIndex() - 1;
 }
 
 uint64_t InProcessNode::getTransactionsPoolSize() const {

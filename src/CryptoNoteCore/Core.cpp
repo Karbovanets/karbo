@@ -3106,11 +3106,6 @@ void Core::updateBlockMedianSize() {
   blockMedianSize = std::max(Common::medianValue(lastBlockSizes), static_cast<uint64_t>(nextBlockGrantedFullRewardZone));
 }
 
-uint32_t Core::getCurrentBlockchainHeight() const {
-  auto mainChain = chainsLeaves[0];
-  return mainChain->getTopBlockIndex() + 1; // incl. genesis zero block
-}
-
 bool Core::isInCheckpointZone(uint32_t height) const {
   return checkpoints.isInCheckpointZone(height);
 }
