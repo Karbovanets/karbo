@@ -1732,6 +1732,9 @@ bool Core::checkReserveProof(const ReserveProof& proof, const CryptoNote::Accoun
   // compute signature prefix hash
   std::string prefix_data = message;
   prefix_data.append((const char*)&address, sizeof(CryptoNote::AccountPublicAddress));
+
+  if (!proof.proofs.size()) return false;
+
   for (size_t i = 0; i < proof.proofs.size(); ++i) {
     prefix_data.append((const char*)&proof.proofs[i].key_image, sizeof(Crypto::PublicKey));
   }
