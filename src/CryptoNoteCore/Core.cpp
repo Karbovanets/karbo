@@ -645,22 +645,29 @@ bool Core::checkStakeLimit(const ReserveProof& reserve_proof, const AccountPubli
   const size_t allowed = reserve / minStake;
   size_t depth = 0, found = 0;
   Hash prev_hash = getBlockHashByIndex(topIndex);
+  bool shouldStop = false;
   while (depth <= currency.minedMoneyUnlockWindow()) {
-    nextBlock:
-    depth++;
     BlockTemplate prev_block = getBlockByHash(prev_hash);
     if (prev_block.majorVersion < BLOCK_MAJOR_VERSION_5)
       break;
     prev_hash = prev_block.previousBlockHash;
-    bool gotoMainLoop = false;
     for (const auto& c : reserve_proof.proofs ) {
       for (const auto& p : prev_block.stake.reserve_proof.proofs) {
         if (c.key_image == p.key_image) {
           found++;
-          goto nextBlock;
+          shouldStop = true;
+        }
+        if (shouldStop)
+        {
+          break;
         }
       }
+      if (shouldStop)
+      {
+        break;
+      }
     }
+    depth++;
   }
 
   if (found > allowed) {
@@ -903,9 +910,8 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
       const size_t allowed = reserve / minStake;
       size_t depth = 0, found = 0;
       Hash prev_hash = blockTemplate.previousBlockHash;
+      bool shouldStop = false;
       while (depth <= currency.minedMoneyUnlockWindow()) {
-        nextBlock:
-        depth++;
         BlockTemplate prev_block = getBlockByHash(prev_hash);
         if (prev_block.majorVersion < BLOCK_MAJOR_VERSION_5)
           break;
@@ -914,10 +920,19 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
           for (const auto& p : prev_block.stake.reserve_proof.proofs) {
             if (c.key_image == p.key_image) {
               found++;
-              goto nextBlock;
+              shouldStop = true;
+            }
+            if (shouldStop)
+            {
+              break;
             }
           }
+          if (shouldStop)
+          {
+            break;
+          }
         }
+        depth++;
       }
 
       if (found > allowed) {
