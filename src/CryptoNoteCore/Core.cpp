@@ -670,7 +670,7 @@ bool Core::checkStakeLimit(const ReserveProof& reserve_proof, const AccountPubli
     depth++;
   }
 
-  if (found > allowed) {
+  if (found >= allowed) {
     logger(Logging::INFO) << "Already mined " << found << " blocks out of " << allowed;
     return false;
   }
@@ -935,7 +935,7 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
         depth++;
       }
 
-      if (found > allowed) {
+      if (found >= allowed) {
         logger(Logging::WARNING) << "Stake reuse count exceeds the limit in block " << cachedBlock.getBlockHash();
         return error::BlockValidationError::STAKE_REUSED;
       }
