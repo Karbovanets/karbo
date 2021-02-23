@@ -283,6 +283,10 @@ namespace CryptoNote
       }
 
       logger(INFO, WHITE) << "Reserve proof: " << m_currency.formatAmount(reserve) << " (total: " << m_currency.formatAmount(total) << ", spent: " << m_currency.formatAmount(spent) << ")";
+
+      if (!m_handler.checkStakeLimit(m_reserve_proof, m_mine_address)) {
+        return false;
+      }
     }
 
     std::lock_guard<std::mutex> lk(m_threads_lock);
