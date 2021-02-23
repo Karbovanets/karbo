@@ -1130,6 +1130,7 @@ bool RpcServer::onGetInfo(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RPC_
   res.height = topIndex + 1;
   res.difficulty = m_core.getDifficultyForNextBlock();
   res.cumulative_difficulty = m_core.getBlockCumulativeDifficulty(topIndex);
+  res.max_cumulative_block_size = (uint64_t)m_core.getCurrency().maxBlockCumulativeSize(res.height);
   Crypto::Hash last_block_hash = m_core.getTopBlockHash();
   res.top_block_hash = Common::podToHex(last_block_hash);
   res.block_major_version = m_core.getBlockMajorVersionForHeight(m_core.getTopBlockIndex());
