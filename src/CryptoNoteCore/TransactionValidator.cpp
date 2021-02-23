@@ -490,8 +490,8 @@ bool TransactionValidator::validateTransactionInputsExpensive()
                         throw std::runtime_error("Coulnd't deserialize BlockTemplate");
                     }
 
-                    if (blockTemplate.majorVersion >= BLOCK_MAJOR_VERSION_5) {
-                        break;
+                    if (blockTemplate.majorVersion < BLOCK_MAJOR_VERSION_5) {
+                        break; // we reached blocks without stake
                     }
 
                     blocks.push_back(blockTemplate);
