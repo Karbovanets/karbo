@@ -639,6 +639,28 @@ size_t WalletLegacy::getUnlockedOutputsCount() {
   return outputs.size();
 }
 
+std::vector<TransactionOutputInformation> WalletLegacy::getOutputs() {
+  std::vector<TransactionOutputInformation> outputs;
+  m_transferDetails->getOutputs(outputs, ITransfersContainer::IncludeAll);
+  return outputs;
+}
+
+std::vector<TransactionOutputInformation> WalletLegacy::getLockedOutputs() {
+  std::vector<TransactionOutputInformation> outputs;
+  m_transferDetails->getOutputs(outputs, ITransfersContainer::IncludeAllLocked);
+  return outputs;
+}
+
+std::vector<TransactionOutputInformation> WalletLegacy::getUnlockedOutputs() {
+  std::vector<TransactionOutputInformation> outputs;
+  m_transferDetails->getOutputs(outputs, ITransfersContainer::IncludeAllUnlocked);
+  return outputs;
+}
+
+std::vector<TransactionSpentOutputInformation> WalletLegacy::getSpentOutputs() {
+  return m_transferDetails->getSpentOutputs();
+}
+
 size_t WalletLegacy::estimateFusion(const uint64_t& threshold) {
   size_t fusionReadyCount = 0;
   std::vector<TransactionOutputInformation> outputs;
