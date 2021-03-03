@@ -807,9 +807,11 @@ TransactionId WalletLegacy::sendTransaction(const std::vector<WalletLegacyTransf
   std::deque<std::shared_ptr<WalletLegacyEvent>> events;
   throwIfNotInitialised();
 
+  std::list<CryptoNote::TransactionOutputInformation> _selectedOuts = {};
+
   {
     std::unique_lock<std::mutex> lock(m_cacheMutex);
-    request = m_sender->makeSendRequest(txId, events, transfers, fee, extra, mixIn, unlockTimestamp);
+    request = m_sender->makeSendRequest(txId, events, transfers, _selectedOuts, fee, extra, mixIn, unlockTimestamp);
   }
 
   notifyClients(events);
@@ -820,48 +822,6 @@ TransactionId WalletLegacy::sendTransaction(const std::vector<WalletLegacyTransf
   }
 
   return txId;
-}
-
-std::string WalletLegacy::prepareRawTransaction(TransactionId& transactionId, const std::vector<WalletLegacyTransfer>& transfers, uint64_t fee, const std::string& extra, uint64_t mixIn, uint64_t unlockTimestamp) {
-  TransactionId txId = 0;
-  std::deque<std::shared_ptr<WalletLegacyEvent>> events;
-  throwIfNotInitialised();
-
-  std::string tx_as_hex;
-
-  {
-    std::unique_lock<std::mutex> lock(m_cacheMutex);
-    tx_as_hex = m_sender->makeRawTransaction(transactionId, events, transfers, fee, extra, mixIn, unlockTimestamp);
-  }
-
-  notifyClients(events);
-
-  return tx_as_hex;
-}
-
-std::string WalletLegacy::prepareRawTransaction(TransactionId& transactionId, const std::vector<WalletLegacyTransfer>& transfers, const std::list<CryptoNote::TransactionOutputInformation>& _selectedOuts, uint64_t fee, const std::string& extra, uint64_t mixIn, uint64_t unlockTimestamp) {
-  TransactionId txId = 0;
-  std::deque<std::shared_ptr<WalletLegacyEvent>> events;
-  throwIfNotInitialised();
-
-  std::string tx_as_hex;
-
-  {
-    std::unique_lock<std::mutex> lock(m_cacheMutex);
-    tx_as_hex = m_sender->makeRawTransaction(transactionId, events, transfers, fee, extra, mixIn, unlockTimestamp);
-  }
-
-  notifyClients(events);
-
-  return tx_as_hex;
-}
-
-std::string WalletLegacy::prepareRawTransaction(TransactionId& transactionId, const WalletLegacyTransfer& transfer, uint64_t fee, const std::string& extra, uint64_t mixIn, uint64_t unlockTimestamp) {
-  std::vector<WalletLegacyTransfer> transfers;
-  transfers.push_back(transfer);
-  throwIfNotInitialised();
-
-  return prepareRawTransaction(transactionId, transfers, fee, extra, mixIn, unlockTimestamp);
 }
 
 TransactionId WalletLegacy::sendTransaction(const std::vector<WalletLegacyTransfer>& transfers, const std::list<TransactionOutputInformation>& selectedOuts, uint64_t fee, const std::string& extra, uint64_t mixIn, uint64_t unlockTimestamp) {
@@ -883,6 +843,48 @@ TransactionId WalletLegacy::sendTransaction(const std::vector<WalletLegacyTransf
   }
 
   return txId;
+}
+
+std::string WalletLegacy::prepareRawTransaction(TransactionId& transactionId, const std::vector<WalletLegacyTransfer>& transfers, uint64_t fee, const std::string& extra, uint64_t mixIn, uint64_t unlockTimestamp) {
+  std::deque<std::shared_ptr<WalletLegacyEvent>> events;
+  throwIfNotInitialised();
+
+  std::list<CryptoNote::TransactionOutputInformation> _selectedOuts = {};
+
+  std::string tx_as_hex;
+
+  {
+    std::unique_lock<std::mutex> lock(m_cacheMutex);
+    tx_as_hex = m_sender->makeRawTransaction(transactionId, events, transfers, _selectedOuts, fee, extra, mixIn, unlockTimestamp);
+  }
+
+  notifyClients(events);
+
+  return tx_as_hex;
+}
+
+std::string WalletLegacy::prepareRawTransaction(TransactionId& transactionId, const std::vector<WalletLegacyTransfer>& transfers, const std::list<CryptoNote::TransactionOutputInformation>& selectedOuts, uint64_t fee, const std::string& extra, uint64_t mixIn, uint64_t unlockTimestamp) {
+  std::deque<std::shared_ptr<WalletLegacyEvent>> events;
+  throwIfNotInitialised();
+
+  std::string tx_as_hex;
+
+  {
+    std::unique_lock<std::mutex> lock(m_cacheMutex);
+    tx_as_hex = m_sender->makeRawTransaction(transactionId, events, transfers, selectedOuts, fee, extra, mixIn, unlockTimestamp);
+  }
+
+  notifyClients(events);
+
+  return tx_as_hex;
+}
+
+std::string WalletLegacy::prepareRawTransaction(TransactionId& transactionId, const WalletLegacyTransfer& transfer, uint64_t fee, const std::string& extra, uint64_t mixIn, uint64_t unlockTimestamp) {
+  std::vector<WalletLegacyTransfer> transfers;
+  transfers.push_back(transfer);
+  throwIfNotInitialised();
+
+  return prepareRawTransaction(transactionId, transfers, fee, extra, mixIn, unlockTimestamp);
 }
 
 TransactionId WalletLegacy::sendFusionTransaction(const std::list<TransactionOutputInformation>& fusionInputs, uint64_t fee, const std::string& extra, uint64_t mixIn, uint64_t unlockTimestamp) {
