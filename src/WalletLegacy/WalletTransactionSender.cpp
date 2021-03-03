@@ -283,6 +283,104 @@ std::string WalletTransactionSender::makeRawTransaction(TransactionId& transacti
   return raw_tx;
 }
 
+std::string WalletTransactionSender::makeRawTransaction(TransactionId& transactionId, std::deque<std::shared_ptr<WalletLegacyEvent>>& events,
+  const std::vector<WalletLegacyTransfer>& transfers, const std::list<CryptoNote::TransactionOutputInformation>& selectedOuts,
+  uint64_t fee, const std::string& extra, uint64_t mixIn, uint64_t unlockTimestamp)
+{
+
+  std::string raw_tx;
+
+  using namespace CryptoNote;
+
+  throwIf(transfers.empty(), error::ZERO_DESTINATION);
+  validateTransfersAddresses(transfers);
+  uint64_t neededMoney = countNeededMoney(fee, transfers);
+
+  std::shared_ptr<SendTransactionContext> context = std::make_shared<SendTransactionContext>();
+
+  for (auto& out : selectedOuts) {
+      context->foundMoney += out.amount;
+  }
+
+  throwIf(context->foundMoney < neededMoney, error::WRONG_AMOUNT);
+  context->selectedTransfers = selectedOuts;
+
+  // add tx to wallet cache to prevent reuse of outputs used in this tx
+  transactionId = m_transactionsCache.addNewTransaction(neededMoney, fee, extra, transfers, unlockTimestamp);
+  context->transactionId = transactionId;
+  context->mixIn = mixIn;
+
+  if (context->mixIn) {
+    uint64_t outsCount = mixIn + 1; // add one to make possible (if need) to skip real output key
+    std::vector<uint64_t> amounts;
+
+    for (const auto& td : context->selectedTransfers) {
+      amounts.push_back(td.amount);
+    }
+
+    auto queryAmountsCompleted = std::promise<std::error_code>();
+    auto queryAmountsWaitFuture = queryAmountsCompleted.get_future();
+
+    m_node.getRandomOutsByAmounts(std::move(amounts),
+      outsCount,
+      std::ref(context->outs),
+      [&queryAmountsCompleted](std::error_code ec) {
+      auto detachedPromise = std::move(queryAmountsCompleted);
+      detachedPromise.set_value(ec);
+    });
+
+    queryAmountsWaitFuture.get();
+
+    auto scanty_it = std::find_if(context->outs.begin(), context->outs.end(),
+      [&](COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::outs_for_amount& out) {
+      return out.outs.size() < mixIn;
+    });
+
+    if (scanty_it != context->outs.end()) {
+      throw std::system_error(make_error_code(error::MIXIN_COUNT_TOO_BIG));
+      return raw_tx;
+    }
+  }
+
+  // instead of doSendTransaction prepare tx here to prevent relay
+  try
+  {
+    WalletLegacyTransaction& transaction = m_transactionsCache.getTransaction(context->transactionId);
+
+    std::vector<TransactionSourceEntry> sources;
+    prepareInputs(context->selectedTransfers, context->outs, sources, context->mixIn);
+
+    TransactionDestinationEntry changeDts;
+    changeDts.amount = 0;
+    uint64_t totalAmount = -transaction.totalAmount;
+    createChangeDestinations(m_keys.address, totalAmount, context->foundMoney, changeDts);
+
+    std::vector<TransactionDestinationEntry> splittedDests;
+    splitDestinations(transaction.firstTransferId, transaction.transferCount, changeDts, context->dustPolicy, splittedDests);
+
+    Transaction tx;
+    constructTx(m_keys, sources, splittedDests, transaction.extra, transaction.unlockTime, m_upperTransactionSizeLimit, tx, context->tx_key);
+
+    getObjectHash(tx, transaction.hash);
+
+    m_transactionsCache.updateTransaction(context->transactionId, tx, totalAmount, context->selectedTransfers, context->tx_key);
+
+    notifyBalanceChanged(events);
+
+    raw_tx = Common::toHex(toBinaryArray(tx));
+
+    events.push_back(makeCompleteEvent(m_transactionsCache, context->transactionId, std::error_code()));
+  }
+  catch (std::system_error& ec) {
+    events.push_back(makeCompleteEvent(m_transactionsCache, context->transactionId, ec.code()));
+  }
+  catch (std::exception&) {
+    events.push_back(makeCompleteEvent(m_transactionsCache, context->transactionId, make_error_code(error::INTERNAL_WALLET_ERROR)));
+  }
+
+  return raw_tx;
+}
+
 std::shared_ptr<WalletRequest> WalletTransactionSender::makeGetRandomOutsRequest(std::shared_ptr<SendTransactionContext> context) {
   uint64_t outsCount = context->mixIn + 1;// add one to make possible (if need) to skip real output key
   std::vector<uint64_t> amounts;
