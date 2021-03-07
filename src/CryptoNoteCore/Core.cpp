@@ -2351,6 +2351,8 @@ TransactionDetails Core::getTransactionDetails(const Crypto::Hash& transactionHa
     assert(missedTransactionsHashes.empty());
     assert(rawTransactions.size() == 1);
 
+    transactionDetails.blockIndex = segment->getBlockIndexContainingTx(transactionHash);
+
     std::vector<CachedTransaction> transactions;
     Utils::restoreCachedTransactions(rawTransactions, transactions);
     assert(transactions.size() == 1);
