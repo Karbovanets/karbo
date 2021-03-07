@@ -609,8 +609,8 @@ bool RpcServer::onQueryBlocksLite(const COMMAND_RPC_QUERY_BLOCKS_LITE::request& 
     return false;
   }
 
-  res.startHeight = startIndex;
-  res.currentHeight = currentIndex;
+  res.startHeight = startIndex + 1;
+  res.currentHeight = currentIndex + 1;
   res.fullOffset = fullOffset;
   res.status = CORE_RPC_STATUS_OK;
 
