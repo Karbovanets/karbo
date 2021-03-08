@@ -2,13 +2,13 @@ Release notes v.2.3.9
 
 - LevelDB option for blockchain storage. The 'DB' folder is renamed to 'RocksDB', existing folder has to be renamed manually upon upgrade to this version. Use default DB config in Payment Gate Service.
 - RPC: add current max block cumulative size to `/getinfo`
-- RPC: Handle request to check proof of funds that didn't exist yet at given height
-- RPC: Fix transaction details timestamp in `gettransaction`
+- RPC: handle request to check proof of funds that didn't exist yet at given height
+- RPC: fix transaction details timestamp in `gettransaction`
+- RPC: changed block index to height in response of `queryblockslite`
 - Add `--scan-height` param to walletd startup options
 - Display include folder as separate part of project in Visual Studio's Solution Explorer
 - Move DNS checkpoints host to config
 - Get wallet outputs and ability to manually select them for sending
-- Changed block index to height in response of `queryblockslite`
 
 Release notes v.2.3.8
 
