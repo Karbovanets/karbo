@@ -11,6 +11,7 @@ jobs:
     runs-on: windows-latest
     env:
       MSBUILD_PATH: "C:/Program Files (x86)/Microsoft Visual Studio/2019/Enterprise/MSBuild/Current/Bin"
+      BOOST_ROOT: C:\thirdparties\boost-1.72.0
     steps:
       - uses: actions/checkout@master
         with:
@@ -23,6 +24,13 @@ jobs:
       - name: Install OpenSSL
         run: choco install openssl
 
+      - name: Install Boost
+        shell: powershell
+        run: |
+          $Url = "https://sourceforge.net/projects/boost/files/boost-binaries/1.72.0/boost_1_72_0-msvc-14.2-64.exe"
+          (New-Object System.Net.WebClient).DownloadFile($Url, "$env:TEMP\boost-installer.exe")
+          Start-Process -Wait -FilePath "$env:TEMP\boost-installer.exe" "/SILENT","/SP-","/SUPPRESSMSGBOXES","/DIR=$env:BOOST_ROOT"
+
       - name: Build
         shell: powershell
         id: build
@@ -33,7 +41,7 @@ jobs:
           $release_name = "Karbo-cli-win64-${krb_ver}"
           mkdir "$build_folder"
           cd "$build_folder"
-          cmake -G "Visual Studio 16 2019" -A x64 -DARCH=default -DBOOST_ROOT="$env:BOOST_ROOT_1_72_0" -DBOOST_INCLUDEDIR="$env:BOOST_ROOT_1_72_0/boost/include" -DBOOST_INCLUDEDIR="$env:BOOST_ROOT_1_72_0/lib" ..
+          cmake -G "Visual Studio 16 2019" -A x64 -DBOOST_ROOT="$env:BOOST_ROOT" -DBOOST_INCLUDE_DIRS="$env:BOOST_ROOT/include" ..
           MSBuild Karbo.sln /p:Configuration=Release /m
           cd src\Release
           Compress-Archive -Path *.exe -DestinationPath "$release_name.zip"
