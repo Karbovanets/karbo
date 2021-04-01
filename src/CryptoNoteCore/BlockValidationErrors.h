@@ -34,6 +34,7 @@ enum class BlockValidationError {
   CUMULATIVE_BLOCK_SIZE_TOO_BIG,
   DIFFICULTY_OVERHEAD,
   BLOCK_REWARD_MISMATCH,
+  BLOCK_SIGNATURE_MISMATCH,
   CHECKPOINT_BLOCK_HASH_MISMATCH,
   PROOF_OF_WORK_TOO_WEAK,
   TRANSACTION_ABSENT_IN_POOL,
@@ -74,6 +75,7 @@ public:
       case BlockValidationError::BASE_TRANSACTION_EXTRA_MM_TAG: return "Merge mining tag was found in miner transaction extra";
       case BlockValidationError::TRANSACTIONS_INCONSISTENCY: return "Block contains inconsistent transactions";
       case BlockValidationError::DUPLICATE_TRANSACTION: return "Block contains duplicate transaction";
+      case BlockValidationError::BLOCK_SIGNATURE_MISMATCH: return "Block signature mismatch";
 
       default: return "Unknown error";
     }

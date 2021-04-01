@@ -43,7 +43,7 @@ namespace CryptoNote {
     bool init(const MinerConfig& config);
     bool set_block_template(const BlockTemplate& bl, const Difficulty& diffic);
     bool on_block_chain_update();
-    bool start(const AccountPublicAddress& adr, size_t threads_count);
+    bool start(const AccountPublicAddress& adr, const Crypto::SecretKey& key, size_t threads_count);
     uint64_t get_speed();
     void send_stop_signal();
     bool stop();
@@ -85,6 +85,7 @@ namespace CryptoNote {
     std::mutex m_threads_lock;
     IMinerHandler& m_handler;
     AccountPublicAddress m_mine_address;
+    Crypto::SecretKey m_mine_key;
     OnceInInterval m_update_block_template_interval;
     OnceInInterval m_update_merge_hr_interval;
 

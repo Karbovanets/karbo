@@ -220,13 +220,14 @@ size_t Currency::maxBlockCumulativeSize(uint64_t height) const {
 }
 
 bool Currency::constructMinerTx(uint8_t blockMajorVersion, uint32_t height, size_t medianSize, uint64_t alreadyGeneratedCoins, size_t currentBlockSize,
-  uint64_t fee, const AccountPublicAddress& minerAddress, Transaction& tx, const BinaryArray& extraNonce/* = BinaryArray()*/, size_t maxOuts/* = 1*/) const {
+  uint64_t fee, const AccountPublicAddress& minerAddress, Transaction& tx, Crypto::SecretKey& txKey, const BinaryArray& extraNonce/* = BinaryArray()*/, size_t maxOuts/* = 1*/) const {
 
   tx.inputs.clear();
   tx.outputs.clear();
   tx.extra.clear();
 
   KeyPair txkey = generateKeyPair();
+  txKey = txkey.secretKey;
   addTransactionPublicKeyToExtra(tx.extra, txkey.publicKey);
   if (!extraNonce.empty()) {
     if (!addExtraNonceToTransactionExtra(tx.extra, extraNonce)) {
@@ -966,8 +967,9 @@ CurrencyBuilder::CurrencyBuilder(Logging::ILogger& log) : m_currency(log) {
 
 Transaction CurrencyBuilder::generateGenesisTransaction() {
   CryptoNote::Transaction tx;
+  Crypto::SecretKey txKey;
   CryptoNote::AccountPublicAddress ac = boost::value_initialized<CryptoNote::AccountPublicAddress>();
-  m_currency.constructMinerTx(1, 0, 0, 0, 0, 0, ac, tx); // zero fee in genesis
+  m_currency.constructMinerTx(1, 0, 0, 0, 0, 0, ac, tx, txKey); // zero fee in genesis
   return tx;
 }
 

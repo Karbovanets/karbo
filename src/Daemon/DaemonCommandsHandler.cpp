@@ -79,7 +79,7 @@ DaemonCommandsHandler::DaemonCommandsHandler(CryptoNote::Core& core, CryptoNote:
   m_consoleHandler.setHandler("print_pool", boost::bind(&DaemonCommandsHandler::print_pool, this, boost::arg<1>()), "Print transaction pool (long format)");
   m_consoleHandler.setHandler("print_pool_sh", boost::bind(&DaemonCommandsHandler::print_pool_sh, this, boost::arg<1>()), "Print transaction pool (short format)");
   m_consoleHandler.setHandler("print_mp", boost::bind(&DaemonCommandsHandler::print_pool_count, this, boost::arg<1>()), "Print number of transactions in memory pool");
-  m_consoleHandler.setHandler("start_mining", boost::bind(&DaemonCommandsHandler::start_mining, this, boost::placeholders::_1), "Start mining for specified address, start_mining <addr> [threads=1]");
+  m_consoleHandler.setHandler("start_mining", boost::bind(&DaemonCommandsHandler::start_mining, this, boost::placeholders::_1), "Start mining for specified address with key, start_mining <addr> <key> [threads=1]");
   m_consoleHandler.setHandler("stop_mining", boost::bind(&DaemonCommandsHandler::stop_mining, this, boost::placeholders::_1), "Stop mining");
   m_consoleHandler.setHandler("show_hr", boost::bind(&DaemonCommandsHandler::show_hr, this, boost::arg<1>()), "Start showing hash rate");
   m_consoleHandler.setHandler("hide_hr", boost::bind(&DaemonCommandsHandler::hide_hr, this, boost::arg<1>()), "Stop showing hash rate");
@@ -418,7 +418,7 @@ bool DaemonCommandsHandler::print_pool_count(const std::vector<std::string>& arg
 //--------------------------------------------------------------------------------
 bool DaemonCommandsHandler::start_mining(const std::vector<std::string>& args) {
   if (!args.size()) {
-    std::cout << "Please, specify wallet address to mine for: start_mining <addr> [threads=1]" << std::endl;
+    std::cout << "Please, specify wallet address to mine for: start_mining <addr> <key> [threads=1]" << std::endl;
     return true;
   }
 
@@ -428,13 +428,21 @@ bool DaemonCommandsHandler::start_mining(const std::vector<std::string>& args) {
     return true;
   }
 
+  Crypto::Hash private_key_hash;
+  size_t size;
+  if (!Common::fromHex(args[1], &private_key_hash, sizeof(private_key_hash), size) || size != sizeof(private_key_hash)) {
+    logger(Logging::INFO) << "could not parse private key";
+    return false;
+  }
+  Crypto::SecretKey key = *(struct Crypto::SecretKey *) &private_key_hash;
+
   size_t threads_count = 1;
   if (args.size() > 1) {
     bool ok = Common::fromString(args[1], threads_count);
     threads_count = (ok && 0 < threads_count) ? threads_count : 1;
   }
 
-  m_core.get_miner().start(adr, threads_count);
+  m_core.get_miner().start(adr, key, threads_count);
   return true;
 }
 //--------------------------------------------------------------------------------

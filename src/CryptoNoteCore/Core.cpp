@@ -197,10 +197,8 @@ Core::Core(const Currency& currency, Logging::ILogger& logger, Checkpoints&& che
            std::unique_ptr<IBlockchainCacheFactory>&& blockchainCacheFactory, const uint32_t transactionValidationThreads)
          : currency(currency), dispatcher(dispatcher), contextGroup(dispatcher), logger(logger, "Core"), checkpoints(std::move(checkpoints)),
            upgradeManager(new UpgradeManager()), blockchainCacheFactory(std::move(blockchainCacheFactory)), initialized(false), 
-           m_transactionValidationThreadPool(transactionValidationThreads),
-           m_miner(new miner(currency, *this, logger))
+           m_transactionValidationThreadPool(transactionValidationThreads), m_miner(new miner(currency, *this, logger))
 {
-
   upgradeManager->addMajorBlockVersion(BLOCK_MAJOR_VERSION_2, currency.upgradeHeight(BLOCK_MAJOR_VERSION_2));
   upgradeManager->addMajorBlockVersion(BLOCK_MAJOR_VERSION_3, currency.upgradeHeight(BLOCK_MAJOR_VERSION_3));
   upgradeManager->addMajorBlockVersion(BLOCK_MAJOR_VERSION_4, currency.upgradeHeight(BLOCK_MAJOR_VERSION_4));
@@ -681,26 +679,81 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
   auto lastBlocksSizes = cache->getLastBlocksSizes(currency.rewardBlocksWindow(), previousBlockIndex, addGenesisBlock);
   auto blocksSizeMedian = Common::medianValue(lastBlocksSizes);
 
-  if (!currency.getBlockReward(cachedBlock.getBlock().majorVersion, blocksSizeMedian,
+  if (!currency.getBlockReward(blockTemplate.majorVersion, blocksSizeMedian,
                                cumulativeBlockSize, alreadyGeneratedCoins, cumulativeFee, reward, emissionChange)) {
-    logger(Logging::WARNING) << "Block " << blockHash << " has too big cumulative size";
+    logger(Logging::WARNING) << "Block " << blockStr << " has too big cumulative size";
     return error::BlockValidationError::CUMULATIVE_BLOCK_SIZE_TOO_BIG;
   }
 
   if (minerReward != reward) {
-    logger(Logging::WARNING) << "Block reward mismatch for block " << blockHash
-                             << ". Expected reward: " << reward << ", got reward: " << minerReward;
+    logger(Logging::WARNING) << "Block reward mismatch for block " << blockStr
+                             << ". Expected reward: " << currency.formatAmount(reward) << ", got reward: " << currency.formatAmount(minerReward);
     return error::BlockValidationError::BLOCK_REWARD_MISMATCH;
   }
 
   if (checkpoints.isInCheckpointZone(blockIndex)) {
     if (!checkpoints.checkBlock(blockIndex, blockHash)) {
-      logger(Logging::WARNING) << "Checkpoint block hash mismatch for block " << blockHash;
+      logger(Logging::WARNING) << "Checkpoint block hash mismatch for block " << blockStr;
       return error::BlockValidationError::CHECKPOINT_BLOCK_HASH_MISMATCH;
     }
   } else if (!currency.checkProofOfWork(cryptoContext, cachedBlock, currentDifficulty)) {
-    logger(Logging::WARNING) << "Proof of work too weak for block " << blockHash;
+    logger(Logging::WARNING) << "Proof of work too weak for block " << blockStr;
     return error::BlockValidationError::PROOF_OF_WORK_TOO_WEAK;
+  }
+  
+  if (blockTemplate.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
+    // check block signature
+    BinaryArray ba = cachedBlock.getBlockHashingBinaryArray();
+    Crypto::Hash sigHash = Crypto::cn_fast_hash(ba.data(), ba.size());
+    if (!Crypto::check_signature(sigHash, blockTemplate.minerAddress.spendPublicKey, blockTemplate.signature))
+    {
+      logger(Logging::WARNING, Logging::BRIGHT_RED) << "Signature mismatch in block " << blockStr;
+      return error::BlockValidationError::BLOCK_SIGNATURE_MISMATCH;
+    }
+
+    // check that reward goes to the miner adddress
+    Crypto::PublicKey R = getTransactionPublicKeyFromExtra(blockTemplate.baseTransaction.extra);
+    if (Crypto::check_tx_proof(getObjectHash(blockTemplate.baseTransaction), R, blockTemplate.minerAddress.viewPublicKey, blockTemplate.rewardProof.rA, blockTemplate.rewardProof.sig))
+    {
+      // obtain key derivation by multiplying scalar 1 to the pubkey r*A included in the signature
+      Crypto::KeyDerivation derivation;
+      if (!Crypto::generate_key_derivation(blockTemplate.rewardProof.rA, Crypto::EllipticCurveScalar2SecretKey(Crypto::I), derivation)) {
+        logger(Logging::WARNING) << "Failed to generate key derivation in reward proof of block " << blockStr;
+        return error::BlockValidationError::BLOCK_REWARD_MISMATCH;
+      }
+
+      // look for outputs
+      uint64_t received(0);
+      size_t keyIndex(0);
+      try {
+        for (const TransactionOutput& o : blockTemplate.baseTransaction.outputs) {
+          if (o.target.type() == typeid(KeyOutput)) {
+            const KeyOutput out_key = boost::get<KeyOutput>(o.target);
+            Crypto::PublicKey pubkey;
+            derive_public_key(derivation, keyIndex, blockTemplate.minerAddress.spendPublicKey, pubkey);
+            if (pubkey == out_key.key) {
+              received += o.amount;
+            }
+          }
+          ++keyIndex;
+        }
+      }
+      catch (...)
+      {
+        logger(Logging::WARNING) << "Unknown error during validation of the block reward " << blockStr;
+        return error::BlockValidationError::BLOCK_REWARD_MISMATCH;
+      }
+
+      if (reward != received) {
+        logger(Logging::WARNING) << "Miner address only got " << currency.formatAmount(received)
+          << " of expected " << currency.formatAmount(reward) << " in the block " << blockStr;
+        return error::BlockValidationError::BLOCK_REWARD_MISMATCH;
+      }
+    }
+    else {
+      logger(Logging::WARNING) << "Miner reward destination mismatch in the block " << blockStr;
+      return error::BlockValidationError::BLOCK_REWARD_MISMATCH;
+    }
   }
 
   auto ret = error::AddBlockErrorCode::ADDED_TO_ALTERNATIVE;
@@ -1382,6 +1435,8 @@ bool Core::getBlockTemplate(BlockTemplate& b, const AccountPublicAddress& adr, c
   uint64_t fee;
   fillBlockTemplate(b, medianSize, currency.maxBlockCumulativeSize(height), transactionsSize, fee);
 
+  Crypto::SecretKey tx_key;
+
   /*
      two-phase miner transaction generation: we don't know exact block size until we prepare block, but we don't know
      reward until we know
@@ -1390,7 +1445,7 @@ bool Core::getBlockTemplate(BlockTemplate& b, const AccountPublicAddress& adr, c
   */
   // make blocks coin-base tx looks close to real coinbase tx to get truthful blob size
   bool r = currency.constructMinerTx(b.majorVersion, height, medianSize, alreadyGeneratedCoins, transactionsSize, fee, adr,
-                                     b.baseTransaction, extraNonce, 14);
+                                     b.baseTransaction, tx_key, extraNonce, 14);
   if (!r) {
     logger(Logging::ERROR, Logging::BRIGHT_RED) << "Failed to construct miner tx, first chance";
     return false;
@@ -1400,7 +1455,7 @@ bool Core::getBlockTemplate(BlockTemplate& b, const AccountPublicAddress& adr, c
   const size_t TRIES_COUNT = 10;
   for (size_t tryCount = 0; tryCount < TRIES_COUNT; ++tryCount) {
     r = currency.constructMinerTx(b.majorVersion, height, medianSize, alreadyGeneratedCoins, cumulativeSize, fee, adr,
-                                  b.baseTransaction, extraNonce, 14);
+                                  b.baseTransaction, tx_key, extraNonce, 14);
     if (!r) {
       logger(Logging::ERROR, Logging::BRIGHT_RED) << "Failed to construct miner tx, second chance";
       return false;
@@ -1446,6 +1501,24 @@ bool Core::getBlockTemplate(BlockTemplate& b, const AccountPublicAddress& adr, c
           << " is not equal txs_cumulative_size=" << transactionsSize
           << " + get_object_blobsize(b.baseTransaction)=" << getObjectBinarySize(b.baseTransaction);
       return false;
+    }
+
+    // prove that specific miner address received the reward
+    if (b.majorVersion >= BLOCK_MAJOR_VERSION_5) {
+      b.minerAddress = adr;
+      Crypto::KeyImage p = *reinterpret_cast<const Crypto::KeyImage*>(&adr.viewPublicKey);
+      Crypto::KeyImage k = *reinterpret_cast<const Crypto::KeyImage*>(&tx_key);
+      Crypto::KeyImage pk = Crypto::scalarmultKey(p, k);
+      Crypto::PublicKey R;
+      b.rewardProof.rA = reinterpret_cast<const PublicKey&>(pk);
+      Crypto::secret_key_to_public_key(tx_key, R);
+      try {
+        Crypto::generate_tx_proof(getObjectHash(b.baseTransaction), R, adr.viewPublicKey, b.rewardProof.rA, tx_key, b.rewardProof.sig);
+      }
+      catch (const std::runtime_error& e) {
+        logger(Logging::ERROR, Logging::BRIGHT_RED) << "Proof generation error: " << *e.what();
+        return false;
+      }
     }
 
     return true;

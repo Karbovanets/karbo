@@ -421,6 +421,12 @@ void serialize(BlockHeader& header, ISerializer& serializer) {
 void serialize(BlockTemplate& block, ISerializer& serializer) {
   serializeBlockHeader(block, serializer);
 
+  if (block.majorVersion >= BLOCK_MAJOR_VERSION_5) {
+    serializer(block.minerAddress, "miner_address");
+    serializer(block.rewardProof, "reward_proof");
+    serializer(block.signature, "signature");
+  }
+
   if (block.majorVersion == BLOCK_MAJOR_VERSION_2 || block.majorVersion == BLOCK_MAJOR_VERSION_3) {
     auto parentBlockSerializer = makeParentBlockSerializer(block, false, false);
     serializer(parentBlockSerializer, "parent_block");
@@ -515,6 +521,11 @@ void serialize(RawBlock& rawBlock, ISerializer& serializer) {
 
     serializer.endArray();
   }
+}
+
+void serialize(RewardProof& rewardProof, ISerializer& serializer) {
+  serializer(rewardProof.rA, "rA");
+  serializer(rewardProof.sig, "sig");
 }
 
 } // namespace CryptoNote
