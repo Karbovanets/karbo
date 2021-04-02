@@ -370,14 +370,16 @@ namespace CryptoNote
       Crypto::Hash h;
 
       // step 1: sing the block
-
-      CachedBlock sb(b);
-      BinaryArray ba = sb.getBlockHashingBinaryArray();
-      h = Crypto::cn_fast_hash(ba.data(), ba.size());
-      try {
-        Crypto::generate_signature(h, m_mine_address.spendPublicKey, m_mine_key, b.signature);
-      } catch (std::exception& e) {
-        logger(WARNING) << "Signing failed: " << e.what();
+      if (b.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
+        CachedBlock sb(b);
+        BinaryArray ba = sb.getBlockHashingBinaryArray();
+        h = Crypto::cn_fast_hash(ba.data(), ba.size());
+        try {
+          Crypto::generate_signature(h, m_mine_address.spendPublicKey, m_mine_key, b.signature);
+        }
+        catch (std::exception& e) {
+          logger(WARNING) << "Signing failed: " << e.what();
+        }
       }
 
       // step 2: get long hash
