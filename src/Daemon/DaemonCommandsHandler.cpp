@@ -437,8 +437,8 @@ bool DaemonCommandsHandler::start_mining(const std::vector<std::string>& args) {
   Crypto::SecretKey key = *(struct Crypto::SecretKey *) &private_key_hash;
 
   size_t threads_count = 1;
-  if (args.size() > 1) {
-    bool ok = Common::fromString(args[1], threads_count);
+  if (args.size() > 2) {
+    bool ok = Common::fromString(args[2], threads_count);
     threads_count = (ok && 0 < threads_count) ? threads_count : 1;
   }
 
