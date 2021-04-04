@@ -400,6 +400,7 @@ namespace CryptoNote
         // we lucky!
         ++m_config.current_extra_message_index;
 
+        CachedBlock cb(b);
         Crypto::Hash id = cb.getBlockHash();
 
         logger(INFO, GREEN) << "Found block for difficulty "
