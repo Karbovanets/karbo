@@ -402,13 +402,12 @@ namespace CryptoNote
 
         Crypto::Hash id = cb.getBlockHash();
 
-        logger(INFO, GREEN) << "Found block "
-                            << Common::podToHex(id)
-                            << " for difficulty: "
+        logger(INFO, GREEN) << "Found block for difficulty "
                             << local_diff
                             << " at height " << cb.getBlockIndex()
                             << " v. " << (int)b.majorVersion << "\r\n"
-                            << "POW: " << Common::podToHex(pow) << "\r\n";
+                            << "POW: " << Common::podToHex(pow) << "\r\n"
+                            << " ID: " << Common::podToHex(id);
 
         if(!m_handler.handleBlockFound(b)) {
           --m_config.current_extra_message_index;
