@@ -367,13 +367,12 @@ namespace CryptoNote
       }
 
       b.nonce = nonce;
-      Crypto::Hash h;
 
       // step 1: sing the block
       if (b.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
         CachedBlock sb(b);
         BinaryArray ba = sb.getBlockHashingBinaryArray();
-        h = Crypto::cn_fast_hash(ba.data(), ba.size());
+        Crypto::Hash h = Crypto::cn_fast_hash(ba.data(), ba.size());
         try {
           Crypto::generate_signature(h, m_mine_address.spendPublicKey, m_mine_key, b.signature);
         }
@@ -384,30 +383,32 @@ namespace CryptoNote
 
       // step 2: get long hash
 
+      Crypto::Hash pow;
+
       CachedBlock cb(b);
 
       if (!m_stop) {
         try {
-          h = cb.getBlockLongHash(context);
+          pow = cb.getBlockLongHash(context);
         } catch (std::exception& e) {
           logger(ERROR) << "getBlockLongHash failed: " << e.what();
           m_stop = true;
         }
       }
 
-      if (!m_stop && check_hash(h, local_diff))
-      {
+      if (!m_stop && check_hash(pow, local_diff)) {
         // we lucky!
         ++m_config.current_extra_message_index;
 
         Crypto::Hash id = cb.getBlockHash();
 
-        logger(INFO, GREEN) << "Found block for difficulty: "
+        logger(INFO, GREEN) << "Found block "
+                            << Common::podToHex(id)
+                            << " for difficulty: "
                             << local_diff
                             << " at height " << cb.getBlockIndex()
                             << " v. " << (int)b.majorVersion << "\r\n"
-                            << " POW: " << Common::podToHex(h) << "\r\n"
-                            << " ID:  " << Common::podToHex(id);
+                            << "POW: " << Common::podToHex(pow) << "\r\n";
 
         if(!m_handler.handleBlockFound(b)) {
           --m_config.current_extra_message_index;
