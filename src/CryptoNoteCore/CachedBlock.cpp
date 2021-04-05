@@ -107,11 +107,11 @@ const BinaryArray& CachedBlock::getBlockHashingBinaryArray() const {
 }
 
 const BinaryArray& CachedBlock::getSignedBlockHashingBinaryArray() const {
-  if (!blockHashingBinaryArray.is_initialized()) {
-    blockHashingBinaryArray = BinaryArray();
-    auto& result = blockHashingBinaryArray.get();
+  if (!signedBlockHashingBinaryArray.is_initialized()) {
+    signedBlockHashingBinaryArray = BinaryArray();
+    auto& result = signedBlockHashingBinaryArray.get();
     if (!toBinaryArray(static_cast<const BlockHeader&>(block), result)) {
-      blockHashingBinaryArray.reset();
+      signedBlockHashingBinaryArray.reset();
       throw std::runtime_error("Can't serialize BlockHeader");
     }
 
@@ -125,7 +125,7 @@ const BinaryArray& CachedBlock::getSignedBlockHashingBinaryArray() const {
     result.insert(result.end(), sig.begin(), sig.end());
   }
 
-  return blockHashingBinaryArray.get();
+  return signedBlockHashingBinaryArray.get();
 }
 
 const BinaryArray& CachedBlock::getParentBlockBinaryArray(bool headerOnly) const {

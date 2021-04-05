@@ -400,15 +400,12 @@ namespace CryptoNote
         // we lucky!
         ++m_config.current_extra_message_index;
 
-        CachedBlock cb(b);
-        Crypto::Hash id = cb.getBlockHash();
-
         logger(INFO, GREEN) << "Found block for difficulty "
                             << local_diff
                             << " at height " << cb.getBlockIndex()
                             << " v. " << (int)b.majorVersion << "\r\n"
                             << "POW: " << Common::podToHex(pow) << "\r\n"
-                            << " ID: " << Common::podToHex(id);
+                            << " ID: " << Common::podToHex(cb.getBlockHash());
 
         if(!m_handler.handleBlockFound(b)) {
           --m_config.current_extra_message_index;

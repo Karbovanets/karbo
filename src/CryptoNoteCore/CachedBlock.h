@@ -46,6 +46,7 @@ public:
 private:
   const BlockTemplate& block;
   mutable boost::optional<BinaryArray> blockHashingBinaryArray;
+  mutable boost::optional<BinaryArray> signedBlockHashingBinaryArray;
   mutable boost::optional<BinaryArray> parentBlockBinaryArray;
   mutable boost::optional<BinaryArray> parentBlockHashingBinaryArray;
   mutable boost::optional<BinaryArray> parentBlockBinaryArrayHeaderOnly;
