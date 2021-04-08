@@ -166,6 +166,9 @@ public:
   bool isKeyImageSpent(const Crypto::KeyImage& key_im);
   bool isKeyImageSpent(const Crypto::KeyImage& key_im, uint32_t blockIndex);
 
+  virtual bool checkProofOfWork(Crypto::cn_context& context, const CachedBlock& block, Difficulty currentDifficulty) override;
+  virtual bool getBlockLongHash(Crypto::cn_context &context, const CachedBlock& b, Crypto::Hash& res) override;
+
 private:
   const Currency& currency;
   System::Dispatcher& dispatcher;
