@@ -571,7 +571,7 @@ bool Core::getBlockLongHash(Crypto::cn_context &context, const CachedBlock& b, C
     return true;
   }
 
-  BinaryArray pot = b.getBlockHashingBinaryArray();
+  BinaryArray pot = b.getSignedBlockHashingBinaryArray();
 
   // Phase 1
 
