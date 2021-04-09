@@ -388,7 +388,7 @@ namespace CryptoNote
       CachedBlock cb(b);
 
       if (!m_stop) {
-        if (!m_handler.getBlockLongHash(context, cb, h)) {
+        if (!m_handler.getBlockLongHash(context, cb, pow)) {
           logger(ERROR) << "getBlockLongHash failed.";
           m_stop = true;
         }
