@@ -114,7 +114,7 @@ namespace CryptoNote
       extra_nonce = m_extra_messages[m_config.current_extra_message_index];
     }
 
-    if(!m_handler.getBlockTemplate(bl, m_mine_address, extra_nonce, di, height)) {
+    if(!m_handler.getBlockTemplate(bl, m_mine_account, extra_nonce, di, height)) {
       logger(ERROR) << "Failed to getBlockTemplate(), stopping mining";
       return false;
     }
@@ -147,6 +147,18 @@ namespace CryptoNote
   uint64_t millisecondsSinceEpoch() {
     auto now = std::chrono::steady_clock::now();
     return std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+  }
+
+  //-----------------------------------------------------------------------------------------------------
+  bool miner::check_account() {
+    Crypto::PublicKey pub1, pub2;
+    if ((!secret_key_to_public_key(m_mine_account.spendSecretKey, pub1) && pub1 != m_mine_account.address.spendPublicKey) &&
+        (!secret_key_to_public_key(m_mine_account.viewSecretKey, pub2) && pub2 != m_mine_account.address.viewPublicKey)) {
+      logger(ERROR) << "Address doesn't match keys. Are they really private keys for this address?";
+      return false;
+    }
+
+    return true;
   }
 
   //-----------------------------------------------------------------------------------------------------
@@ -199,25 +211,27 @@ namespace CryptoNote
       logger(INFO) << "Loaded " << m_extra_messages.size() << " extra messages, current index " << m_config.current_extra_message_index;
     }
 
-    if (!config.miningAddress.empty() && !config.miningKey.empty()) {
-      if (!m_currency.parseAccountAddressString(config.miningAddress, m_mine_address)) {
+    if (!config.miningAddress.empty() && !config.miningSpendKey.empty() && !config.miningViewKey.empty()) {
+      if (!m_currency.parseAccountAddressString(config.miningAddress, m_mine_account.address)) {
         logger(ERROR) << "Target account address " << config.miningAddress << " has wrong format, starting daemon canceled";
         return false;
       }
 
       Crypto::Hash private_key_hash;
       size_t size;
-      if (!Common::fromHex(config.miningKey, &private_key_hash, sizeof(private_key_hash), size) || size != sizeof(private_key_hash)) {
-        logger(Logging::INFO) << "Could not parse private key";
+      if (!Common::fromHex(config.miningSpendKey, &private_key_hash, sizeof(private_key_hash), size) || size != sizeof(private_key_hash)) {
+        logger(Logging::INFO) << "Could not parse private spend key";
         return false;
       }
-      m_mine_key = *(struct Crypto::SecretKey *) &private_key_hash;
+      m_mine_account.spendSecretKey = *(struct Crypto::SecretKey *) &private_key_hash;
+      if (!Common::fromHex(config.miningViewKey, &private_key_hash, sizeof(private_key_hash), size) || size != sizeof(private_key_hash)) {
+        logger(Logging::INFO) << "Could not parse private view key";
+        return false;
+      }
+      m_mine_account.viewSecretKey = *(struct Crypto::SecretKey *) &private_key_hash;
 
-      Crypto::PublicKey pub;
-      if (!secret_key_to_public_key(m_mine_key, pub) && pub != m_mine_address.spendPublicKey) {
-        logger(ERROR) << "Address doesn't match the key. Is it really Private Spend Key for this address?";
+      if (!check_account())
         return false;
-      }
 
       m_threads_total = 1;
       m_do_mining = true;
@@ -234,7 +248,7 @@ namespace CryptoNote
     return !m_stop;
   }
   //-----------------------------------------------------------------------------------------------------
-  bool miner::start(const AccountPublicAddress& adr, const Crypto::SecretKey& key, size_t threads_count)
+  bool miner::start(const AccountKeys& acc, size_t threads_count)
   {   
     if (is_mining()) {
       logger(ERROR) << "Starting miner but it's already started";
@@ -248,13 +262,9 @@ namespace CryptoNote
       return false;
     }
 
-    m_mine_address = adr;
-    m_mine_key = key;
-    Crypto::PublicKey pub;
-    if (!secret_key_to_public_key(key, pub) && pub != adr.spendPublicKey) {
-      logger(ERROR) << "Address doesn't match the key. Is it really Private Spend Key for this address?";
+    m_mine_account = acc;
+    if (!check_account())
       return false;
-    }
 
     m_threads_total = static_cast<uint32_t>(threads_count);
     m_starter_nonce = Random::randomValue<uint32_t>();
@@ -307,7 +317,7 @@ namespace CryptoNote
   void miner::on_synchronized()
   {
     if(m_do_mining) {
-      start(m_mine_address, m_mine_key, m_threads_total);
+      start(m_mine_account, m_threads_total);
     }
   }
   //-----------------------------------------------------------------------------------------------------
@@ -374,7 +384,7 @@ namespace CryptoNote
         BinaryArray ba = sb.getBlockHashingBinaryArray();
         Crypto::Hash h = Crypto::cn_fast_hash(ba.data(), ba.size());
         try {
-          Crypto::generate_signature(h, m_mine_address.spendPublicKey, m_mine_key, b.signature);
+          Crypto::generate_signature(h, m_mine_account.address.spendPublicKey, m_mine_account.spendSecretKey, b.signature);
         }
         catch (std::exception& e) {
           logger(WARNING) << "Signing failed: " << e.what();

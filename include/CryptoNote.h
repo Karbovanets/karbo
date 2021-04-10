@@ -85,11 +85,6 @@ struct AccountPublicAddress {
   Crypto::PublicKey viewPublicKey;
 };
 
-struct RewardProof {
-  Crypto::PublicKey rA;
-  Crypto::Signature sig;
-};
-
 struct ParentBlock {
   uint8_t majorVersion;
   uint8_t minorVersion;
@@ -111,7 +106,7 @@ struct BlockHeader {
 struct BlockTemplate : public BlockHeader {
   Transaction baseTransaction;
   AccountPublicAddress minerAddress;
-  RewardProof rewardProof;
+  Crypto::SecretKey minerViewKey;
   ParentBlock parentBlock;
   Crypto::Signature signature;
   std::vector<Crypto::Hash> transactionHashes;

@@ -34,7 +34,8 @@ public:
 
   std::string extraMessages;
   std::string miningAddress;
-  std::string miningKey;
+  std::string miningSpendKey;
+  std::string miningViewKey;
   uint32_t miningThreads;
 };
 

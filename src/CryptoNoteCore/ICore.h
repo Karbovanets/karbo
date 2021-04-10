@@ -110,8 +110,7 @@ public:
                                   std::vector<TransactionPrefixInfo>& addedTransactions,
                                   std::vector<Crypto::Hash>& deletedTransactions) const = 0;
 
-  virtual bool getBlockTemplate(BlockTemplate& b, const AccountPublicAddress& adr, const BinaryArray& extraNonce,
-                                Difficulty& difficulty, uint32_t& height) const = 0;
+  virtual bool getBlockTemplate(BlockTemplate& b, const AccountKeys& acc, const BinaryArray& extraNonce, Difficulty& difficulty, uint32_t& height) const = 0;
 
   virtual CoreStatistics getCoreStatistics() const = 0;
 

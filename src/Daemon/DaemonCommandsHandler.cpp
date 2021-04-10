@@ -25,6 +25,7 @@
 #include <boost/format.hpp>
 #include "math.h"
 
+#include "CryptoNote.h"
 #include "Common/ColouredMsg.h"
 #include "P2p/NetNode.h"
 #include "CryptoNoteCore/Miner.h"
@@ -431,18 +432,29 @@ bool DaemonCommandsHandler::start_mining(const std::vector<std::string>& args) {
   Crypto::Hash private_key_hash;
   size_t size;
   if (!Common::fromHex(args[1], &private_key_hash, sizeof(private_key_hash), size) || size != sizeof(private_key_hash)) {
-    logger(Logging::INFO) << "could not parse private key";
+    logger(Logging::INFO) << "could not parse private spend key";
     return false;
   }
-  Crypto::SecretKey key = *(struct Crypto::SecretKey *) &private_key_hash;
+  Crypto::SecretKey spendKey = *(struct Crypto::SecretKey *) &private_key_hash;
+
+  if (!Common::fromHex(args[2], &private_key_hash, sizeof(private_key_hash), size) || size != sizeof(private_key_hash)) {
+    logger(Logging::INFO) << "could not parse private view key";
+    return false;
+  }
+  Crypto::SecretKey viewKey = *(struct Crypto::SecretKey *) &private_key_hash;
+
+  CryptoNote::AccountKeys keys;
+  keys.address = adr;
+  keys.spendSecretKey = spendKey;
+  keys.viewSecretKey = viewKey;
 
   size_t threads_count = 1;
-  if (args.size() > 2) {
-    bool ok = Common::fromString(args[2], threads_count);
+  if (args.size() > 3) {
+    bool ok = Common::fromString(args[3], threads_count);
     threads_count = (ok && 0 < threads_count) ? threads_count : 1;
   }
 
-  m_core.get_miner().start(adr, key, threads_count);
+  m_core.get_miner().start(keys, threads_count);
   return true;
 }
 //--------------------------------------------------------------------------------
