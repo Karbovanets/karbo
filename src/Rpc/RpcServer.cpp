@@ -1528,14 +1528,22 @@ bool RpcServer::onGetBlockTemplate(const COMMAND_RPC_GETBLOCKTEMPLATE::request& 
     throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_TOO_BIG_RESERVE_SIZE, "To big reserved size, maximum 255" };
   }
 
-  AccountPublicAddress acc = boost::value_initialized<AccountPublicAddress>();
+  AccountKeys keys = boost::value_initialized<AccountKeys>();
 
-  if (!req.wallet_address.size() || !m_core.getCurrency().parseAccountAddressString(req.wallet_address, acc)) {
-    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_WALLET_ADDRESS, "Failed to parse wallet address" };
+  Crypto::Hash key_hash;
+  size_t size;
+  if (!Common::fromHex(req.miner_spend_key, &key_hash, sizeof(key_hash), size) || size != sizeof(key_hash)) {
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Failed to parse miner spend key" };
   }
+  keys.spendSecretKey = *(struct Crypto::SecretKey *) &key_hash;
 
-  AccountKeys keys;
-  keys.address = acc;
+  if (!Common::fromHex(req.miner_view_key, &key_hash, sizeof(key_hash), size) || size != sizeof(key_hash)) {
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Failed to parse miner view key" };
+  }
+  keys.viewSecretKey = *(struct Crypto::SecretKey *) &key_hash;
+
+  Crypto::secret_key_to_public_key(keys.spendSecretKey, keys.address.spendPublicKey);
+  Crypto::secret_key_to_public_key(keys.viewSecretKey, keys.address.viewPublicKey);
 
   BlockTemplate blockTemplate = boost::value_initialized<BlockTemplate>();
   CryptoNote::BinaryArray blob_reserve;
