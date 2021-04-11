@@ -58,7 +58,6 @@ namespace CryptoNote {
     bool worker_thread(uint32_t th_local_index);
     bool request_block_template();
     void merge_hr();
-    bool check_account();
 
     struct miner_config
     {

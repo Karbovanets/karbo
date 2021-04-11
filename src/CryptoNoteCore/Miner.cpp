@@ -150,18 +150,6 @@ namespace CryptoNote
   }
 
   //-----------------------------------------------------------------------------------------------------
-  bool miner::check_account() {
-    Crypto::PublicKey pub1, pub2;
-    if ((!secret_key_to_public_key(m_mine_account.spendSecretKey, pub1) && pub1 != m_mine_account.address.spendPublicKey) &&
-        (!secret_key_to_public_key(m_mine_account.viewSecretKey, pub2) && pub2 != m_mine_account.address.viewPublicKey)) {
-      logger(ERROR) << "Address doesn't match keys. Are they really private keys for this address?";
-      return false;
-    }
-
-    return true;
-  }
-
-  //-----------------------------------------------------------------------------------------------------
   void miner::merge_hr()
   {
     if(m_last_hr_merge_time && is_mining()) {
@@ -211,12 +199,7 @@ namespace CryptoNote
       logger(INFO) << "Loaded " << m_extra_messages.size() << " extra messages, current index " << m_config.current_extra_message_index;
     }
 
-    if (!config.miningAddress.empty() && !config.miningSpendKey.empty() && !config.miningViewKey.empty()) {
-      if (!m_currency.parseAccountAddressString(config.miningAddress, m_mine_account.address)) {
-        logger(ERROR) << "Target account address " << config.miningAddress << " has wrong format, starting daemon canceled";
-        return false;
-      }
-
+    if (!config.miningSpendKey.empty() && !config.miningViewKey.empty()) {
       Crypto::Hash private_key_hash;
       size_t size;
       if (!Common::fromHex(config.miningSpendKey, &private_key_hash, sizeof(private_key_hash), size) || size != sizeof(private_key_hash)) {
@@ -230,8 +213,8 @@ namespace CryptoNote
       }
       m_mine_account.viewSecretKey = *(struct Crypto::SecretKey *) &private_key_hash;
 
-      if (!check_account())
-        return false;
+      Crypto::secret_key_to_public_key(m_mine_account.spendSecretKey, m_mine_account.address.spendPublicKey);
+      Crypto::secret_key_to_public_key(m_mine_account.viewSecretKey, m_mine_account.address.viewPublicKey);
 
       m_threads_total = 1;
       m_do_mining = true;
@@ -263,8 +246,6 @@ namespace CryptoNote
     }
 
     m_mine_account = acc;
-    if (!check_account())
-      return false;
 
     m_threads_total = static_cast<uint32_t>(threads_count);
     m_starter_nonce = Random::randomValue<uint32_t>();

@@ -24,9 +24,8 @@ namespace CryptoNote {
 
 namespace {
 const command_line::arg_descriptor<std::string> arg_extra_messages   = { "extra-messages-file", "Specify file for extra messages to include into coinbase transactions", "", true };
-const command_line::arg_descriptor<std::string> arg_mining_address   = { "mining-address", "Specify wallet address for mining", "", true };
-const command_line::arg_descriptor<std::string> arg_mining_spend_key = { "mining-spend-key", "Specify corresponding secret spend key to sign the mined block", "", true };
-const command_line::arg_descriptor<std::string> arg_mining_view_key  = { "mining-view-key", "Specify corresponding secret view key to sign the mined block", "", true };
+const command_line::arg_descriptor<std::string> arg_mining_spend_key = { "mining-spend-key", "Specify secret spend key to sign the mined block", "", true };
+const command_line::arg_descriptor<std::string> arg_mining_view_key  = { "mining-view-key", "Specify secret view key of miner address", "", true };
 const command_line::arg_descriptor<uint32_t>    arg_mining_threads   = { "mining-threads", "Specify mining threads count", 0, true };
 }
 
@@ -36,7 +35,6 @@ MinerConfig::MinerConfig() {
 
 void MinerConfig::initOptions(boost::program_options::options_description& desc) {
   command_line::add_arg(desc, arg_extra_messages);
-  command_line::add_arg(desc, arg_mining_address);
   command_line::add_arg(desc, arg_mining_spend_key);
   command_line::add_arg(desc, arg_mining_view_key);
   command_line::add_arg(desc, arg_mining_threads);
@@ -45,10 +43,6 @@ void MinerConfig::initOptions(boost::program_options::options_description& desc)
 void MinerConfig::init(const boost::program_options::variables_map& options) {
   if(command_line::has_arg(options, arg_extra_messages)) {
     extraMessages = command_line::get_arg(options, arg_extra_messages);
-  }
-
-  if (command_line::has_arg(options, arg_mining_address)) {
-    miningAddress = command_line::get_arg(options, arg_mining_address);
   }
 
   if (command_line::has_arg(options, arg_mining_spend_key)) {

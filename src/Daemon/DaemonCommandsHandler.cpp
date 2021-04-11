@@ -80,7 +80,7 @@ DaemonCommandsHandler::DaemonCommandsHandler(CryptoNote::Core& core, CryptoNote:
   m_consoleHandler.setHandler("print_pool", boost::bind(&DaemonCommandsHandler::print_pool, this, boost::arg<1>()), "Print transaction pool (long format)");
   m_consoleHandler.setHandler("print_pool_sh", boost::bind(&DaemonCommandsHandler::print_pool_sh, this, boost::arg<1>()), "Print transaction pool (short format)");
   m_consoleHandler.setHandler("print_mp", boost::bind(&DaemonCommandsHandler::print_pool_count, this, boost::arg<1>()), "Print number of transactions in memory pool");
-  m_consoleHandler.setHandler("start_mining", boost::bind(&DaemonCommandsHandler::start_mining, this, boost::placeholders::_1), "Start mining for specified address with key, start_mining <addr> <key> [threads=1]");
+  m_consoleHandler.setHandler("start_mining", boost::bind(&DaemonCommandsHandler::start_mining, this, boost::placeholders::_1), "Start mining with keys, start_mining <spend key> <view key> [threads=1]");
   m_consoleHandler.setHandler("stop_mining", boost::bind(&DaemonCommandsHandler::stop_mining, this, boost::placeholders::_1), "Stop mining");
   m_consoleHandler.setHandler("show_hr", boost::bind(&DaemonCommandsHandler::show_hr, this, boost::arg<1>()), "Start showing hash rate");
   m_consoleHandler.setHandler("hide_hr", boost::bind(&DaemonCommandsHandler::hide_hr, this, boost::arg<1>()), "Stop showing hash rate");
@@ -419,38 +419,32 @@ bool DaemonCommandsHandler::print_pool_count(const std::vector<std::string>& arg
 //--------------------------------------------------------------------------------
 bool DaemonCommandsHandler::start_mining(const std::vector<std::string>& args) {
   if (!args.size()) {
-    std::cout << "Please, specify wallet address to mine for: start_mining <addr> <key> [threads=1]" << std::endl;
+    std::cout << "Please, specify wallet address to mine for: start_mining <spend key> <view key> [threads=1]" << std::endl;
     return true;
   }
 
-  CryptoNote::AccountPublicAddress adr;
-  if (!m_core.getCurrency().parseAccountAddressString(args.front(), adr)) {
-    std::cout << "target account address has wrong format" << std::endl;
-    return true;
-  }
+  CryptoNote::AccountKeys keys = boost::value_initialized<CryptoNote::AccountKeys>();
 
   Crypto::Hash private_key_hash;
   size_t size;
-  if (!Common::fromHex(args[1], &private_key_hash, sizeof(private_key_hash), size) || size != sizeof(private_key_hash)) {
+  if (!Common::fromHex(args.front(), &private_key_hash, sizeof(private_key_hash), size) || size != sizeof(private_key_hash)) {
     logger(Logging::INFO) << "could not parse private spend key";
     return false;
   }
-  Crypto::SecretKey spendKey = *(struct Crypto::SecretKey *) &private_key_hash;
+  keys.spendSecretKey = *(struct Crypto::SecretKey *) &private_key_hash;
 
-  if (!Common::fromHex(args[2], &private_key_hash, sizeof(private_key_hash), size) || size != sizeof(private_key_hash)) {
+  if (!Common::fromHex(args[1], &private_key_hash, sizeof(private_key_hash), size) || size != sizeof(private_key_hash)) {
     logger(Logging::INFO) << "could not parse private view key";
     return false;
   }
-  Crypto::SecretKey viewKey = *(struct Crypto::SecretKey *) &private_key_hash;
+  keys.viewSecretKey = *(struct Crypto::SecretKey *) &private_key_hash;
 
-  CryptoNote::AccountKeys keys;
-  keys.address = adr;
-  keys.spendSecretKey = spendKey;
-  keys.viewSecretKey = viewKey;
+  Crypto::secret_key_to_public_key(keys.spendSecretKey, keys.address.spendPublicKey);
+  Crypto::secret_key_to_public_key(keys.viewSecretKey, keys.address.viewPublicKey);
 
   size_t threads_count = 1;
-  if (args.size() > 3) {
-    bool ok = Common::fromString(args[3], threads_count);
+  if (args.size() > 2) {
+    bool ok = Common::fromString(args[2], threads_count);
     threads_count = (ok && 0 < threads_count) ? threads_count : 1;
   }
 
