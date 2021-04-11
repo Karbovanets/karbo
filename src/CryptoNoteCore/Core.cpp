@@ -785,7 +785,7 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
     Crypto::PublicKey pub;
     if (!secret_key_to_public_key(blockTemplate.minerViewKey, pub) && pub != blockTemplate.minerAddress.viewPublicKey) {
       logger(Logging::WARNING, Logging::BRIGHT_RED) << "Miner address doesn't match miner's view key.";
-      
+      return error::BlockValidationError::BLOCK_MINER_ADDRESS_MISMATCH;
     }
 
     // check block signature
