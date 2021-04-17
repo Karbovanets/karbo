@@ -2402,6 +2402,12 @@ BlockDetails Core::getBlockDetails(const Crypto::Hash& blockHash) const {
     blockDetails.totalFeeAmount += blockDetails.transactions.back().fee;
   }
 
+  if (blockDetails.majorVersion >= BLOCK_MAJOR_VERSION_5) {
+    blockDetails.minerAddress = blockTemplate.minerAddress;
+    blockDetails.minerViewKey = blockTemplate.minerViewKey;
+    blockDetails.minerSignature = blockTemplate.signature;
+  }
+
   return blockDetails;
 }
 
@@ -2438,7 +2444,8 @@ BlockDetailsShort Core::getBlockDetailsLite(const Crypto::Hash& blockHash) const
   uint64_t coinbaseTransactionSize = getObjectBinarySize(blockTemplate.baseTransaction);
   blockDetails.blockSize = blockBlobSize + sizes.front() - coinbaseTransactionSize;
   blockDetails.transactionsCount = blockTemplate.transactionHashes.size() + 1;
-
+  if (blockTemplate.majorVersion >= BLOCK_MAJOR_VERSION_5)
+    blockDetails.minerAddress = blockTemplate.minerAddress;
   return blockDetails;
 }
 

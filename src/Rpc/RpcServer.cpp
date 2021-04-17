@@ -43,6 +43,7 @@
 #include "CryptoNoteProtocol/ICryptoNoteProtocolQuery.h"
 #include "P2p/ConnectionContext.h"
 #include "P2p/NetNode.h"
+#include "Transfers/TypeHelpers.h"
 
 #include "CoreRpcServerErrorCodes.h"
 #include "JsonRpc.h"
@@ -1349,7 +1350,9 @@ bool RpcServer::onGetBocksList(const COMMAND_RPC_GET_BLOCKS_LIST::request& req, 
     block_short.transactions_count = b.transactionsCount;
     block_short.difficulty = b.difficulty;
     block_short.min_fee = m_core.getMinimalFee(i);
-    
+    if (b.index >= CryptoNote::parameters::UPGRADE_HEIGHT_V5)
+      block_short.miner = m_core.getCurrency().accountAddressAsString(b.minerAddress);
+
     res.blocks.push_back(block_short);
 
     if (i == 0)
