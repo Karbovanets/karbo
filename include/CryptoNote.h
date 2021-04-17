@@ -104,10 +104,10 @@ struct BlockHeader {
 };
 
 struct BlockTemplate : public BlockHeader {
+  ParentBlock parentBlock;
   Transaction baseTransaction;
   AccountPublicAddress minerAddress;
   Crypto::SecretKey minerViewKey;
-  ParentBlock parentBlock;
   Crypto::Signature signature;
   std::vector<Crypto::Hash> transactionHashes;
 };

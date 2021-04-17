@@ -369,6 +369,7 @@ namespace CryptoNote
         }
         catch (std::exception& e) {
           logger(WARNING) << "Signing failed: " << e.what();
+          m_stop = true;
         }
       }
 
