@@ -250,6 +250,7 @@ private:
   void checkAndRemoveInvalidPoolTransactions(const TransactionValidatorState blockTransactionsState);
 
   bool isTransactionInChain(const Crypto::Hash &txnHash);
+  bool isTransactionInMainChain(const Crypto::Hash &txnHash);
 
   void transactionPoolCleaningProcedure();
   void updateBlockMedianSize();

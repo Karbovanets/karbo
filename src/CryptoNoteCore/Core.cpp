@@ -1060,7 +1060,7 @@ void Core::checkAndRemoveInvalidPoolTransactions(const TransactionValidatorState
     bool isValid = true;
 
     /* If the transaction is in the chain but somehow was not previously removed, fail */
-    if (isTransactionInChain(poolTxHash)) {
+    if (isTransactionInMainChain(poolTxHash)) {
       isValid = false;
     }
     /* If the transaction does not have the right number of mixins, fail */
@@ -1094,6 +1094,25 @@ bool Core::isTransactionInChain(const Crypto::Hash &txnHash) {
   if (segment != nullptr) {
     return true;
   }
+
+  return false;
+}
+
+/* This quickly finds out if a transaction is in the main chain somewhere */
+bool Core::isTransactionInMainChain(const Crypto::Hash &txnHash) {
+  assert(!chainsLeaves.empty());
+  assert(!chainsStorage.empty());
+
+  IBlockchainCache* segment = chainsLeaves[0];
+  assert(segment != nullptr);
+
+  do {
+    if (segment->hasTransaction(txnHash)) {
+      return true;
+    }
+
+    segment = segment->getParent();
+  } while (segment != nullptr);
 
   return false;
 }
@@ -1339,6 +1358,12 @@ bool Core::addTransactionToPool(CachedTransaction&& cachedTransaction) {
 
 bool Core::isTransactionValidForPool(const CachedTransaction& cachedTransaction, TransactionValidatorState& validatorState) {
   uint64_t fee = 0;
+
+  if (isTransactionInMainChain(cachedTransaction.getTransactionHash())) {
+    logger(Logging::DEBUGGING) << "Transaction " << cachedTransaction.getTransactionHash()
+      << " is already in blockchain, not valid for pool";
+    return false;
+  }
 
   if (auto validationResult = validateTransaction(cachedTransaction, validatorState, chainsLeaves[0], m_transactionValidationThreadPool, fee, getMinimalFee(), getTopBlockIndex(), true)) {
     logger(Logging::DEBUGGING) << "Transaction " << cachedTransaction.getTransactionHash()
