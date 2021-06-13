@@ -20,6 +20,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <system_error>
 #include <vector>
 #include <boost/lexical_cast.hpp>

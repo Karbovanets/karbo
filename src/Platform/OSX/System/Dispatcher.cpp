@@ -18,6 +18,7 @@
 
 #include "Dispatcher.h"
 #include <cassert>
+#include <stdexcept>
 #include <string>
 #include <sys/errno.h>
 #include <sys/event.h>

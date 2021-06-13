@@ -16,6 +16,11 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Karbo.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <boost/optional.hpp>
+#include <memory>
+#include <numeric>
+#include <unordered_set>
+
 #include "ITransaction.h"
 #include "TransactionApiExtra.h"
 #include "TransactionUtils.h"
@@ -23,10 +28,6 @@
 #include "Account.h"
 #include "CryptoNoteCore/CryptoNoteTools.h"
 #include "CryptoNoteConfig.h"
-
-#include <boost/optional.hpp>
-#include <numeric>
-#include <unordered_set>
 
 using namespace Crypto;
 

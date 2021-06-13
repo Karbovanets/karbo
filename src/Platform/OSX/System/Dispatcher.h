@@ -20,9 +20,11 @@
 
 #include <atomic>
 #include <cstddef>
+#include <exception>
 #include <functional>
 #include <queue>
 #include <stack>
+#include <stdexcept>
 
 namespace System {
 

@@ -20,9 +20,11 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <exception>
 #include <functional>
 #include <queue>
 #include <stack>
+#include <stdexcept>
 #ifndef __GLIBC__
 #include <bits/reg.h>
 #endif

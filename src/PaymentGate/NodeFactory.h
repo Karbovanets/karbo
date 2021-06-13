@@ -20,6 +20,7 @@
 
 #include "INode.h"
 
+#include <memory>
 #include <string>
 
 #include "Logging/LoggerRef.h"

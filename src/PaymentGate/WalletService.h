@@ -32,6 +32,7 @@
 #endif
 #include "Logging/LoggerRef.h"
 
+#include <cstdint>
 #include <fstream>
 #include <memory>
 #include <boost/multi_index_container.hpp>
