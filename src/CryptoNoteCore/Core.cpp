@@ -565,13 +565,13 @@ bool Core::checkProofOfWork(Crypto::cn_context& context, const CachedBlock& bloc
   return true;
 }
 
-bool Core::getBlockLongHash(Crypto::cn_context &context, const CachedBlock& b, Crypto::Hash& res) {
-  if (b.getBlock().majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5) {
-    res = b.getBlockLongHash(context);
+bool Core::getBlockLongHash(Crypto::cn_context &context, const CachedBlock& block, Crypto::Hash& res) const {
+  if (block.getBlock().majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5) {
+    res = block.getBlockLongHash(context);
     return true;
   }
 
-  BinaryArray pot = b.getSignedBlockHashingBinaryArray();
+  BinaryArray pot = block.getSignedBlockHashingBinaryArray();
 
   // Phase 1
 
@@ -584,8 +584,8 @@ bool Core::getBlockLongHash(Crypto::cn_context &context, const CachedBlock& b, C
 
   // Get the corresponding 8 blocks from blockchain based on preparatory hash_1
   // and throw them into the pot too
-  auto cache = findSegmentContainingBlock(b.getBlock().previousBlockHash);
-  uint32_t maxHeight = std::min<uint32_t>(getTopBlockIndex(), b.getBlockIndex() - 1 - currency.minedMoneyUnlockWindow());
+  auto cache = findSegmentContainingBlock(block.getBlock().previousBlockHash);
+  uint32_t maxHeight = std::min<uint32_t>(getTopBlockIndex(), block.getBlockIndex() - 1 - currency.minedMoneyUnlockWindow());
 
   for (uint8_t i = 1; i <= 8; i++) {
     uint8_t chunk[4] = {
@@ -2354,7 +2354,7 @@ BlockDetails Core::getBlockDetails(const Crypto::Hash& blockHash) const {
   uint32_t blockIndex = segment->getBlockIndex(blockHash);
   BlockTemplate blockTemplate = restoreBlockTemplate(segment, blockIndex);
   
-  BlockDetails blockDetails;
+  BlockDetails blockDetails = boost::value_initialized<BlockDetails>();
   blockDetails.majorVersion = blockTemplate.majorVersion;
   blockDetails.minorVersion = blockTemplate.minorVersion;
   blockDetails.timestamp = blockTemplate.timestamp;
@@ -2373,8 +2373,12 @@ BlockDetails Core::getBlockDetails(const Crypto::Hash& blockHash) const {
   blockDetails.isAlternative = mainChainSet.count(segment) == 0;
 
   Crypto::cn_context context;
-  blockDetails.proofOfWork = CachedBlock(blockTemplate).getBlockLongHash(context);
-
+  Crypto::Hash proofOfWork;
+  CachedBlock cb(blockTemplate);
+  if (getBlockLongHash(context, cb, proofOfWork)) {
+    blockDetails.proofOfWork = proofOfWork;
+  }
+  
   blockDetails.difficulty = getBlockDifficulty(blockIndex);
 
   blockDetails.cumulativeDifficulty = segment->getCurrentCumulativeDifficulty(blockDetails.index);
