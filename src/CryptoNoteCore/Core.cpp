@@ -703,6 +703,18 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
     return blockValidationResult;
   }
 
+  // check block signature
+  if (blockTemplate.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
+    BinaryArray ba = cachedBlock.getBlockHashingBinaryArray();
+    Crypto::Hash sigHash = Crypto::cn_fast_hash(ba.data(), ba.size());
+    size_t outputIndex = blockTemplate.nonce % blockTemplate.baseTransaction.outputs.size();
+    Crypto::PublicKey ephPubKey = boost::get<KeyOutput>(blockTemplate.baseTransaction.outputs[outputIndex].target).key;
+    if (!Crypto::check_signature(sigHash, ephPubKey, blockTemplate.signature)) {
+      logger(Logging::WARNING, Logging::BRIGHT_RED) << "Signature mismatch in block " << blockStr;
+      return error::BlockValidationError::BLOCK_SIGNATURE_MISMATCH;
+    }
+  }
+
   auto currentDifficulty = cache->getDifficultyForNextBlock(previousBlockIndex);
   if (currentDifficulty == 0) {
     logger(Logging::WARNING) << "Block " << blockStr << " has difficulty overhead";
@@ -786,44 +798,6 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
     return error::BlockValidationError::PROOF_OF_WORK_TOO_WEAK;
   }
   
-  if (blockTemplate.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
-    // check miner account
-    Crypto::PublicKey pub;
-    if (!secret_key_to_public_key(blockTemplate.minerViewKey, pub) && pub != blockTemplate.minerAddress.viewPublicKey) {
-      logger(Logging::WARNING, Logging::BRIGHT_RED) << "Miner address doesn't match miner's view key.";
-      return error::BlockValidationError::BLOCK_MINER_ADDRESS_MISMATCH;
-    }
-
-    // check block signature
-    BinaryArray ba = cachedBlock.getBlockHashingBinaryArray();
-    Crypto::Hash sigHash = Crypto::cn_fast_hash(ba.data(), ba.size());
-    if (!Crypto::check_signature(sigHash, blockTemplate.minerAddress.spendPublicKey, blockTemplate.signature))
-    {
-      logger(Logging::WARNING, Logging::BRIGHT_RED) << "Signature mismatch in block " << blockStr;
-      return error::BlockValidationError::BLOCK_SIGNATURE_MISMATCH;
-    }
-
-    // check that reward goes to the miner adddress
-    AccountKeys minerAcc;
-    minerAcc.address = blockTemplate.minerAddress;
-    minerAcc.viewSecretKey = blockTemplate.minerViewKey;
-    
-    uint64_t received = 0;
-    std::vector<size_t> outs;
-
-    if (!lookup_acc_outs(minerAcc, blockTemplate.baseTransaction, outs, received)) {
-      logger(Logging::WARNING) << "Failed to lookup miner reward in block " << blockStr;
-      return error::BlockValidationError::BLOCK_REWARD_MISMATCH;
-    }
-
-    if (expectedReward != received) {
-      logger(Logging::WARNING) << "Block reward mismatch for block " << blockStr
-                               << ". Attached miner address only got " << currency.formatAmount(received)
-                               << " of expected " << currency.formatAmount(expectedReward);                               
-      return error::BlockValidationError::BLOCK_REWARD_MISMATCH;
-    }
-  }
-
   auto ret = error::AddBlockErrorCode::ADDED_TO_ALTERNATIVE;
 
   if (addOnTop) {
@@ -1593,11 +1567,6 @@ bool Core::getBlockTemplate(BlockTemplate& b, const AccountKeys& acc, const Bina
           << " is not equal txs_cumulative_size=" << transactionsSize
           << " + get_object_blobsize(b.baseTransaction)=" << getObjectBinarySize(b.baseTransaction);
       return false;
-    }
-
-    if (b.majorVersion >= BLOCK_MAJOR_VERSION_5) {
-        b.minerAddress = acc.address;
-        b.minerViewKey = acc.viewSecretKey;
     }
 
     return true;
@@ -2432,8 +2401,6 @@ BlockDetails Core::getBlockDetails(const Crypto::Hash& blockHash) const {
   }
 
   if (blockDetails.majorVersion >= BLOCK_MAJOR_VERSION_5) {
-    blockDetails.minerAddress = blockTemplate.minerAddress;
-    blockDetails.minerViewKey = blockTemplate.minerViewKey;
     blockDetails.minerSignature = blockTemplate.signature;
   }
 
@@ -2473,11 +2440,8 @@ BlockDetailsShort Core::getBlockDetailsLite(const Crypto::Hash& blockHash) const
   uint64_t coinbaseTransactionSize = getObjectBinarySize(blockTemplate.baseTransaction);
   blockDetails.blockSize = blockBlobSize + sizes.front() - coinbaseTransactionSize;
   blockDetails.transactionsCount = blockTemplate.transactionHashes.size() + 1;
-  if (blockTemplate.majorVersion >= BLOCK_MAJOR_VERSION_5)
-    blockDetails.minerAddress = blockTemplate.minerAddress;
   return blockDetails;
 }
-
 
 TransactionDetails Core::getTransactionDetails(const Crypto::Hash& transactionHash) const {
   throwIfNotInitialized();

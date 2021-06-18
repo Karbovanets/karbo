@@ -203,8 +203,6 @@ void serialize(BlockDetails& block, ISerializer& serializer) {
   serializer(block.effectiveSizeMedian, "effectiveSizeMedian");
   serializer(block.penalty, "penalty");
   serializer(block.totalFeeAmount, "totalFeeAmount");
-  serializer(block.minerAddress, "minerAddress");
-  serializer(block.minerViewKey, "minerViewKey");
   serializer(block.minerSignature, "minerSignature");
   serializer(block.transactions, "transactions");
 }
@@ -216,7 +214,6 @@ void serialize(BlockDetailsShort& block, ISerializer& serializer) {
   serializer(block.difficulty, "difficulty");
   serializer(block.blockSize, "blockSize");
   serializer(block.transactionsCount, "txCount");
-  serializer(block.minerAddress, "minerAddress");
 }
 
 } //namespace CryptoNote
