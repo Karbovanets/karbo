@@ -110,8 +110,7 @@ public:
                                   std::vector<TransactionPrefixInfo>& addedTransactions,
                                   std::vector<Crypto::Hash>& deletedTransactions) const = 0;
 
-  virtual bool getBlockTemplate(BlockTemplate& b, const AccountPublicAddress& adr, const BinaryArray& extraNonce,
-                                Difficulty& difficulty, uint32_t& height) const = 0;
+  virtual bool getBlockTemplate(BlockTemplate& b, const AccountKeys& acc, const BinaryArray& extraNonce, Difficulty& difficulty, uint32_t& height) const = 0;
 
   virtual CoreStatistics getCoreStatistics() const = 0;
 
@@ -151,5 +150,7 @@ public:
   virtual uint64_t getTotalGeneratedAmount() const = 0;
   virtual uint32_t getCurrentBlockchainHeight() const = 0;
 
+  virtual bool checkProofOfWork(Crypto::cn_context& context, const CachedBlock& block, Difficulty currentDifficulty) = 0;
+  virtual bool getBlockLongHash(Crypto::cn_context &context, const CachedBlock& b, Crypto::Hash& res) = 0;
 };
 }

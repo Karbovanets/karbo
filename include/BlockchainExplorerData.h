@@ -114,6 +114,9 @@ struct BlockDetails {
   uint64_t effectiveSizeMedian = 0;
   double penalty = 0.0;
   uint64_t totalFeeAmount = 0;
+  AccountPublicAddress minerAddress;
+  Crypto::SecretKey minerViewKey;
+  Crypto::Signature minerSignature;
   std::vector<TransactionDetails> transactions;
 };
 
@@ -124,6 +127,7 @@ struct BlockDetailsShort {
   uint64_t difficulty = 0;
   uint64_t blockSize = 0;
   uint64_t transactionsCount = 0;
+  AccountPublicAddress minerAddress;
 };
 
 }
