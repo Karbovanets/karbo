@@ -69,7 +69,7 @@ private:
   void stopBlockchainMonitoring();
 
   bool submitBlock(const CryptoNote::BlockTemplate& minedBlock, const std::string& daemonHost, uint16_t daemonPort);
-  CryptoNote::BlockMiningParameters requestMiningParameters(System::Dispatcher& dispatcher, const std::string& daemonHost, uint16_t daemonPort, const std::string& miningAddress);
+  CryptoNote::BlockMiningParameters requestMiningParameters(System::Dispatcher& dispatcher, const std::string& daemonHost, uint16_t daemonPort, const std::string& miningAddress, const std::string& reserveProof);
 
   void adjustBlockTemplate(CryptoNote::BlockTemplate& blockTemplate) const;
 };

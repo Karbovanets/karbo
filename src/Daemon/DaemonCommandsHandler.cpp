@@ -156,6 +156,7 @@ bool DaemonCommandsHandler::status(const std::vector<std::string>& args) {
   uint8_t major_version = m_core.getBlockMajorVersionForHeight(top_index);
   bool synced = ((uint32_t)top_index == (uint32_t)last_known_block_index);
   Crypto::Hash last_block_hash = m_core.getTopBlockHash();
+  std::string min_stake_str = m_core.getCurrency().formatAmount(m_core.getBaseStake());
 
   std::cout << std::endl
     << (synced ? ColouredMsg("Synchronized ", Common::Console::Color::BrightGreen) : ColouredMsg("Synchronizing ", Common::Console::Color::BrightYellow))
@@ -166,9 +167,10 @@ bool DaemonCommandsHandler::status(const std::vector<std::string>& args) {
     << "last block hash:\n" << ColouredMsg(Common::podToHex(last_block_hash), Common::Console::Color::BrightWhite) << ",\n"
     << "next difficulty: " << ColouredMsg(std::to_string(difficulty), Common::Console::Color::BrightWhite) << ", "
     << "est. network hashrate: " << ColouredMsg(get_mining_speed(hashrate), Common::Console::Color::BrightWhite) << ",\n"
-    << "block v. " << ColouredMsg(std::to_string((int)major_version), Common::Console::Color::BrightWhite) << ", "
+    << "min. stake: " << ColouredMsg(min_stake_str.erase(min_stake_str.length() - 10), Common::Console::Color::BrightWhite) << " "  << CryptoNote::CRYPTONOTE_TICKER
+    << ", block v. " << ColouredMsg(std::to_string((int)major_version), Common::Console::Color::BrightWhite) << ", "
     << "alt. blocks: " << ColouredMsg(std::to_string(alt_blocks_count), Common::Console::Color::BrightWhite) << ", "
-    << "transactions in mempool: " << ColouredMsg(std::to_string(tx_pool_size), Common::Console::Color::BrightWhite) << ",\n"
+    << "mempool: " << ColouredMsg(std::to_string(tx_pool_size), Common::Console::Color::BrightWhite) << ",\n"
     << "connections: " << ColouredMsg(std::to_string(outgoing_connections_count), Common::Console::Color::BrightWhite) << " OUT "
     << ColouredMsg(std::to_string(incoming_connections_count), Common::Console::Color::BrightWhite) << " INC "
     << ColouredMsg(std::to_string(rpc_conn), Common::Console::Color::BrightWhite) << " RPC, "
@@ -418,23 +420,15 @@ bool DaemonCommandsHandler::print_pool_count(const std::vector<std::string>& arg
 //--------------------------------------------------------------------------------
 bool DaemonCommandsHandler::start_mining(const std::vector<std::string>& args) {
   if (!args.size()) {
-    std::cout << "Please, specify wallet address to mine for: start_mining <addr> [threads=1]" << std::endl;
-    return true;
-  }
-
-  CryptoNote::AccountPublicAddress adr;
-  if (!m_core.getCurrency().parseAccountAddressString(args.front(), adr)) {
-    std::cout << "target account address has wrong format" << std::endl;
+    std::cout << "Please, specify the number of threads: start_mining <threads=1>" << std::endl;
     return true;
   }
 
   size_t threads_count = 1;
-  if (args.size() > 1) {
-    bool ok = Common::fromString(args[1], threads_count);
-    threads_count = (ok && 0 < threads_count) ? threads_count : 1;
-  }
-
-  m_core.get_miner().start(adr, threads_count);
+  bool ok = Common::fromString(args[0], threads_count);
+  threads_count = (ok && 0 < threads_count) ? threads_count : 1;
+  
+  m_core.get_miner().start(threads_count);
   return true;
 }
 //--------------------------------------------------------------------------------

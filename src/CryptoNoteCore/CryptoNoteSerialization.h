@@ -71,4 +71,8 @@ void serialize(AccountKeys& keys, ISerializer& s);
 void serialize(KeyPair& keyPair, ISerializer& serializer);
 void serialize(RawBlock& rawBlock, ISerializer& serializer);
 
+void serialize(ReserveProofEntry& reserveProofEntry, ISerializer& serializer);
+void serialize(ReserveProof& reserveProof, ISerializer& serializer);
+void serialize(Stake& stake, ISerializer& serializer);
+
 }

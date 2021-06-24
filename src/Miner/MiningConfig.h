@@ -30,6 +30,7 @@ struct MiningConfig {
   void printHelp();
 
   std::string miningAddress;
+  std::string reserveProof;
   std::string daemonHost;
   uint16_t daemonPort;
   size_t threadCount;

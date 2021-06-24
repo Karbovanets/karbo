@@ -95,7 +95,7 @@ void MinerManager::start() {
     m_logger(Logging::INFO) << "requesting mining parameters";
 
     try {
-      params = requestMiningParameters(m_dispatcher, m_config.daemonHost, m_config.daemonPort, m_config.miningAddress);
+      params = requestMiningParameters(m_dispatcher, m_config.daemonHost, m_config.daemonPort, m_config.miningAddress, m_config.reserveProof);
     } catch (ConnectException& e) {
       m_logger(Logging::WARNING) << "Couldn't connect to daemon: " << e.what();
       System::Timer timer(m_dispatcher);
@@ -134,7 +134,7 @@ void MinerManager::eventLoop() {
           }
         }
 
-        BlockMiningParameters params = requestMiningParameters(m_dispatcher, m_config.daemonHost, m_config.daemonPort, m_config.miningAddress);
+        BlockMiningParameters params = requestMiningParameters(m_dispatcher, m_config.daemonHost, m_config.daemonPort, m_config.miningAddress, m_config.reserveProof);
         adjustBlockTemplate(params.blockTemplate);
 
         startBlockchainMonitoring();
@@ -146,7 +146,7 @@ void MinerManager::eventLoop() {
         m_logger(Logging::DEBUGGING) << "got BLOCKCHAIN_UPDATED event";
         stopMining();
         stopBlockchainMonitoring();
-        BlockMiningParameters params = requestMiningParameters(m_dispatcher, m_config.daemonHost, m_config.daemonPort, m_config.miningAddress);
+        BlockMiningParameters params = requestMiningParameters(m_dispatcher, m_config.daemonHost, m_config.daemonPort, m_config.miningAddress, m_config.reserveProof);
         adjustBlockTemplate(params.blockTemplate);
 
         startBlockchainMonitoring();
@@ -232,12 +232,14 @@ bool MinerManager::submitBlock(const BlockTemplate& minedBlock, const std::strin
   }
 }
 
-BlockMiningParameters MinerManager::requestMiningParameters(System::Dispatcher& dispatcher, const std::string& daemonHost, uint16_t daemonPort, const std::string& miningAddress) {
+BlockMiningParameters MinerManager::requestMiningParameters(System::Dispatcher& dispatcher, 
+  const std::string& daemonHost, uint16_t daemonPort, const std::string& miningAddress, const std::string& reserveProof) {
   try {
     HttpClient client(dispatcher, daemonHost, daemonPort, false);
 
     COMMAND_RPC_GETBLOCKTEMPLATE::request request;
     request.wallet_address = miningAddress;
+    request.reserve_proof = reserveProof;
     request.reserve_size = 0;
 
     COMMAND_RPC_GETBLOCKTEMPLATE::response response;

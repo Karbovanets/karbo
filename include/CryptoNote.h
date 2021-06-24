@@ -80,30 +80,6 @@ struct Transaction : public TransactionPrefix {
 struct BaseTransaction : public TransactionPrefix {
 };
 
-struct ParentBlock {
-  uint8_t majorVersion;
-  uint8_t minorVersion;
-  Crypto::Hash previousBlockHash;
-  uint16_t transactionCount;
-  std::vector<Crypto::Hash> baseTransactionBranch;
-  BaseTransaction baseTransaction;
-  std::vector<Crypto::Hash> blockchainBranch;
-};
-
-struct BlockHeader {
-  uint8_t majorVersion;
-  uint8_t minorVersion;
-  uint32_t nonce;
-  uint64_t timestamp;
-  Crypto::Hash previousBlockHash;
-};
-
-struct BlockTemplate : public BlockHeader {
-  ParentBlock parentBlock;
-  Transaction baseTransaction;
-  std::vector<Crypto::Hash> transactionHashes;
-};
-
 struct AccountPublicAddress {
   Crypto::PublicKey spendPublicKey;
   Crypto::PublicKey viewPublicKey;
@@ -118,6 +94,52 @@ struct AccountKeys {
 struct KeyPair {
   Crypto::PublicKey publicKey;
   Crypto::SecretKey secretKey;
+};
+
+struct ParentBlock {
+  uint8_t majorVersion;
+  uint8_t minorVersion;
+  Crypto::Hash previousBlockHash;
+  uint16_t transactionCount;
+  std::vector<Crypto::Hash> baseTransactionBranch;
+  BaseTransaction baseTransaction;
+  std::vector<Crypto::Hash> blockchainBranch;
+};
+
+struct ReserveProofEntry {
+  Crypto::Hash transaction_id;
+  uint64_t index_in_transaction;
+  Crypto::PublicKey shared_secret;
+  Crypto::KeyImage key_image;
+  Crypto::Signature shared_secret_sig;
+  Crypto::Signature key_image_sig;
+};
+
+struct ReserveProof {
+  std::vector<ReserveProofEntry> proofs;
+  Crypto::Signature signature;
+};
+
+struct Stake {
+  ReserveProof reserve_proof;
+  AccountPublicAddress address;
+  Crypto::PublicKey tx_proof_rA;
+  Crypto::Signature tx_proof_sig;
+};
+
+struct BlockHeader {
+  uint8_t majorVersion;
+  uint8_t minorVersion;
+  uint32_t nonce;
+  uint64_t timestamp;
+  Crypto::Hash previousBlockHash;
+};
+
+struct BlockTemplate : public BlockHeader {
+  ParentBlock parentBlock;
+  Transaction baseTransaction;
+  Stake stake;
+  std::vector<Crypto::Hash> transactionHashes;
 };
 
 struct RawBlock {

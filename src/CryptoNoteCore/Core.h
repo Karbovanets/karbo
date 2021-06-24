@@ -106,9 +106,14 @@ public:
   virtual bool getPoolChangesLite(const Crypto::Hash& lastBlockHash, const std::vector<Crypto::Hash>& knownHashes, std::vector<TransactionPrefixInfo>& addedTransactions,
     std::vector<Crypto::Hash>& deletedTransactions) const override;
 
+  virtual uint64_t getBaseStake() override;
+  virtual bool getBaseStake(const uint32_t height, uint64_t& stake) override;
+  virtual bool checkStakeLimit(const ReserveProof& reserve_proof, const AccountPublicAddress& address) override;
+
   //IMinerHandler
   virtual bool handleBlockFound(BlockTemplate& b); //override;
-  virtual bool getBlockTemplate(BlockTemplate& b, const AccountPublicAddress& adr, const BinaryArray& extraNonce, Difficulty& difficulty, uint32_t& height) const override;
+  virtual bool getBlockTemplate(BlockTemplate& b, const AccountPublicAddress& adr, const BinaryArray& extraNonce, const ReserveProof& reserveProof, Difficulty& difficulty, uint32_t& height) const override;
+  virtual bool checkReserveProof(const ReserveProof& proof, const CryptoNote::AccountPublicAddress& address, std::string& message, uint32_t height, uint64_t& total, uint64_t& spent) override;
 
   miner& get_miner() { return *m_miner; }
 
@@ -152,8 +157,6 @@ public:
   virtual bool getTransactionsByPaymentId(const Crypto::Hash& paymentId, std::vector<Transaction>& transactions) override;
   virtual bool getBlockIndexContainingTransaction(const Crypto::Hash& transactionHash, uint32_t& blockIndex) override;
 
-  virtual uint32_t getCurrentBlockchainHeight() const;
-
   virtual void rewind(const uint32_t blockIndex) override;
 
   uint8_t getBlockMajorVersionForHeight(uint32_t height) const;
@@ -165,6 +168,9 @@ public:
 
   bool isKeyImageSpent(const Crypto::KeyImage& key_im);
   bool isKeyImageSpent(const Crypto::KeyImage& key_im, uint32_t blockIndex);
+
+  virtual bool checkProofOfWork(Crypto::cn_context& context, const CachedBlock& block, Difficulty currentDifficulty) override;
+  virtual bool getBlockLongHash(Crypto::cn_context &context, const CachedBlock& b, Crypto::Hash& res) override;
 
 private:
   const Currency& currency;

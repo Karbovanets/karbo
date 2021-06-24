@@ -43,7 +43,7 @@ namespace CryptoNote {
     bool init(const MinerConfig& config);
     bool set_block_template(const BlockTemplate& bl, const Difficulty& diffic);
     bool on_block_chain_update();
-    bool start(const AccountPublicAddress& adr, size_t threads_count);
+    bool start(size_t threads_count);
     uint64_t get_speed();
     void send_stop_signal();
     bool stop();
@@ -89,6 +89,7 @@ namespace CryptoNote {
     OnceInInterval m_update_merge_hr_interval;
 
     std::vector<BinaryArray> m_extra_messages;
+    ReserveProof m_reserve_proof;
     miner_config m_config;
     std::string m_config_folder_path;
     std::atomic<uint64_t> m_last_hr_merge_time;
