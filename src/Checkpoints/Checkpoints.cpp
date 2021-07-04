@@ -1,6 +1,6 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2018, The TurtleCoin developers
-// Copyright (c) 2016-2020, The Karbo developers
+// Copyright (c) 2016-2021, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -28,6 +28,9 @@
 #include <sstream>
 #include <vector>
 #include <iterator>
+#include <chrono>
+#include <thread>
+#include <condition_variable>
 
 #include "../CryptoNoteConfig.h"
 #include "Checkpoints.h"
@@ -38,7 +41,9 @@ using namespace Logging;
 
 namespace CryptoNote {
 //---------------------------------------------------------------------------
-Checkpoints::Checkpoints(Logging::ILogger &log) : logger(log, "checkpoints") {}
+Checkpoints::Checkpoints(Logging::ILogger &log) : logger(log, "checkpoints") {
+  m_mutex = new std::mutex();
+}
 //---------------------------------------------------------------------------
 bool Checkpoints::addCheckpoint(uint32_t index, const std::string &hash_str) {
   Crypto::Hash h = NULL_HASH;
@@ -153,13 +158,40 @@ bool Checkpoints::loadCheckpointsFromFile(const std::string& fileName) {
 #ifndef __ANDROID__
 bool Checkpoints::loadCheckpointsFromDns()
 {
+  std::lock_guard<std::mutex> lock(*m_mutex);
+  std::mutex m;
+  std::condition_variable cv;
   std::string domain(CryptoNote::DNS_CHECKPOINTS_HOST);
   std::vector<std::string>records;
+  bool res = true;
 
   logger(Logging::INFO) << "Fetching DNS checkpoint records from " << domain;
 
-  if (!Common::fetch_dns_txt(domain, records)) {
-    logger(Logging::INFO) << "Failed to lookup DNS checkpoint records from " << domain;
+  try {
+    std::thread t([&cv, &domain, &res, &records]()
+    {
+      res = Common::fetch_dns_txt(domain, records);
+      cv.notify_one();
+    });
+
+    t.detach();
+
+    {
+      std::unique_lock<std::mutex> l(m);
+      if (cv.wait_for(l, std::chrono::milliseconds(1000)) == std::cv_status::timeout) {
+        logger(Logging::INFO) << "Timeout lookup DNS checkpoint records from " << domain;
+        return false;
+      }
+    }
+
+    if (!res) {
+      logger(Logging::INFO) << "Failed to lookup DNS checkpoint records from " + domain;
+      return false;
+    }
+  }
+  catch (std::runtime_error& e) {
+    logger(Logging::INFO) << e.what();
+    return false;
   }
 
   for (const auto& record : records) {
