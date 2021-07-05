@@ -56,7 +56,8 @@ enum class TransactionValidationError {
   INPUT_INVALID_SIGNATURES_COUNT,
   OUTPUT_INVALID_DECOMPOSED_AMOUNT,
   INVALID_FEE,
-  SIZE_TOO_LARGE
+  SIZE_TOO_LARGE,
+  OUTPUTS_INVALID_COUNT
 };
 
 // custom category:
@@ -108,6 +109,7 @@ public:
       case TransactionValidationError::OUTPUT_INVALID_DECOMPOSED_AMOUNT: return "Invalid decomposed output amount (unmixable output)";
       case TransactionValidationError::INVALID_FEE: return "Fee is too small and it's not a fusion transaction";
       case TransactionValidationError::SIZE_TOO_LARGE: return "Transaction is too large (in bytes)";
+      case TransactionValidationError::OUTPUTS_INVALID_COUNT: return "Only 1 output in coinbase transaction allowed";
       default: return "Unknown error";
     }
   }

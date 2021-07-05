@@ -702,8 +702,7 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
   if (blockTemplate.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
     BinaryArray ba = cachedBlock.getBlockHashingBinaryArray();
     Crypto::Hash sigHash = Crypto::cn_fast_hash(ba.data(), ba.size());
-    size_t outputIndex = blockTemplate.nonce % blockTemplate.baseTransaction.outputs.size();
-    Crypto::PublicKey ephPubKey = boost::get<KeyOutput>(blockTemplate.baseTransaction.outputs[outputIndex].target).key;
+    Crypto::PublicKey ephPubKey = boost::get<KeyOutput>(blockTemplate.baseTransaction.outputs[0].target).key;
     if (!Crypto::check_signature(sigHash, ephPubKey, blockTemplate.signature)) {
       logger(Logging::WARNING, Logging::BRIGHT_RED) << "Signature mismatch in block " << blockStr;
       return error::BlockValidationError::BLOCK_SIGNATURE_MISMATCH;
@@ -1506,7 +1505,7 @@ bool Core::getBlockTemplate(BlockTemplate& b, const AccountKeys& acc, const Bina
   */
   // make blocks coin-base tx looks close to real coinbase tx to get truthful blob size
   bool r = currency.constructMinerTx(b.majorVersion, height, medianSize, alreadyGeneratedCoins, transactionsSize, fee, acc.address,
-                                     b.baseTransaction, tx_key, extraNonce, 14);
+                                     b.baseTransaction, tx_key, extraNonce, b.majorVersion >= BLOCK_MAJOR_VERSION_5 ? 1 : 14);
   if (!r) {
     logger(Logging::ERROR, Logging::BRIGHT_RED) << "Failed to construct miner tx, first chance";
     return false;
@@ -1516,7 +1515,7 @@ bool Core::getBlockTemplate(BlockTemplate& b, const AccountKeys& acc, const Bina
   const size_t TRIES_COUNT = 10;
   for (size_t tryCount = 0; tryCount < TRIES_COUNT; ++tryCount) {
     r = currency.constructMinerTx(b.majorVersion, height, medianSize, alreadyGeneratedCoins, cumulativeSize, fee, acc.address,
-                                  b.baseTransaction, tx_key, extraNonce, 14);
+                                  b.baseTransaction, tx_key, extraNonce, b.majorVersion >= BLOCK_MAJOR_VERSION_5 ? 1 : 14);
     if (!r) {
       logger(Logging::ERROR, Logging::BRIGHT_RED) << "Failed to construct miner tx, second chance";
       return false;
@@ -1798,6 +1797,10 @@ std::error_code Core::validateBlock(const CachedBlock& cachedBlock, IBlockchainC
   if (!block.baseTransaction.signatures.empty())
   {
     return error::TransactionValidationError::BASE_INVALID_SIGNATURES_COUNT;
+  }
+
+  if (block.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5 && !(block.baseTransaction.outputs.size() == 1)) {
+    return error::TransactionValidationError::OUTPUTS_INVALID_COUNT;
   }
 
   for (const auto& output : block.baseTransaction.outputs) {
