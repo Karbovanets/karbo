@@ -438,11 +438,13 @@ struct COMMAND_RPC_GETBLOCKHASH {
 struct COMMAND_RPC_GETBLOCKTEMPLATE {
   struct request {
     uint64_t reserve_size; //max 255 bytes
-    std::string wallet_address;
+    std::string miner_spend_key;
+    std::string miner_view_key;
 
     void serialize(ISerializer &s) {
       KV_MEMBER(reserve_size)
-      KV_MEMBER(wallet_address)
+      KV_MEMBER(miner_spend_key)
+      KV_MEMBER(miner_view_key)
     }
   };
 
@@ -558,6 +560,7 @@ struct block_short_response {
   uint64_t cumulative_size;
   Difficulty difficulty;
   uint64_t min_fee;
+  std::string miner;
 
   void serialize(ISerializer &s) {
     KV_MEMBER(timestamp)
@@ -567,6 +570,7 @@ struct block_short_response {
     KV_MEMBER(transactions_count)
     KV_MEMBER(difficulty)
     KV_MEMBER(min_fee)
+    KV_MEMBER(miner)
   }
 };
 

@@ -30,15 +30,3 @@ inline bool operator==(const AccountPublicAddress &_v1, const AccountPublicAddre
 
 }
 
-namespace std {
-
-template<>
-struct hash < CryptoNote::AccountPublicAddress > {
-  size_t operator()(const CryptoNote::AccountPublicAddress& val) const {
-    size_t spend = *(reinterpret_cast<const size_t*>(&val.spendPublicKey));
-    size_t view = *(reinterpret_cast<const size_t*>(&val.viewPublicKey));
-    return spend ^ view;
-  }
-};
-
-}
