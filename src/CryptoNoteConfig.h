@@ -61,7 +61,8 @@ const size_t   CRYPTONOTE_DISPLAY_DECIMAL_POINT              = 12;
 
 const uint64_t MINIMUM_FEE_V1                                = UINT64_C(100000000);
 const uint64_t MINIMUM_FEE_V2                                = UINT64_C(100000000000);
-const uint64_t MINIMUM_FEE                                   = MINIMUM_FEE_V2;
+const uint64_t MINIMUM_FEE_V3                                = UINT64_C(10000000000);
+const uint64_t MINIMUM_FEE                                   = MINIMUM_FEE_V3;
 const uint64_t MAXIMUM_FEE                                   = UINT64_C(100000000000);
 
 const uint64_t DEFAULT_DUST_THRESHOLD                        = UINT64_C(100000000);
@@ -112,6 +113,7 @@ const uint32_t UPGRADE_HEIGHT_V3_1                           = 216394;
 const uint32_t UPGRADE_HEIGHT_V4                             = 266000;
 const uint32_t UPGRADE_HEIGHT_V4_1                           = 300000;
 const uint32_t UPGRADE_HEIGHT_V4_2                           = 500000;
+const uint32_t UPGRADE_HEIGHT_V4_3                           = 667000;
 const uint32_t UPGRADE_HEIGHT_V5                             = 4294967294;
 
 const unsigned UPGRADE_VOTING_THRESHOLD                      = 90;               // percent
