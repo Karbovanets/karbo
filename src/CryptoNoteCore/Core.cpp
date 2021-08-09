@@ -656,7 +656,7 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
     uint64_t fee = 0;
     // Skip expensive fee validation (due to a dynamic minimal fee calculation)
     // for transactions in a checkpoints range - they are assumed valid.
-    const uint64_t minFee = checkpoints.isInCheckpointZone(blockIndex) ? 0 : getMinimalFee(blockIndex);
+    const uint64_t minFee = getMinimalFee(blockIndex);
     auto transactionValidationResult = validateTransaction(transactions[i], validatorState, cache, m_transactionValidationThreadPool, fee, minFee, previousBlockIndex, false);
     if (transactionValidationResult) {
       const auto hash = transactions[i].getTransactionHash();
@@ -2641,28 +2641,39 @@ uint64_t Core::getMinimalFee() {
 }
 
 uint64_t Core::getMinimalFee(uint32_t height) {
-  IBlockchainCache* mainChain = chainsLeaves[0];
-  uint32_t currentIndex = mainChain->getTopBlockIndex();
-  if (height < 3 || currentIndex <= 1)
-    return 0;
-  
-  if (height > currentIndex)
+  if (height <= CryptoNote::parameters::UPGRADE_HEIGHT_V3_1) {
+    return CryptoNote::parameters::MINIMUM_FEE_V1;
+  }
+  else if (height > CryptoNote::parameters::UPGRADE_HEIGHT_V3_1 && height <= CryptoNote::parameters::UPGRADE_HEIGHT_V4) {
+    return CryptoNote::parameters::MINIMUM_FEE_V2;
+  }
+  else if (height > CryptoNote::parameters::UPGRADE_HEIGHT_V4 && height < CryptoNote::parameters::UPGRADE_HEIGHT_V4_3) {
+    IBlockchainCache* mainChain = chainsLeaves[0];
+    uint32_t currentIndex = mainChain->getTopBlockIndex();
+    if (height < 3 || currentIndex <= 1)
+      return 0;
+
+    if (height > currentIndex)
       height = currentIndex;
- 
-  uint32_t window = std::min(height, std::min<uint32_t>(currentIndex, static_cast<uint32_t>(currency.expectedNumberOfBlocksPerDay())));
-  if (window == 0)
-    ++window;
 
-  // calculate average difficulty for ~last month
-  uint64_t avgCurrentDifficulty = getAvgDifficulty(height, window * 7 * 4);
-  // historical reference trailing average difficulty
-  uint64_t avgReferenceDifficulty = mainChain->getCurrentCumulativeDifficulty(height) / height;
-  // calculate current base reward
-  uint64_t currentReward = currency.calculateReward(mainChain->getAlreadyGeneratedCoins(height));
-  // historical reference trailing average reward
-  uint64_t avgReferenceReward = mainChain->getAlreadyGeneratedCoins(height) / height;
+    uint32_t window = std::min(height, std::min<uint32_t>(currentIndex, static_cast<uint32_t>(currency.expectedNumberOfBlocksPerDay())));
+    if (window == 0)
+      ++window;
 
-  return currency.getMinimalFee(avgCurrentDifficulty, currentReward, avgReferenceDifficulty, avgReferenceReward, height);
+    // calculate average difficulty for ~last month
+    uint64_t avgCurrentDifficulty = getAvgDifficulty(height, window * 7 * 4);
+    // historical reference trailing average difficulty
+    uint64_t avgReferenceDifficulty = mainChain->getCurrentCumulativeDifficulty(height) / height;
+    // calculate current base reward
+    uint64_t currentReward = currency.calculateReward(mainChain->getAlreadyGeneratedCoins(height));
+    // historical reference trailing average reward
+    uint64_t avgReferenceReward = mainChain->getAlreadyGeneratedCoins(height) / height;
+
+    return currency.getMinimalFee(avgCurrentDifficulty, currentReward, avgReferenceDifficulty, avgReferenceReward, height);
+  }
+  else {
+    return CryptoNote::parameters::MINIMUM_FEE_V3;
+  }
 }
 
 uint64_t Core::calculateReward(uint64_t alreadyGeneratedCoins) const {

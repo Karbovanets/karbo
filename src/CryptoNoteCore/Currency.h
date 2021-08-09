@@ -152,8 +152,6 @@ public:
   std::string formatAmount(int64_t amount) const;
   bool parseAmount(const std::string& str, uint64_t& amount) const;
 
-  uint64_t roundUpMinFee(uint64_t minimalFee, int digits) const;
-
   Difficulty nextDifficulty(uint8_t blockMajorVersion, uint32_t blockIndex, std::vector<uint64_t> timestamps, std::vector<Difficulty> cumulativeDifficulties) const;
   Difficulty nextDifficultyV1(std::vector<uint64_t> timestamps, std::vector<Difficulty> cumulativeDifficulties) const;
   Difficulty nextDifficultyV2(std::vector<uint64_t> timestamps, std::vector<Difficulty> cumulativeDifficulties) const;
