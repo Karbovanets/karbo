@@ -131,7 +131,7 @@ namespace Tools {
     m_bind_ip = command_line::get_arg(vm, arg_rpc_bind_ip);
     m_port = command_line::get_arg(vm, arg_rpc_bind_port);
     m_port_ssl = command_line::get_arg(vm, arg_rpc_bind_ssl_port);
-    m_enable_ssl = command_line::get_arg(vm, arg_rpc_bind_ssl_enable);	
+    m_enable_ssl = command_line::get_arg(vm, arg_rpc_bind_ssl_enable);  
     m_rpcUser = command_line::get_arg(vm, arg_rpc_user);
     m_rpcPassword = command_line::get_arg(vm, arg_rpc_password);
     return true;
