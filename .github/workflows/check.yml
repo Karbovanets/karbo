@@ -21,9 +21,6 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.ref }}
 
-      - name: Get CMake
-        uses: lukka/get-cmake@latest
-
       - name: Install OpenSSL
         run: choco install openssl
 
@@ -76,29 +73,17 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.ref }}
 
-      - name: Get CMake
-        uses: lukka/get-cmake@latest
-
-      - name: Find Tag
-        id: tagger
-        uses: jimschubert/query-tag-action@v1
-        with:
-          include: 'v*'
-          exclude: '*-rc*'
-          commit-ish: 'HEAD~'
-          skip-unshallow: 'true'
-
       - name: Build
         id: build
         run: |
           build_folder="build/"
           krb_ver=${GITHUB_SHA::7}
           release_name="Karbo-cli-macOS-${krb_ver}"
-          brew install gcc boost
+          brew install --force boost gcc
           brew link boost --force
           mkdir "$build_folder"
           cd "$build_folder"
-          cmake -DBoost_NO_BOOST_CMAKE=ON -DARCH=default -DCMAKE_C_FLAGS="-mmacosx-version-min=10.12" -DCMAKE_CXX_FLAGS="-mmacosx-version-min=10.12" ..
+          cmake -D ARCH=default -DCMAKE_C_FLAGS="-mmacosx-version-min=10.12" -DCMAKE_CXX_FLAGS="-mmacosx-version-min=10.12" ..
           make
           mkdir "$release_name"
           exeFiles=()
@@ -130,18 +115,6 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.ref }}
-
-      - name: Get CMake
-        uses: lukka/get-cmake@latest
-
-      - name: Find Tag
-        id: tagger
-        uses: jimschubert/query-tag-action@v1
-        with:
-          include: 'v*'
-          exclude: '*-rc*'
-          commit-ish: 'HEAD~'
-          skip-unshallow: 'true'
 
       - name: Build
         id: build
@@ -179,15 +152,6 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.ref }}
-
-      - name: Find Tag
-        id: tagger
-        uses: jimschubert/query-tag-action@v1
-        with:
-          include: 'v*'
-          exclude: '*-rc*'
-          commit-ish: 'HEAD~'
-          skip-unshallow: 'true'
 
       - name: Build
         id: build
