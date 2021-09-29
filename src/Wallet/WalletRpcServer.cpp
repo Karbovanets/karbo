@@ -194,7 +194,7 @@ namespace Tools {
 
       static const std::unordered_map<std::string, JsonMemberMethod> s_methods =
       {
-        { "getbalance"         , makeMemberMethod(&wallet_rpc_server::on_getbalance)        },
+        { "get_balance"        , makeMemberMethod(&wallet_rpc_server::on_get_balance)       },
         { "transfer"           , makeMemberMethod(&wallet_rpc_server::on_transfer)          },
         { "store"              , makeMemberMethod(&wallet_rpc_server::on_store)             },
         { "stop_wallet"        , makeMemberMethod(&wallet_rpc_server::on_stop_wallet)       },
@@ -237,7 +237,7 @@ namespace Tools {
 
   //------------------------------------------------------------------------------------------------------------------------------
 
-  bool wallet_rpc_server::on_getbalance(const wallet_rpc::COMMAND_RPC_GET_BALANCE::request& req,
+  bool wallet_rpc_server::on_get_balance(const wallet_rpc::COMMAND_RPC_GET_BALANCE::request& req,
     wallet_rpc::COMMAND_RPC_GET_BALANCE::response& res)
   {
     res.locked_amount = m_wallet.pendingBalance();
