@@ -18,9 +18,6 @@ jobs:
           fetch-depth: 0
           ref: master
 
-      - name: Get CMake
-        uses: lukka/get-cmake@latest
-
       - name: Install OpenSSL
         run: choco install openssl
 
@@ -72,20 +69,17 @@ jobs:
           fetch-depth: 0
           ref: master
 
-      - name: Get CMake
-        uses: lukka/get-cmake@latest
-
       - name: Build
         id: build
         run: |
           build_folder="build/"
           krb_ver=$(echo ${{ github.ref }} | sed 's|refs/tags/||')
           release_name="Karbo-cli-macOS-${krb_ver}"
-          brew install gcc boost
+          brew install --force boost gcc openssl
           brew link boost --force
           mkdir "$build_folder"
           cd "$build_folder"
-          cmake -DBoost_NO_BOOST_CMAKE=ON -DARCH=default -DCMAKE_C_FLAGS="-mmacosx-version-min=10.12" -DCMAKE_CXX_FLAGS="-mmacosx-version-min=10.12" ..
+          cmake -DARCH=default -DCMAKE_C_FLAGS="-mmacosx-version-min=10.12" -DCMAKE_CXX_FLAGS="-mmacosx-version-min=10.12" ..
           make
           mkdir "$release_name"
           exeFiles=()
@@ -130,7 +124,7 @@ jobs:
           release_name="Karbo-cli-ubuntu18.04-${krb_ver}"
           mkdir -p "$build_folder"
           cd "$build_folder"
-          cmake -DBoost_NO_BOOST_CMAKE=ON -D ARCH=default -D CMAKE_BUILD_TYPE=Release -D CMAKE_POSITION_INDEPENDENT_CODE:BOOL=true ../..
+          cmake -D ARCH=default -D CMAKE_BUILD_TYPE=Release -D CMAKE_POSITION_INDEPENDENT_CODE:BOOL=true ../..
           make
           cd src
           exeFiles=()
@@ -166,9 +160,6 @@ jobs:
           fetch-depth: 0
           ref: master
 
-      - name: Get CMake
-        uses: lukka/get-cmake@latest
-
       - name: Build
         id: build
         run: |
@@ -179,7 +170,7 @@ jobs:
           release_name="Karbo-cli-ubuntu20.04-${krb_ver}"
           mkdir -p "$build_folder"
           cd "$build_folder"
-          cmake -DBoost_NO_BOOST_CMAKE=ON -D ARCH=default -D CMAKE_BUILD_TYPE=Release -D CMAKE_POSITION_INDEPENDENT_CODE:BOOL=true ../..
+          cmake -D ARCH=default -D CMAKE_BUILD_TYPE=Release -D CMAKE_POSITION_INDEPENDENT_CODE:BOOL=true ../..
           make
           cd src
           exeFiles=()
