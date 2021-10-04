@@ -34,7 +34,7 @@ namespace CryptoNote
     bool checkBlock(uint32_t index, const Crypto::Hash& h) const;
     bool checkBlock(uint32_t index, const Crypto::Hash& h, bool& isCheckpoint) const;
     bool isAlternativeBlockAllowed(uint32_t blockchainSize, uint32_t blockIndex) const;
-	bool loadCheckpointsFromFile(const std::string& fileName);
+    bool loadCheckpointsFromFile(const std::string& fileName);
     std::vector<uint32_t> getCheckpointHeights() const;
 #ifndef __ANDROID__
 	bool loadCheckpointsFromDns();
