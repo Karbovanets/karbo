@@ -1,6 +1,6 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2018, The TurtleCoin developers
-// Copyright (c) 2016-2020, The Karbo developers
+// Copyright (c) 2016-2021, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -28,6 +28,9 @@
 #include <sstream>
 #include <vector>
 #include <iterator>
+#include <chrono>
+#include <thread>
+#include <future>
 
 #include "../CryptoNoteConfig.h"
 #include "Checkpoints.h"
@@ -38,7 +41,8 @@ using namespace Logging;
 
 namespace CryptoNote {
 //---------------------------------------------------------------------------
-Checkpoints::Checkpoints(Logging::ILogger &log) : logger(log, "checkpoints") {}
+Checkpoints::Checkpoints(Logging::ILogger &log) : logger(log, "checkpoints") {
+}
 //---------------------------------------------------------------------------
 bool Checkpoints::addCheckpoint(uint32_t index, const std::string &hash_str) {
   Crypto::Hash h = NULL_HASH;
@@ -155,12 +159,34 @@ bool Checkpoints::loadCheckpointsFromDns()
 {
   std::string domain(CryptoNote::DNS_CHECKPOINTS_HOST);
   std::vector<std::string>records;
+  bool res = true;
+  auto start = std::chrono::steady_clock::now();
+  logger(Logging::DEBUGGING) << "Fetching DNS checkpoint records from " << domain;
 
-  logger(Logging::INFO) << "Fetching DNS checkpoint records from " << domain;
+  try {
+    auto future = std::async(std::launch::async, [this, &res, &domain, &records]() {
+      res = Common::fetch_dns_txt(domain, records);
+    });
 
-  if (!Common::fetch_dns_txt(domain, records)) {
-    logger(Logging::INFO) << "Failed to lookup DNS checkpoint records from " << domain;
+    std::future_status status;
+
+    status = future.wait_for(std::chrono::milliseconds(200));
+
+    if (status == std::future_status::timeout) {
+      logger(Logging::DEBUGGING) << "Timeout lookup DNS checkpoint records from " << domain;
+      return false;
+    }
+    else if (status == std::future_status::ready) {
+      future.get();
+    }
   }
+  catch (std::runtime_error& e) {
+    logger(Logging::DEBUGGING) << e.what();
+    return false;
+  }
+
+  auto dur = std::chrono::steady_clock::now() - start;
+  logger(Logging::DEBUGGING) << "DNS query time: " << std::chrono::duration_cast<std::chrono::milliseconds>(dur).count() << " ms";
 
   for (const auto& record : records) {
     uint32_t height;
@@ -174,7 +200,7 @@ bool Checkpoints::loadCheckpointsFromDns()
     char c;
     if (del == std::string::npos) continue;
     if ((ss.fail() || ss.get(c)) || !Common::podFromHex(hash_str, hash)) {
-      logger(Logging::INFO) << "Failed to parse DNS checkpoint record: " << record;
+      logger(Logging::DEBUGGING) << "Failed to parse DNS checkpoint record: " << record;
       continue;
     }
 

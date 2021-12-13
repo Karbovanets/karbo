@@ -87,7 +87,6 @@ public:
   virtual Difficulty getBlockCumulativeDifficulty(uint32_t blockIndex) const override;
 
   virtual Difficulty getDifficultyForNextBlock() const override;
-  virtual Difficulty getAvgDifficulty(uint32_t height, uint32_t window) const override;
 
   virtual std::error_code addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlock) override;
   virtual std::error_code addBlock(RawBlock&& rawBlock) override;

@@ -620,12 +620,12 @@ void TransfersConsumer::processTransaction(const TransactionBlockInfo& blockInfo
 void TransfersConsumer::processOutputs(const TransactionBlockInfo& blockInfo, TransfersSubscription& sub, const ITransactionReader& tx,
   const std::vector<TransactionOutputInformationIn>& transfers, const std::vector<uint32_t>& globalIdxs, bool& contains, bool& updated) {
 
-  TransactionInformation subscribtionTxInfo;
-  contains = sub.getContainer().getTransactionInformation(tx.getTransactionHash(), subscribtionTxInfo);
+  TransactionInformation subscriptionTxInfo;
+  contains = sub.getContainer().getTransactionInformation(tx.getTransactionHash(), subscriptionTxInfo);
   updated = false;
 
   if (contains) {
-    if (subscribtionTxInfo.blockHeight == WALLET_UNCONFIRMED_TRANSACTION_HEIGHT && blockInfo.height != WALLET_UNCONFIRMED_TRANSACTION_HEIGHT) {
+    if (subscriptionTxInfo.blockHeight == WALLET_UNCONFIRMED_TRANSACTION_HEIGHT && blockInfo.height != WALLET_UNCONFIRMED_TRANSACTION_HEIGHT) {
       try {
         // pool->blockchain
         sub.markTransactionConfirmed(blockInfo, tx.getTransactionHash(), globalIdxs);
@@ -635,7 +635,7 @@ void TransfersConsumer::processOutputs(const TransactionBlockInfo& blockInfo, Tr
         throw MarkTransactionConfirmedException(tx.getTransactionHash());
       }
     } else {
-      assert(subscribtionTxInfo.blockHeight == blockInfo.height);
+      assert(subscriptionTxInfo.blockHeight == blockInfo.height);
     }
   } else {
     updated = sub.addTransaction(blockInfo, tx, transfers);

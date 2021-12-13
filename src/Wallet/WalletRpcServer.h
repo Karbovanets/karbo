@@ -34,13 +34,13 @@ namespace Tools {
 class wallet_rpc_server : CryptoNote::HttpServer
 {
 public:
-	wallet_rpc_server(
-		System::Dispatcher& dispatcher, 
-		Logging::ILogger& log,
-		CryptoNote::IWalletLegacy &w, 
-		CryptoNote::INode &n, 
-		CryptoNote::Currency& currency,
-		const std::string& walletFilename);
+  wallet_rpc_server(
+    System::Dispatcher& dispatcher, 
+    Logging::ILogger& log,
+    CryptoNote::IWalletLegacy &w, 
+    CryptoNote::INode &n, 
+    CryptoNote::Currency& currency,
+    const std::string& walletFilename);
 
   static const command_line::arg_descriptor<uint16_t>    arg_rpc_bind_port;
   static const command_line::arg_descriptor<uint16_t>    arg_rpc_bind_ssl_port;
@@ -62,13 +62,14 @@ public:
 private:
   virtual void processRequest(const CryptoNote::HttpRequest& request, CryptoNote::HttpResponse& response) override;
 
-	//json_rpc
-  bool on_getbalance(const wallet_rpc::COMMAND_RPC_GET_BALANCE::request& req, wallet_rpc::COMMAND_RPC_GET_BALANCE::response& res);
+  //json_rpc
+  bool on_get_balance(const wallet_rpc::COMMAND_RPC_GET_BALANCE::request& req, wallet_rpc::COMMAND_RPC_GET_BALANCE::response& res);
   bool on_transfer(const wallet_rpc::COMMAND_RPC_TRANSFER::request& req, wallet_rpc::COMMAND_RPC_TRANSFER::response& res);
   bool on_store(const wallet_rpc::COMMAND_RPC_STORE::request& req, wallet_rpc::COMMAND_RPC_STORE::response& res);
   bool on_stop_wallet(const wallet_rpc::COMMAND_RPC_STOP::request& req, wallet_rpc::COMMAND_RPC_STOP::response& res);
   bool on_get_payments(const wallet_rpc::COMMAND_RPC_GET_PAYMENTS::request& req, wallet_rpc::COMMAND_RPC_GET_PAYMENTS::response& res);
   bool on_get_transfers(const wallet_rpc::COMMAND_RPC_GET_TRANSFERS::request& req, wallet_rpc::COMMAND_RPC_GET_TRANSFERS::response& res);
+  bool on_get_last_transfers(const wallet_rpc::COMMAND_RPC_GET_LAST_TRANSFERS::request& req, wallet_rpc::COMMAND_RPC_GET_LAST_TRANSFERS::response& res);
   bool on_get_transaction(const wallet_rpc::COMMAND_RPC_GET_TRANSACTION::request& req, wallet_rpc::COMMAND_RPC_GET_TRANSACTION::response& res);
   bool on_get_height(const wallet_rpc::COMMAND_RPC_GET_HEIGHT::request& req, wallet_rpc::COMMAND_RPC_GET_HEIGHT::response& res);
   bool on_get_address(const wallet_rpc::COMMAND_RPC_GET_ADDRESS::request& req, wallet_rpc::COMMAND_RPC_GET_ADDRESS::response& res);

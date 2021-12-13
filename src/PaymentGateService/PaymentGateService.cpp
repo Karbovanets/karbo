@@ -174,7 +174,13 @@ void PaymentGateService::run() {
 
   Logging::LoggerRef log(logger, "run");
 
-  if (config.startInprocess) {
+  //check the container exists before starting service
+  const std::string walletFileName = config.gateConfiguration.containerFile;
+  if (!boost::filesystem::exists(walletFileName)) {
+    log(Logging::ERROR) << "A wallet with the filename "
+      << walletFileName << " doesn't exist! "
+      << "Ensure you entered your wallet name correctly.";
+  } else if (config.startInprocess) {
     runInProcess(log);
   } else {
     runRpcProxy(log);
@@ -330,6 +336,9 @@ void PaymentGateService::runInProcess(Logging::LoggerRef& log) {
   if (config.gateConfiguration.generateNewContainer) {
     generateNewWallet(currency, getWalletConfig(), logger, *dispatcher, *node);
   }
+  else if (config.gateConfiguration.changePassword) {
+    changePassword(currency, getWalletConfig(), logger, *dispatcher, *node, config.gateConfiguration.newContainerPassword);
+  }
   else {
     runWalletService(currency, *node);
   }
@@ -355,6 +364,9 @@ void PaymentGateService::runRpcProxy(Logging::LoggerRef& log) {
 
   if (config.gateConfiguration.generateNewContainer) {
     generateNewWallet(currency, getWalletConfig(), logger, *dispatcher, *node);
+  }
+  else if (config.gateConfiguration.changePassword) {
+    changePassword(currency, getWalletConfig(), logger, *dispatcher, *node, config.gateConfiguration.newContainerPassword);
   }
   else {
     runWalletService(currency, *node);

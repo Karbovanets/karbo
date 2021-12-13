@@ -386,7 +386,9 @@ bool TransactionValidator::validateTransactionFee()
             ||
             m_blockHeight > CryptoNote::parameters::UPGRADE_HEIGHT_V3_1 && m_blockHeight <= CryptoNote::parameters::UPGRADE_HEIGHT_V4 && fee < CryptoNote::parameters::MINIMUM_FEE_V2
             ||
-            m_blockHeight > CryptoNote::parameters::UPGRADE_HEIGHT_V4 && (fee < (m_minFee - (m_minFee * 20 / 100))))
+            m_blockHeight > CryptoNote::parameters::UPGRADE_HEIGHT_V4 &&  m_blockHeight < CryptoNote::parameters::UPGRADE_HEIGHT_V4_3 && fee < (m_minFee - (m_minFee * 20 / 100))
+            ||
+            m_blockHeight >= CryptoNote::parameters::UPGRADE_HEIGHT_V4_3 && fee < CryptoNote::parameters::MINIMUM_FEE_V3)
         {
             m_validationResult.errorCode = CryptoNote::error::TransactionValidationError::INVALID_FEE;
             m_validationResult.errorMessage = "Transaction fee is below minimum fee and is not a fusion transaction";
@@ -402,13 +404,26 @@ bool TransactionValidator::validateTransactionFee()
 bool TransactionValidator::validateTransactionExtra()
 {
     // Karbo's fee per byte for Extra
-    if (m_blockHeight > CryptoNote::parameters::UPGRADE_HEIGHT_V4_2)
+    if (m_blockHeight > CryptoNote::parameters::UPGRADE_HEIGHT_V4_2 && m_blockHeight < CryptoNote::parameters::UPGRADE_HEIGHT_V4_3)
     {
         uint64_t min = m_minFee;
         uint64_t extraSize = (uint64_t)m_transaction.extra.size();
         uint64_t feePerByte = m_currency.getFeePerByte(extraSize, m_minFee);
         min += feePerByte;
         if (m_validationResult.fee < (min - min * 20 / 100) && !m_isFusion)
+        {
+            m_validationResult.errorCode = CryptoNote::error::TransactionValidationError::INVALID_FEE;
+            m_validationResult.errorMessage = "Transaction fee is insufficient due to additional data in extra";
+
+            return false;
+        }
+    }
+    else if (m_blockHeight >= CryptoNote::parameters::UPGRADE_HEIGHT_V4_3) {
+        uint64_t min = m_minFee;
+        uint64_t extraSize = (uint64_t)m_transaction.extra.size();
+        uint64_t feePerByte = m_currency.getFeePerByte(extraSize, m_minFee);
+        min += feePerByte;
+        if (m_validationResult.fee < min && !m_isFusion)
         {
             m_validationResult.errorCode = CryptoNote::error::TransactionValidationError::INVALID_FEE;
             m_validationResult.errorMessage = "Transaction fee is insufficient due to additional data in extra";

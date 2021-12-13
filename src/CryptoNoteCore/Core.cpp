@@ -2742,52 +2742,12 @@ bool Core::getTransactionsByPaymentId(const Crypto::Hash& paymentId, std::vector
   return false;
 }
 
-Difficulty Core::getAvgDifficulty(uint32_t height, uint32_t window) const {
-  throwIfNotInitialized();
-  IBlockchainCache* mainChain = chainsLeaves[0];
-  height = std::min<uint32_t>(height, getTopBlockIndex());
-
-  if (height <= 1)
-    return 1;
-
-  if (height <= window)
-    return mainChain->getCurrentCumulativeDifficulty(height) / height;
-
-  uint32_t offset = height - std::min<uint32_t>(height, window);
-
-  if (offset == 0)
-    ++offset;
-
-  return (mainChain->getCurrentCumulativeDifficulty(height) - mainChain->getCurrentCumulativeDifficulty(offset)) / std::min<uint32_t>(mainChain->getTopBlockIndex(), window);
+uint64_t Core::getMinimalFee(uint32_t height) {
+  return currency.getMinimalFee(height);
 }
 
 uint64_t Core::getMinimalFee() {
   return getMinimalFee(getTopBlockIndex());
-}
-
-uint64_t Core::getMinimalFee(uint32_t height) {
-  IBlockchainCache* mainChain = chainsLeaves[0];
-  uint32_t currentIndex = mainChain->getTopBlockIndex();
-  if (height < 3 || currentIndex <= 1)
-    return 0;
-  
-  if (height > currentIndex)
-      height = currentIndex;
- 
-  uint32_t window = std::min(height, std::min<uint32_t>(currentIndex, static_cast<uint32_t>(currency.expectedNumberOfBlocksPerDay())));
-  if (window == 0)
-    ++window;
-
-  // calculate average difficulty for ~last month
-  uint64_t avgCurrentDifficulty = getAvgDifficulty(height, window * 7 * 4);
-  // historical reference trailing average difficulty
-  uint64_t avgReferenceDifficulty = mainChain->getCurrentCumulativeDifficulty(height) / height;
-  // calculate current base reward
-  uint64_t currentReward = currency.calculateReward(mainChain->getAlreadyGeneratedCoins(height));
-  // historical reference trailing average reward
-  uint64_t avgReferenceReward = mainChain->getAlreadyGeneratedCoins(height) / height;
-
-  return currency.getMinimalFee(avgCurrentDifficulty, currentReward, avgReferenceDifficulty, avgReferenceReward, height);
 }
 
 uint64_t Core::calculateReward(uint64_t alreadyGeneratedCoins) const {
