@@ -34,6 +34,7 @@
 #include "UpgradeDetector.h"
 
 #undef ERROR
+#define RESET_WORK_FACTOR_V5 1000
 
 using namespace Logging;
 using namespace Common;
@@ -686,7 +687,7 @@ Difficulty Currency::nextDifficultyV5(uint32_t height, uint8_t blockMajorVersion
   // begin reset difficulty for new epoch
 
   if (height == upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5)) {
-    return 1000000; //return (cumulativeDifficulties[0] - cumulativeDifficulties[1]) / RESET_WORK_FACTOR;
+	  return cumulativeDifficulties[0] / height / RESET_WORK_FACTOR_V5;
   }
 
   uint32_t count = (uint32_t)difficultyBlocksCountByBlockVersion(blockMajorVersion) - 1;
