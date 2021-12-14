@@ -1853,14 +1853,14 @@ bool simple_wallet::start_mining(const std::vector<std::string>& args) {
     if (err.empty())
       success_msg_writer() << "Mining started in daemon";
     else
-      fail_msg_writer() << "mining has NOT been started: " << err;
+      fail_msg_writer() << "Mining has not started due to an error: " << err;
 
   }
   catch (const ConnectException&) {
     printConnectionError();
   }
   catch (const std::exception& e) {
-    fail_msg_writer() << "Failed to invoke rpc method: " << e.what();
+    fail_msg_writer() << "Failed to invoke RPC method: " << e.what();
   }
 
   return true;
@@ -1886,13 +1886,13 @@ bool simple_wallet::stop_mining(const std::vector<std::string>& args)
     if (err.empty())
       success_msg_writer() << "Mining stopped in daemon";
     else
-      fail_msg_writer() << "mining has NOT been stopped: " << err;
+      fail_msg_writer() << "Mining has not stopped: " << err;
   }
   catch (const ConnectException&) {
     printConnectionError();
   }
   catch (const std::exception& e) {
-    fail_msg_writer() << "Failed to invoke rpc method: " << e.what();
+    fail_msg_writer() << "Failed to invoke RPC method: " << e.what();
   }
 
   return true;
