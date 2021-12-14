@@ -730,8 +730,8 @@ Difficulty Currency::nextDifficultyV5(uint32_t height, uint8_t blockMajorVersion
   }
 
   // minimum limit
-  if (!isTestnet() && next_D < 1000000) {
-    next_D = 1000000;
+  if (!isTestnet() && next_D < 100000) {
+    next_D = 100000;
   }
 
   return next_D;
