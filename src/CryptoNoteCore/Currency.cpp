@@ -34,7 +34,7 @@
 #include "UpgradeDetector.h"
 
 #undef ERROR
-#define RESET_WORK_FACTOR_V5 1000
+constexpr auto RESET_WORK_FACTOR_V5 = 1000;
 
 using namespace Logging;
 using namespace Common;
