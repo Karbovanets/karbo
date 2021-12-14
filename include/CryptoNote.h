@@ -80,6 +80,17 @@ struct Transaction : public TransactionPrefix {
 struct BaseTransaction : public TransactionPrefix {
 };
 
+struct AccountPublicAddress {
+  Crypto::PublicKey spendPublicKey;
+  Crypto::PublicKey viewPublicKey;
+
+  bool operator==(const AccountPublicAddress &other) const
+  {
+    return std::equal(std::begin(spendPublicKey.data), std::end(spendPublicKey.data), std::begin(other.spendPublicKey.data))
+        && std::equal(std::begin(viewPublicKey.data), std::end(viewPublicKey.data), std::begin(other.viewPublicKey.data));
+  }
+};
+
 struct ParentBlock {
   uint8_t majorVersion;
   uint8_t minorVersion;
@@ -101,12 +112,8 @@ struct BlockHeader {
 struct BlockTemplate : public BlockHeader {
   ParentBlock parentBlock;
   Transaction baseTransaction;
+  Crypto::Signature signature;
   std::vector<Crypto::Hash> transactionHashes;
-};
-
-struct AccountPublicAddress {
-  Crypto::PublicKey spendPublicKey;
-  Crypto::PublicKey viewPublicKey;
 };
 
 struct AccountKeys {
@@ -124,5 +131,18 @@ struct RawBlock {
   BinaryArray block; //BlockTemplate
   std::vector<BinaryArray> transactions;
 };
+
+}
+
+namespace std {
+
+  template<>
+  struct hash<CryptoNote::AccountPublicAddress> {
+    size_t operator()(const CryptoNote::AccountPublicAddress& val) const {
+      size_t spend = *(reinterpret_cast<const size_t*>(&val.spendPublicKey));
+      size_t view = *(reinterpret_cast<const size_t*>(&val.viewPublicKey));
+      return spend ^ view;
+    }
+  };
 
 }

@@ -197,10 +197,8 @@ Core::Core(const Currency& currency, Logging::ILogger& logger, Checkpoints&& che
            std::unique_ptr<IBlockchainCacheFactory>&& blockchainCacheFactory, const uint32_t transactionValidationThreads)
          : currency(currency), dispatcher(dispatcher), contextGroup(dispatcher), logger(logger, "Core"), checkpoints(std::move(checkpoints)),
            upgradeManager(new UpgradeManager()), blockchainCacheFactory(std::move(blockchainCacheFactory)), initialized(false), 
-           m_transactionValidationThreadPool(transactionValidationThreads),
-           m_miner(new miner(currency, *this, logger))
+           m_transactionValidationThreadPool(transactionValidationThreads), m_miner(new miner(currency, *this, logger))
 {
-
   upgradeManager->addMajorBlockVersion(BLOCK_MAJOR_VERSION_2, currency.upgradeHeight(BLOCK_MAJOR_VERSION_2));
   upgradeManager->addMajorBlockVersion(BLOCK_MAJOR_VERSION_3, currency.upgradeHeight(BLOCK_MAJOR_VERSION_3));
   upgradeManager->addMajorBlockVersion(BLOCK_MAJOR_VERSION_4, currency.upgradeHeight(BLOCK_MAJOR_VERSION_4));
@@ -277,7 +275,7 @@ uint64_t Core::getBlockTimestampByIndex(uint32_t blockIndex) const {
   throwIfNotInitialized();
 
   auto timestamps = chainsLeaves[0]->getLastTimestamps(1, blockIndex, addGenesisBlock);
-  assert(!(timestamps.size() == 1));
+  //assert(!(timestamps.size() == 1));
 
   return timestamps[0];
 }
@@ -549,6 +547,80 @@ std::vector<Crypto::Hash> Core::findBlockchainSupplement(const std::vector<Crypt
   return getBlockHashes(startBlockIndex, static_cast<uint32_t>(maxCount));
 }
 
+bool Core::checkProofOfWork(Crypto::cn_context& context, const CachedBlock& block, Difficulty currentDifficulty) {
+  if (block.getBlock().majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5) {
+    return currency.checkProofOfWork(context, block, currentDifficulty);
+  }
+
+  Crypto::Hash proofOfWork;
+
+  if (!getBlockLongHash(context, block, proofOfWork)) {
+    return false;
+  }
+
+  if (!check_hash(proofOfWork, currentDifficulty)) {
+    return false;
+  }
+
+  return true;
+}
+
+bool Core::getBlockLongHash(Crypto::cn_context &context, const CachedBlock& block, Crypto::Hash& res) const {
+  if (block.getBlock().majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5) {
+    res = block.getBlockLongHash(context);
+    return true;
+  }
+
+  BinaryArray pot = block.getSignedBlockHashingBinaryArray();
+
+  // Phase 1
+
+  Crypto::Hash hash_1, hash_2;
+
+  auto cache = findSegmentContainingBlock(block.getBlock().previousBlockHash);
+  uint32_t maxHeight = std::min<uint32_t>(getTopBlockIndex(), block.getBlockIndex() - 1 - currency.minedMoneyUnlockWindow());
+
+#define ITER 128
+  for (uint32_t i = 0; i < ITER; i++) {
+    cn_fast_hash(pot.data(), pot.size(), hash_1);
+
+    for (uint8_t j = 1; j <= 8; j++) {
+      uint8_t chunk[4] = {
+        hash_1.data[j * 4 - 4],
+        hash_1.data[j * 4 - 3],
+        hash_1.data[j * 4 - 2],
+        hash_1.data[j * 4 - 1]
+      };
+
+      uint32_t n = (chunk[0] << 24) |
+        (chunk[1] << 16) |
+        (chunk[2] << 8) |
+        (chunk[3]);
+
+      uint32_t height_j = n % maxHeight;
+      try {
+        RawBlock rawBlock = cache->getBlockByIndex(height_j);
+        BlockTemplate blockTemplate = extractBlockTemplate(rawBlock);
+        BinaryArray ba = CachedBlock(blockTemplate).getBlockHashingBinaryArray();
+        pot.insert(std::end(pot), std::begin(ba), std::end(ba));
+      }
+      catch (const std::runtime_error& e) {
+        logger(Logging::ERROR, Logging::BRIGHT_RED) << "Error getting block " << height_j << ": " << *e.what();
+        return false;
+      }
+    }
+  }
+
+  if (!Crypto::y_slow_hash(pot.data(), pot.size(), hash_1, hash_2)) {
+    logger(Logging::ERROR, Logging::BRIGHT_RED) << "Error getting Yespower hash";
+    return false;
+  }
+
+  res = hash_2;
+
+  return true;
+}
+
 // Calculate ln(p) of Poisson distribution
 // Original idea : https://stackoverflow.com/questions/30156803/implementing-poisson-distribution-in-c
 // Using logarithms avoids dealing with very large (k!) and very small (p < 10^-44) numbers
@@ -626,6 +698,17 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
     return blockValidationResult;
   }
 
+  // check block signature
+  if (blockTemplate.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
+    BinaryArray ba = cachedBlock.getBlockHashingBinaryArray();
+    Crypto::Hash sigHash = Crypto::cn_fast_hash(ba.data(), ba.size());
+    Crypto::PublicKey ephPubKey = boost::get<KeyOutput>(blockTemplate.baseTransaction.outputs[0].target).key;
+    if (!Crypto::check_signature(sigHash, ephPubKey, blockTemplate.signature)) {
+      logger(Logging::WARNING, Logging::BRIGHT_RED) << "Signature mismatch in block " << blockStr;
+      return error::BlockValidationError::BLOCK_SIGNATURE_MISMATCH;
+    }
+  }
+
   auto currentDifficulty = cache->getDifficultyForNextBlock(previousBlockIndex);
   if (currentDifficulty == 0) {
     logger(Logging::WARNING) << "Block " << blockStr << " has difficulty overhead";
@@ -644,6 +727,12 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
                                << transactionHash << ", should be: "
                                << blockTemplate.transactionHashes[i];
       return error::BlockValidationError::TRANSACTIONS_INCONSISTENCY;
+    }
+
+    if (cache->hasTransaction(transactionHash)) {
+      logger(Logging::WARNING) << "Block " << blockStr << " has a transaction " 
+                               << transactionHash << " that is already in blockchain";
+      return error::BlockValidationError::DUPLICATE_TRANSACTION;
     }
 
     // check that there's no duplicate
@@ -675,34 +764,34 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
     cumulativeFee += fee;
   }
 
-  uint64_t reward = 0;
+  uint64_t expectedReward = 0;
   int64_t emissionChange = 0;
   auto alreadyGeneratedCoins = cache->getAlreadyGeneratedCoins(previousBlockIndex);
   auto lastBlocksSizes = cache->getLastBlocksSizes(currency.rewardBlocksWindow(), previousBlockIndex, addGenesisBlock);
   auto blocksSizeMedian = Common::medianValue(lastBlocksSizes);
 
-  if (!currency.getBlockReward(cachedBlock.getBlock().majorVersion, blocksSizeMedian,
-                               cumulativeBlockSize, alreadyGeneratedCoins, cumulativeFee, reward, emissionChange)) {
-    logger(Logging::WARNING) << "Block " << blockHash << " has too big cumulative size";
+  if (!currency.getBlockReward(blockTemplate.majorVersion, blocksSizeMedian,
+                               cumulativeBlockSize, alreadyGeneratedCoins, cumulativeFee, expectedReward, emissionChange)) {
+    logger(Logging::WARNING) << "Block " << blockStr << " has too big cumulative size";
     return error::BlockValidationError::CUMULATIVE_BLOCK_SIZE_TOO_BIG;
   }
 
-  if (minerReward != reward) {
-    logger(Logging::WARNING) << "Block reward mismatch for block " << blockHash
-                             << ". Expected reward: " << reward << ", got reward: " << minerReward;
+  if (minerReward != expectedReward) {
+    logger(Logging::WARNING) << "Block reward mismatch for block " << blockStr
+                             << ". Expected reward: " << currency.formatAmount(expectedReward) << ", got reward: " << currency.formatAmount(minerReward);
     return error::BlockValidationError::BLOCK_REWARD_MISMATCH;
   }
 
   if (checkpoints.isInCheckpointZone(blockIndex)) {
     if (!checkpoints.checkBlock(blockIndex, blockHash)) {
-      logger(Logging::WARNING) << "Checkpoint block hash mismatch for block " << blockHash;
+      logger(Logging::WARNING) << "Checkpoint block hash mismatch for block " << blockStr;
       return error::BlockValidationError::CHECKPOINT_BLOCK_HASH_MISMATCH;
     }
-  } else if (!currency.checkProofOfWork(cryptoContext, cachedBlock, currentDifficulty)) {
-    logger(Logging::WARNING) << "Proof of work too weak for block " << blockHash;
+  } else if (!checkProofOfWork(cryptoContext, cachedBlock, currentDifficulty)) {
+    logger(Logging::WARNING) << "Proof of work too weak for block " << blockStr;
     return error::BlockValidationError::PROOF_OF_WORK_TOO_WEAK;
   }
-
+  
   auto ret = error::AddBlockErrorCode::ADDED_TO_ALTERNATIVE;
 
   if (addOnTop) {
@@ -939,7 +1028,7 @@ void Core::checkAndRemoveInvalidPoolTransactions(const TransactionValidatorState
     bool isValid = true;
 
     /* If the transaction is in the chain but somehow was not previously removed, fail */
-    if (isTransactionInChain(poolTxHash)) {
+    if (isTransactionInMainChain(poolTxHash)) {
       isValid = false;
     }
     /* If the transaction does not have the right number of mixins, fail */
@@ -973,6 +1062,25 @@ bool Core::isTransactionInChain(const Crypto::Hash &txnHash) {
   if (segment != nullptr) {
     return true;
   }
+
+  return false;
+}
+
+/* This quickly finds out if a transaction is in the main chain somewhere */
+bool Core::isTransactionInMainChain(const Crypto::Hash &txnHash) {
+  assert(!chainsLeaves.empty());
+  assert(!chainsStorage.empty());
+
+  IBlockchainCache* segment = chainsLeaves[0];
+  assert(segment != nullptr);
+
+  do {
+    if (segment->hasTransaction(txnHash)) {
+      return true;
+    }
+
+    segment = segment->getParent();
+  } while (segment != nullptr);
 
   return false;
 }
@@ -1219,6 +1327,12 @@ bool Core::addTransactionToPool(CachedTransaction&& cachedTransaction) {
 bool Core::isTransactionValidForPool(const CachedTransaction& cachedTransaction, TransactionValidatorState& validatorState) {
   uint64_t fee = 0;
 
+  if (isTransactionInMainChain(cachedTransaction.getTransactionHash())) {
+    logger(Logging::DEBUGGING) << "Transaction " << cachedTransaction.getTransactionHash()
+      << " is already in blockchain, not valid for pool";
+    return false;
+  }
+
   if (auto validationResult = validateTransaction(cachedTransaction, validatorState, chainsLeaves[0], m_transactionValidationThreadPool, fee, getMinimalFee(), getTopBlockIndex(), true)) {
     logger(Logging::DEBUGGING) << "Transaction " << cachedTransaction.getTransactionHash()
       << " is not valid. Reason: " << validationResult.message();
@@ -1317,8 +1431,7 @@ bool Core::getPoolChangesLite(const Crypto::Hash& lastBlockHash, const std::vect
   return getTopBlockHash() == lastBlockHash;
 }
 
-bool Core::getBlockTemplate(BlockTemplate& b, const AccountPublicAddress& adr, const BinaryArray& extraNonce,
-                            Difficulty& difficulty, uint32_t& height) const {
+bool Core::getBlockTemplate(BlockTemplate& b, const AccountKeys& acc, const BinaryArray& extraNonce, Difficulty& difficulty, uint32_t& height) const {
   throwIfNotInitialized();
 
   height = getTopBlockIndex() + 1;
@@ -1382,6 +1495,8 @@ bool Core::getBlockTemplate(BlockTemplate& b, const AccountPublicAddress& adr, c
   uint64_t fee;
   fillBlockTemplate(b, medianSize, currency.maxBlockCumulativeSize(height), transactionsSize, fee);
 
+  Crypto::SecretKey tx_key;
+
   /*
      two-phase miner transaction generation: we don't know exact block size until we prepare block, but we don't know
      reward until we know
@@ -1389,8 +1504,8 @@ bool Core::getBlockTemplate(BlockTemplate& b, const AccountPublicAddress& adr, c
      expected block size
   */
   // make blocks coin-base tx looks close to real coinbase tx to get truthful blob size
-  bool r = currency.constructMinerTx(b.majorVersion, height, medianSize, alreadyGeneratedCoins, transactionsSize, fee, adr,
-                                     b.baseTransaction, extraNonce, 14);
+  bool r = currency.constructMinerTx(b.majorVersion, height, medianSize, alreadyGeneratedCoins, transactionsSize, fee, acc.address,
+                                     b.baseTransaction, tx_key, extraNonce, b.majorVersion >= BLOCK_MAJOR_VERSION_5 ? 1 : 14);
   if (!r) {
     logger(Logging::ERROR, Logging::BRIGHT_RED) << "Failed to construct miner tx, first chance";
     return false;
@@ -1399,8 +1514,8 @@ bool Core::getBlockTemplate(BlockTemplate& b, const AccountPublicAddress& adr, c
   size_t cumulativeSize = transactionsSize + getObjectBinarySize(b.baseTransaction);
   const size_t TRIES_COUNT = 10;
   for (size_t tryCount = 0; tryCount < TRIES_COUNT; ++tryCount) {
-    r = currency.constructMinerTx(b.majorVersion, height, medianSize, alreadyGeneratedCoins, cumulativeSize, fee, adr,
-                                  b.baseTransaction, extraNonce, 14);
+    r = currency.constructMinerTx(b.majorVersion, height, medianSize, alreadyGeneratedCoins, cumulativeSize, fee, acc.address,
+                                  b.baseTransaction, tx_key, extraNonce, b.majorVersion >= BLOCK_MAJOR_VERSION_5 ? 1 : 14);
     if (!r) {
       logger(Logging::ERROR, Logging::BRIGHT_RED) << "Failed to construct miner tx, second chance";
       return false;
@@ -1682,6 +1797,10 @@ std::error_code Core::validateBlock(const CachedBlock& cachedBlock, IBlockchainC
   if (!block.baseTransaction.signatures.empty())
   {
     return error::TransactionValidationError::BASE_INVALID_SIGNATURES_COUNT;
+  }
+
+  if (block.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5 && !(block.baseTransaction.outputs.size() == 1)) {
+    return error::TransactionValidationError::OUTPUTS_INVALID_COUNT;
   }
 
   for (const auto& output : block.baseTransaction.outputs) {
@@ -2202,7 +2321,7 @@ BlockDetails Core::getBlockDetails(const Crypto::Hash& blockHash) const {
   uint32_t blockIndex = segment->getBlockIndex(blockHash);
   BlockTemplate blockTemplate = restoreBlockTemplate(segment, blockIndex);
   
-  BlockDetails blockDetails;
+  BlockDetails blockDetails = boost::value_initialized<BlockDetails>();
   blockDetails.majorVersion = blockTemplate.majorVersion;
   blockDetails.minorVersion = blockTemplate.minorVersion;
   blockDetails.timestamp = blockTemplate.timestamp;
@@ -2221,8 +2340,12 @@ BlockDetails Core::getBlockDetails(const Crypto::Hash& blockHash) const {
   blockDetails.isAlternative = mainChainSet.count(segment) == 0;
 
   Crypto::cn_context context;
-  blockDetails.proofOfWork = CachedBlock(blockTemplate).getBlockLongHash(context);
-
+  Crypto::Hash proofOfWork;
+  CachedBlock cb(blockTemplate);
+  if (getBlockLongHash(context, cb, proofOfWork)) {
+    blockDetails.proofOfWork = proofOfWork;
+  }
+  
   blockDetails.difficulty = getBlockDifficulty(blockIndex);
 
   blockDetails.cumulativeDifficulty = segment->getCurrentCumulativeDifficulty(blockDetails.index);
@@ -2275,6 +2398,10 @@ BlockDetails Core::getBlockDetails(const Crypto::Hash& blockHash) const {
     blockDetails.totalFeeAmount += blockDetails.transactions.back().fee;
   }
 
+  if (blockDetails.majorVersion >= BLOCK_MAJOR_VERSION_5) {
+    blockDetails.minerSignature = blockTemplate.signature;
+  }
+
   return blockDetails;
 }
 
@@ -2311,10 +2438,8 @@ BlockDetailsShort Core::getBlockDetailsLite(const Crypto::Hash& blockHash) const
   uint64_t coinbaseTransactionSize = getObjectBinarySize(blockTemplate.baseTransaction);
   blockDetails.blockSize = blockBlobSize + sizes.front() - coinbaseTransactionSize;
   blockDetails.transactionsCount = blockTemplate.transactionHashes.size() + 1;
-
   return blockDetails;
 }
-
 
 TransactionDetails Core::getTransactionDetails(const Crypto::Hash& transactionHash) const {
   throwIfNotInitialized();

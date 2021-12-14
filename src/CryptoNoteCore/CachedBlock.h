@@ -38,6 +38,7 @@ public:
   const Crypto::Hash& getBlockLongHash(Crypto::cn_context& cryptoContext) const;
   const Crypto::Hash& getAuxiliaryBlockHeaderHash() const;
   const BinaryArray& getBlockHashingBinaryArray() const;
+  const BinaryArray& getSignedBlockHashingBinaryArray() const;
   const BinaryArray& getParentBlockBinaryArray(bool headerOnly) const;
   const BinaryArray& getParentBlockHashingBinaryArray(bool headerOnly) const;
   uint32_t getBlockIndex() const;
@@ -45,6 +46,7 @@ public:
 private:
   const BlockTemplate& block;
   mutable boost::optional<BinaryArray> blockHashingBinaryArray;
+  mutable boost::optional<BinaryArray> signedBlockHashingBinaryArray;
   mutable boost::optional<BinaryArray> parentBlockBinaryArray;
   mutable boost::optional<BinaryArray> parentBlockHashingBinaryArray;
   mutable boost::optional<BinaryArray> parentBlockBinaryArrayHeaderOnly;

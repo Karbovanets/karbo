@@ -60,12 +60,16 @@ const Crypto::Hash& CachedBlock::getBlockHash() const {
 
 const Crypto::Hash& CachedBlock::getBlockLongHash(cn_context& cryptoContext) const {
   if (!blockLongHash.is_initialized()) {
-    if (block.majorVersion == BLOCK_MAJOR_VERSION_1 || block.majorVersion >= BLOCK_MAJOR_VERSION_4) {
+    if (block.majorVersion == BLOCK_MAJOR_VERSION_1 || block.majorVersion == BLOCK_MAJOR_VERSION_4) {
       const auto& rawHashingBlock = getBlockHashingBinaryArray();
       blockLongHash = Hash();
       cn_slow_hash(cryptoContext, rawHashingBlock.data(), rawHashingBlock.size(), blockLongHash.get());
     } else if (block.majorVersion == BLOCK_MAJOR_VERSION_2 || block.majorVersion == BLOCK_MAJOR_VERSION_3) {
       const auto& rawHashingBlock = getParentBlockHashingBinaryArray(true);
+      blockLongHash = Hash();
+      cn_slow_hash(cryptoContext, rawHashingBlock.data(), rawHashingBlock.size(), blockLongHash.get());
+    } else if (block.majorVersion >= BLOCK_MAJOR_VERSION_5) {
+      const auto& rawHashingBlock = getSignedBlockHashingBinaryArray();
       blockLongHash = Hash();
       cn_slow_hash(cryptoContext, rawHashingBlock.data(), rawHashingBlock.size(), blockLongHash.get());
     } else {
@@ -100,6 +104,28 @@ const BinaryArray& CachedBlock::getBlockHashingBinaryArray() const {
   }
 
   return blockHashingBinaryArray.get();
+}
+
+const BinaryArray& CachedBlock::getSignedBlockHashingBinaryArray() const {
+  if (!signedBlockHashingBinaryArray.is_initialized()) {
+    signedBlockHashingBinaryArray = BinaryArray();
+    auto& result = signedBlockHashingBinaryArray.get();
+    if (!toBinaryArray(static_cast<const BlockHeader&>(block), result)) {
+      signedBlockHashingBinaryArray.reset();
+      throw std::runtime_error("Can't serialize BlockHeader");
+    }
+
+    const auto& treeHash = getTransactionTreeHash();
+    result.insert(result.end(), treeHash.data, treeHash.data + 32);
+    auto transactionCount = Common::asBinaryArray(Tools::get_varint_data(block.transactionHashes.size() + 1));
+    result.insert(result.end(), transactionCount.begin(), transactionCount.end());
+
+    const auto& b = getBlock();
+    BinaryArray sig = Common::asBinaryArray(std::string((const char *)&b.signature, sizeof(Crypto::Signature)));
+    result.insert(result.end(), sig.begin(), sig.end());
+  }
+
+  return signedBlockHashingBinaryArray.get();
 }
 
 const BinaryArray& CachedBlock::getParentBlockBinaryArray(bool headerOnly) const {

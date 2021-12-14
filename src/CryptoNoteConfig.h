@@ -114,9 +114,9 @@ const uint32_t UPGRADE_HEIGHT_V4                             = 266000;
 const uint32_t UPGRADE_HEIGHT_V4_1                           = 300000;
 const uint32_t UPGRADE_HEIGHT_V4_2                           = 500000;
 const uint32_t UPGRADE_HEIGHT_V4_3                           = 667000;
-const uint32_t UPGRADE_HEIGHT_V5                             = 4294967294;
+const uint32_t UPGRADE_HEIGHT_V5                             = 700000;
 
-const unsigned UPGRADE_VOTING_THRESHOLD                      = 90;               // percent
+const unsigned UPGRADE_VOTING_THRESHOLD                      = 90;                                 // percent
 const uint32_t UPGRADE_VOTING_WINDOW                         = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;  // blocks
 const uint32_t UPGRADE_WINDOW                                = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;  // blocks
 static_assert(0 < UPGRADE_VOTING_THRESHOLD && UPGRADE_VOTING_THRESHOLD <= 100, "Bad UPGRADE_VOTING_THRESHOLD");

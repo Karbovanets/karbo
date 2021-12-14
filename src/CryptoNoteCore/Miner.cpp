@@ -1,7 +1,7 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2014-2018, The Monero Project
 // Copyright (c) 2018-2019, The TurtleCoin Developers
-// Copyright (c) 2016-2020, The Karbo developers
+// Copyright (c) 2016-2021, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -114,7 +114,7 @@ namespace CryptoNote
       extra_nonce = m_extra_messages[m_config.current_extra_message_index];
     }
 
-    if(!m_handler.getBlockTemplate(bl, m_mine_address, extra_nonce, di, height)) {
+    if(!m_handler.getBlockTemplate(bl, m_mine_account, extra_nonce, di, height)) {
       logger(ERROR) << "Failed to getBlockTemplate(), stopping mining";
       return false;
     }
@@ -162,7 +162,7 @@ namespace CryptoNote
       if(m_do_print_hashrate) {
         uint64_t total_hr = std::accumulate(m_last_hash_rates.begin(), m_last_hash_rates.end(), static_cast<uint64_t>(0));
         float hr = static_cast<float>(total_hr)/static_cast<float>(m_last_hash_rates.size());
-        std::cout << "hashrate: " << std::setprecision(4) << std::fixed << hr << ENDL;
+        std::cout << "Hashrate: " << std::setprecision(2) << std::fixed << hr << " H/s       \r";
       }
     }
     
@@ -199,14 +199,26 @@ namespace CryptoNote
       logger(INFO) << "Loaded " << m_extra_messages.size() << " extra messages, current index " << m_config.current_extra_message_index;
     }
 
-    if(!config.startMining.empty()) {
-      if (!m_currency.parseAccountAddressString(config.startMining, m_mine_address)) {
-        logger(ERROR) << "Target account address " << config.startMining << " has wrong format, starting daemon canceled";
+    if (!config.miningSpendKey.empty() && !config.miningViewKey.empty()) {
+      Crypto::Hash private_key_hash;
+      size_t size;
+      if (!Common::fromHex(config.miningSpendKey, &private_key_hash, sizeof(private_key_hash), size) || size != sizeof(private_key_hash)) {
+        logger(Logging::INFO) << "Could not parse private spend key";
         return false;
       }
+      m_mine_account.spendSecretKey = *(struct Crypto::SecretKey *) &private_key_hash;
+      if (!Common::fromHex(config.miningViewKey, &private_key_hash, sizeof(private_key_hash), size) || size != sizeof(private_key_hash)) {
+        logger(Logging::INFO) << "Could not parse private view key";
+        return false;
+      }
+      m_mine_account.viewSecretKey = *(struct Crypto::SecretKey *) &private_key_hash;
+
+      Crypto::secret_key_to_public_key(m_mine_account.spendSecretKey, m_mine_account.address.spendPublicKey);
+      Crypto::secret_key_to_public_key(m_mine_account.viewSecretKey, m_mine_account.address.viewPublicKey);
+
       m_threads_total = 1;
       m_do_mining = true;
-      if(config.miningThreads > 0) {
+      if (config.miningThreads > 0) {
         m_threads_total = config.miningThreads;
       }
     }
@@ -219,7 +231,7 @@ namespace CryptoNote
     return !m_stop;
   }
   //-----------------------------------------------------------------------------------------------------
-  bool miner::start(const AccountPublicAddress& adr, size_t threads_count)
+  bool miner::start(const AccountKeys& acc, size_t threads_count)
   {   
     if (is_mining()) {
       logger(ERROR) << "Starting miner but it's already started";
@@ -233,7 +245,8 @@ namespace CryptoNote
       return false;
     }
 
-    m_mine_address = adr;
+    m_mine_account = acc;
+
     m_threads_total = static_cast<uint32_t>(threads_count);
     m_starter_nonce = Random::randomValue<uint32_t>();
 
@@ -285,7 +298,7 @@ namespace CryptoNote
   void miner::on_synchronized()
   {
     if(m_do_mining) {
-      start(m_mine_address, m_threads_total);
+      start(m_mine_account, m_threads_total);
     }
   }
   //-----------------------------------------------------------------------------------------------------
@@ -345,24 +358,50 @@ namespace CryptoNote
       }
 
       b.nonce = nonce;
-      Crypto::Hash h;
 
-      CachedBlock cb(b);
-      if (!m_stop) {
+      // step 1: sing the block
+      if (!m_stop && b.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
         try {
-          h = cb.getBlockLongHash(context);
-        } catch (std::exception& e) {
-          logger(ERROR) << "getBlockLongHash failed: " << e.what();
+          CachedBlock sb(b);
+          BinaryArray ba = sb.getBlockHashingBinaryArray();
+          Crypto::Hash h = Crypto::cn_fast_hash(ba.data(), ba.size());
+          Crypto::PublicKey txPublicKey = getTransactionPublicKeyFromExtra(b.baseTransaction.extra);
+          Crypto::KeyDerivation derivation;
+          if (!Crypto::generate_key_derivation(txPublicKey, m_mine_account.viewSecretKey, derivation)) {
+            logger(WARNING) << "Failed to generate_key_derivation for block signature";
+            m_stop = true;
+          }
+          Crypto::SecretKey ephSecKey;
+          Crypto::derive_secret_key(derivation, 0, m_mine_account.spendSecretKey, ephSecKey);
+          Crypto::PublicKey ephPubKey = boost::get<KeyOutput>(b.baseTransaction.outputs[0].target).key;
+          Crypto::generate_signature(h, ephPubKey, ephSecKey, b.signature);
+        }
+        catch (std::exception& e) {
+          logger(WARNING) << "Signing failed: " << e.what();
           m_stop = true;
         }
       }
 
-      if (!m_stop && check_hash(h, local_diff))
-      {
-        //we lucky!
+      // step 2: get long hash
+      Crypto::Hash pow;
+      CachedBlock cb(b);
+      if (!m_stop) {
+        if (!m_handler.getBlockLongHash(context, cb, pow)) {
+          logger(ERROR) << "getBlockLongHash failed.";
+          m_stop = true;
+        }
+      }
+
+      if (!m_stop && check_hash(pow, local_diff)) {
+        // we lucky!
         ++m_config.current_extra_message_index;
 
-        logger(INFO, GREEN) << "Found block for difficulty: " << local_diff;
+        logger(INFO, GREEN) << "Found block for difficulty "
+                            << local_diff
+                            << " at height " << cb.getBlockIndex()
+                            << " v. " << (int)b.majorVersion << "\r\n"
+                            << "POW: " << Common::podToHex(pow) << "\r\n"
+                            << " ID: " << Common::podToHex(cb.getBlockHash());
 
         if(!m_handler.handleBlockFound(b)) {
           --m_config.current_extra_message_index;

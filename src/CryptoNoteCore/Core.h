@@ -107,7 +107,7 @@ public:
 
   //IMinerHandler
   virtual bool handleBlockFound(BlockTemplate& b); //override;
-  virtual bool getBlockTemplate(BlockTemplate& b, const AccountPublicAddress& adr, const BinaryArray& extraNonce, Difficulty& difficulty, uint32_t& height) const override;
+  virtual bool getBlockTemplate(BlockTemplate& b, const AccountKeys& acc, const BinaryArray& extraNonce, Difficulty& difficulty, uint32_t& height) const override;
 
   miner& get_miner() { return *m_miner; }
 
@@ -164,6 +164,9 @@ public:
 
   bool isKeyImageSpent(const Crypto::KeyImage& key_im);
   bool isKeyImageSpent(const Crypto::KeyImage& key_im, uint32_t blockIndex);
+
+  virtual bool checkProofOfWork(Crypto::cn_context& context, const CachedBlock& block, Difficulty currentDifficulty) override;
+  virtual bool getBlockLongHash(Crypto::cn_context &context, const CachedBlock& block, Crypto::Hash& res) const override;
 
 private:
   const Currency& currency;
@@ -246,6 +249,7 @@ private:
   void checkAndRemoveInvalidPoolTransactions(const TransactionValidatorState blockTransactionsState);
 
   bool isTransactionInChain(const Crypto::Hash &txnHash);
+  bool isTransactionInMainChain(const Crypto::Hash &txnHash);
 
   void transactionPoolCleaningProcedure();
   void updateBlockMedianSize();
