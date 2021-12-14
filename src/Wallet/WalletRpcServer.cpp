@@ -295,6 +295,13 @@ namespace Tools {
           "Something went wrong with payment_id. Please check its format: " + payment_id_str + ", expected 64-character string");
       }
     }
+    else if (!req.extra.empty()) {
+      std::string extra_str = req.extra;
+      if (!Common::fromHex(req.extra, extra)) {
+        throw JsonRpc::JsonRpcError(WALLET_RPC_ERROR_CODE_WRONG_EXTRA,
+          "Wrong transaction extra format: " + extra_str + ", expected hex string");
+      }
+    }
 
     std::string extraString;
     std::copy(extra.begin(), extra.end(), std::back_inserter(extraString));
