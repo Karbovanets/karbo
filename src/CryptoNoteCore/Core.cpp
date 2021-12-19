@@ -729,7 +729,7 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
       return error::BlockValidationError::TRANSACTIONS_INCONSISTENCY;
     }
 
-    if (cache->hasTransaction(transactionHash)) {
+    if (addOnTop && cache->hasTransaction(transactionHash)) {
       logger(Logging::WARNING) << "Block " << blockStr << " has a transaction " 
                                << transactionHash << " that is already in blockchain";
       return error::BlockValidationError::DUPLICATE_TRANSACTION;
