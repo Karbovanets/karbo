@@ -743,19 +743,16 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
     }
 
     uint64_t fee = 0;
-    // Skip expensive fee validation (due to a dynamic minimal fee calculation)
-    // for transactions in a checkpoints range - they are assumed valid.
-    const uint64_t minFee = checkpoints.isInCheckpointZone(blockIndex) ? 0 : getMinimalFee(blockIndex);
+    const uint64_t minFee = getMinimalFee(blockIndex);
     auto transactionValidationResult = validateTransaction(transactions[i], validatorState, cache, m_transactionValidationThreadPool, fee, minFee, previousBlockIndex, false);
     if (transactionValidationResult) {
-      const auto hash = transactions[i].getTransactionHash();
-      logger(Logging::WARNING) << "Failed to validate transaction " << hash << ": " << transactionValidationResult.message();
+      logger(Logging::WARNING) << "Failed to validate transaction " << transactionHash << ": " << transactionValidationResult.message();
 
-      if (transactionPool->checkIfTransactionPresent(hash))
+      if (transactionPool->checkIfTransactionPresent(transactionHash))
       {
-        logger(Logging::DEBUGGING) << "Invalid transaction " << hash << " is present in the pool, removing";
-        transactionPool->removeTransaction(hash);
-        notifyObservers(makeDelTransactionMessage({ hash }, Messages::DeleteTransaction::Reason::NotActual));
+        logger(Logging::DEBUGGING) << "Invalid transaction " << transactionHash << " is present in the pool, removing";
+        transactionPool->removeTransaction(transactionHash);
+        notifyObservers(makeDelTransactionMessage({ transactionHash }, Messages::DeleteTransaction::Reason::NotActual));
       }
 
       return transactionValidationResult;
