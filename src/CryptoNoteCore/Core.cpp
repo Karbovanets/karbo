@@ -1773,11 +1773,6 @@ std::error_code Core::validateBlock(const CachedBlock& cachedBlock, IBlockchainC
     }
   }
 
-  TransactionExtraMergeMiningTag mmTag;
-  if (getMergeMiningTagFromExtra(block.baseTransaction.extra, mmTag) && block.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
-    return error::BlockValidationError::BASE_TRANSACTION_EXTRA_MM_TAG;
-  }
-
   if (block.baseTransaction.inputs.size() != 1) {
     return error::TransactionValidationError::INPUT_WRONG_COUNT;
   }
@@ -1799,10 +1794,24 @@ std::error_code Core::validateBlock(const CachedBlock& cachedBlock, IBlockchainC
     return error::TransactionValidationError::BASE_INVALID_SIGNATURES_COUNT;
   }
 
-  if (block.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5 && !(block.baseTransaction.outputs.size() == 1)) {
-    return error::TransactionValidationError::OUTPUTS_INVALID_COUNT;
+  if (block.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
+    TransactionExtraMergeMiningTag mmTag;
+    if (getMergeMiningTagFromExtra(block.baseTransaction.extra, mmTag)) {
+      return error::BlockValidationError::BASE_TRANSACTION_EXTRA_MM_TAG;
+    }
+
+    if (block.baseTransaction.outputs.size() != 1) {
+      return error::TransactionValidationError::OUTPUTS_INVALID_COUNT;
+    }
+
+    if (block.baseTransaction.outputs[0].target.type() != typeid(KeyOutput)) {
+        return error::TransactionValidationError::BASE_TRANSACTION_OUTPUT_WRONG_TYPE;
+    }
   }
 
+  // After upgrade major block to version 5 this multi-signature transactions in coinbase outputs becomes not relevant
+  // We can verify that there are no multi-signature outputs in coinbase transactions until 700,000 height
+  // then if there are no we can refactor this code to leave only "output key" validation.
   for (const auto& output : block.baseTransaction.outputs) {
     if (output.amount == 0) {
       return error::TransactionValidationError::OUTPUT_ZERO_AMOUNT;
