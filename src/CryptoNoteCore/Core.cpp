@@ -1802,7 +1802,7 @@ std::error_code Core::validateBlock(const CachedBlock& cachedBlock, IBlockchainC
     }
 
     if (block.baseTransaction.outputs[0].target.type() != typeid(KeyOutput)) {
-        return error::TransactionValidationError::BASE_TRANSACTION_OUTPUT_WRONG_TYPE;
+      return error::TransactionValidationError::OUTPUT_UNEXPECTED_TYPE;
     }
   }
 

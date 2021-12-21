@@ -58,7 +58,7 @@ enum class TransactionValidationError {
   INVALID_FEE,
   SIZE_TOO_LARGE,
   OUTPUTS_INVALID_COUNT,
-  BASE_TRANSACTION_OUTPUT_WRONG_TYPE
+  OUTPUT_UNEXPECTED_TYPE
 };
 
 // custom category:
@@ -111,7 +111,7 @@ public:
       case TransactionValidationError::INVALID_FEE: return "Fee is too small and it's not a fusion transaction";
       case TransactionValidationError::SIZE_TOO_LARGE: return "Transaction is too large (in bytes)";
       case TransactionValidationError::OUTPUTS_INVALID_COUNT: return "Only 1 output in coinbase transaction allowed";
-      case TransactionValidationError::BASE_TRANSACTION_OUTPUT_WRONG_TYPE: return "Coinbase transaction output must be OutputKey type";
+      case TransactionValidationError::OUTPUT_UNEXPECTED_TYPE: return "Coinbase transaction output must be KeyOutput type";
       default: return "Unknown error";
     }
   }
