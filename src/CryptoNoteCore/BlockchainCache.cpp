@@ -767,8 +767,7 @@ std::vector<RawBlock> BlockchainCache::getBlocksByHeight(const uint32_t startHei
 
   uint32_t blockCount = storage->getBlockCount();
 
-  /* Make sure we don't overflow the storage (for example, the block might
-     not exist yet) */
+  // Make sure we don't overflow the storage (for example, the block might   not exist yet)
   if (endHeight > startIndex + blockCount)
   {
     endHeight = startIndex + blockCount;

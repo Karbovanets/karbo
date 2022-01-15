@@ -168,6 +168,9 @@ public:
   virtual bool checkProofOfWork(Crypto::cn_context& context, const CachedBlock& block, Difficulty currentDifficulty) override;
   virtual bool getBlockLongHash(Crypto::cn_context &context, const CachedBlock& block, Crypto::Hash& res) const override;
 
+  const uint32_t CURRENT_SERIALIZATION_VERSION = 1;
+  void serialize(ISerializer& s);
+
 private:
   const Currency& currency;
   System::Dispatcher& dispatcher;
@@ -192,6 +195,18 @@ private:
   time_t start_time;
 
   size_t blockMedianSize;
+
+  typedef std::vector<BinaryArray> hashing_blobs_container;
+  hashing_blobs_container blobsCache;
+  const std::string blobsFilename = "blobs.bin";
+  std::recursive_mutex m_blobs_lock;
+
+  void pushBlob(const CachedBlock& cachedBlock);
+  void popBlob();
+  bool getBlob(const uint32_t height, BinaryArray& blob) const;
+  void loadBlobs();
+  void saveBlobs();
+  void rebuildBlobsCache();
 
   void throwIfNotInitialized() const;
   bool extractTransactions(const std::vector<BinaryArray>& rawTransactions, std::vector<CachedTransaction>& transactions, uint64_t& cumulativeSize);
