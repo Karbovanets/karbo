@@ -198,7 +198,7 @@ private:
 
   typedef std::vector<BinaryArray> hashing_blobs_container;
   hashing_blobs_container blobsCache;
-  const std::string blobsFilename = "blobs.bin";
+  const std::string blobsFilename = "hashingblobs.bin";
   std::recursive_mutex m_blobs_lock;
 
   void pushBlob(const CachedBlock& cachedBlock);
