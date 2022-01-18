@@ -609,19 +609,18 @@ bool Core::getBlockLongHash(Crypto::cn_context &context, const CachedBlock& bloc
         (chunk[3]);
 
       uint32_t height_j = n % maxHeight;
-      
-      //BinaryArray ba = blobsCache[height_j];
+
       BinaryArray ba;
       if (!blobsCache->getBlob(height_j, ba)) {
-          /*try {
-              RawBlock rawBlock = cache->getBlockByIndex(height_j);
-              BlockTemplate blockTemplate = extractBlockTemplate(rawBlock);
-              ba = CachedBlock(blockTemplate).getBlockHashingBinaryArray();
-          }
-          catch (const std::runtime_error& e) {
-              logger(Logging::ERROR, Logging::BRIGHT_RED) << "Error getting block " << height_j << ": " << *e.what();
-              return false;
-          }*/
+        try {
+          RawBlock rawBlock = cache->getBlockByIndex(height_j);
+          BlockTemplate blockTemplate = extractBlockTemplate(rawBlock);
+          ba = CachedBlock(blockTemplate).getBlockHashingBinaryArray();
+        }
+        catch (const std::runtime_error& e) {
+          logger(Logging::ERROR, Logging::BRIGHT_RED) << "Error getting block " << height_j << ": " << *e.what();
+          return false;
+        }
       }
       
       pot.insert(std::end(pot), std::begin(ba), std::end(ba));
