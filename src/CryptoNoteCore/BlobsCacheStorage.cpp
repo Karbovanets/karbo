@@ -48,7 +48,6 @@ void BlobsCache::init() {
     if (m_blobs.size() == 0 || m_handler.getTopBlockIndex() + 1 != static_cast<uint32_t>(m_blobs.size())) {
         logger(Logging::INFO) << "Rebuild blobs cache because it's top block " << m_blobs.size() << " vs in DB " << m_handler.getTopBlockIndex() + 1;
         rebuildBlobsCache();
-        save();
         logger(Logging::INFO) << "Rebuilding blobs cache complete";
     }
 }
@@ -59,6 +58,8 @@ void BlobsCache::clear() {
 }
 
 void BlobsCache::save() {
+    logger(Logging::INFO) << "Saving hashing blobs...";
+
     std::lock_guard<decltype(m_blobs_lock)> lk(m_blobs_lock);
     std::string filename = Common::CombinePath(Tools::getDefaultDataDirectory(), blobsFilename);
 
@@ -78,6 +79,8 @@ void BlobsCache::save() {
 }
 
 void BlobsCache::load() {
+    logger(Logging::INFO) << "Loading hashing blobs...";
+
     std::lock_guard<decltype(m_blobs_lock)> lk(m_blobs_lock);
     std::string filename = Common::CombinePath(Tools::getDefaultDataDirectory(), blobsFilename);
 
