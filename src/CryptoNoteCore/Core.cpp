@@ -634,7 +634,6 @@ void Core::popBlob() {
 
 void Core::rebuildBlobsCache() {
   std::chrono::steady_clock::time_point timePoint = std::chrono::steady_clock::now();
-  std::lock_guard<decltype(m_blobs_lock)> lk(m_blobs_lock);
   blobsCache.clear();
   uint32_t top = getTopBlockIndex() + 1;
   for (uint32_t i = 0; i < top; ++i) {
@@ -643,8 +642,7 @@ void Core::rebuildBlobsCache() {
     }
     BlockTemplate block = getBlockByIndex(i);
     CachedBlock cachedBlock(block);
-    BinaryArray ba = cachedBlock.getBlockHashingBinaryArray();
-    blobsCache.push_back(ba);
+    pushBlob(cachedBlock);
   }
   std::chrono::duration<double> duration = std::chrono::steady_clock::now() - timePoint;
   logger(Logging::INFO) << "Rebuilding hashing blobs took: " << duration.count();
@@ -652,11 +650,10 @@ void Core::rebuildBlobsCache() {
 
 void Core::rebuildBlobsCache(uint32_t splitBlockIndex, IBlockchainCache& newChain) {
   assert(static_cast<uint32_t>(blobsCache.size()) >= splitBlockIndex);
-  std::lock_guard<decltype(m_blobs_lock)> lk(m_blobs_lock);
-
+  
   auto blocksToPop = static_cast<uint32_t>(blobsCache.size()) - splitBlockIndex;
   for (size_t i = 0; i < blocksToPop; ++i) {
-    blobsCache.pop_back();
+    popBlob();
   }
 
   for (uint32_t index = splitBlockIndex; index <= newChain.getTopBlockIndex(); ++index) {
@@ -666,8 +663,7 @@ void Core::rebuildBlobsCache(uint32_t splitBlockIndex, IBlockchainCache& newChai
     if (br) {}
     assert(br);
     CachedBlock cachedBlock(block);
-    BinaryArray ba = cachedBlock.getBlockHashingBinaryArray();
-    blobsCache.push_back(ba);
+    pushBlob(cachedBlock);
   }
 }
 
