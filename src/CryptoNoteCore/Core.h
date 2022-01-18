@@ -23,6 +23,7 @@
 #include <vector>
 #include <unordered_map>
 #include "BlockchainCache.h"
+#include "BlobsCacheStorage.h"
 #include "BlockchainMessages.h"
 #include "CachedBlock.h"
 #include "CachedTransaction.h"
@@ -178,6 +179,7 @@ private:
   Logging::LoggerRef logger;
   Crypto::cn_context cryptoContext;
   Checkpoints checkpoints;
+  std::unique_ptr<BlobsCache> blobsCache;
   std::unique_ptr<IUpgradeManager> upgradeManager;
   std::vector<std::unique_ptr<IBlockchainCache>> chainsStorage;
   std::vector<IBlockchainCache*> chainsLeaves;
@@ -195,18 +197,6 @@ private:
   time_t start_time;
 
   size_t blockMedianSize;
-
-  typedef std::vector<BinaryArray> hashing_blobs_container;
-  hashing_blobs_container blobsCache;
-  const std::string blobsFilename = "hashingblobs.bin";
-  std::recursive_mutex m_blobs_lock;
-
-  void pushBlob(const CachedBlock& cachedBlock);
-  void popBlob();
-  void loadBlobs();
-  void saveBlobs();
-  void rebuildBlobsCache();
-  void rebuildBlobsCache(uint32_t splitBlockIndex, IBlockchainCache& newChain);
 
   void throwIfNotInitialized() const;
   bool extractTransactions(const std::vector<BinaryArray>& rawTransactions, std::vector<CachedTransaction>& transactions, uint64_t& cumulativeSize);
