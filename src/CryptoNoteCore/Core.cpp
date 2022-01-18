@@ -1989,7 +1989,7 @@ void Core::load(const MinerConfig& minerConfig) {
 
   loadBlobs();
 
-  if (blobsCache.size() == 0 || getTopBlockIndex() + 1 != blobsCache.size()) {
+  if (blobsCache.size() == 0 || getTopBlockIndex() + 1 != static_cast<uint32_t>(blobsCache.size())) {
       logger(Logging::INFO) << "Rebuild blobs cache because it's top block " << blobsCache.size() << " vs in DB " << getTopBlockIndex() + 1;
       rebuildBlobsCache();
       saveBlobs();
