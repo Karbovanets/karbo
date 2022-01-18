@@ -203,10 +203,10 @@ private:
 
   void pushBlob(const CachedBlock& cachedBlock);
   void popBlob();
-  bool getBlob(const uint32_t height, BinaryArray& blob) const;
   void loadBlobs();
   void saveBlobs();
   void rebuildBlobsCache();
+  void rebuildBlobsCache(uint32_t splitBlockIndex, IBlockchainCache& newChain);
 
   void throwIfNotInitialized() const;
   bool extractTransactions(const std::vector<BinaryArray>& rawTransactions, std::vector<CachedTransaction>& transactions, uint64_t& cumulativeSize);

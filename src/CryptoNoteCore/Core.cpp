@@ -576,99 +576,99 @@ bool Core::checkProofOfWork(Crypto::cn_context& context, const CachedBlock& bloc
 }
 
 void Core::serialize(ISerializer& s) {
-    uint32_t version = CURRENT_SERIALIZATION_VERSION;
-    s(version, "version");
-    s(this->blobsCache, "hashing_blobs");
+  uint32_t version = CURRENT_SERIALIZATION_VERSION;
+  s(version, "version");
+  s(this->blobsCache, "hashing_blobs");
 }
 
 void Core::saveBlobs() {
-    std::lock_guard<decltype(m_blobs_lock)> lk(m_blobs_lock);
-    /*std::ofstream file(blobsFilename.c_str());
-    Common::StdOutputStream stream(file);
-    CryptoNote::BinaryOutputStreamSerializer s(stream);
+  std::lock_guard<decltype(m_blobs_lock)> lk(m_blobs_lock);
+  std::string filename = Common::CombinePath(Tools::getDefaultDataDirectory(), blobsFilename);
 
-    serialize(s);*/
-
-    std::string filename = Common::CombinePath(Tools::getDefaultDataDirectory(), blobsFilename);
-
-    try {
-        std::ofstream file(filename, std::ios::binary);
-        if (!file) {
-            return;
-        }
-
-        StdOutputStream stream(file);
-        BinaryOutputStreamSerializer s(stream);
-        CryptoNote::serialize(*this, s);
+  try {
+    std::ofstream file(filename, std::ios::binary);
+    if (!file) {
+      return;
     }
-    catch (std::exception& e) {
-        logger(Logging::WARNING) << "saving failed: " << e.what();
-    }
+
+    StdOutputStream stream(file);
+    BinaryOutputStreamSerializer s(stream);
+    CryptoNote::serialize(*this, s);
+  }
+  catch (std::exception& e) {
+    logger(Logging::WARNING) << "Saving blobs cache failed: " << e.what();
+  }
 }
 
 void Core::loadBlobs() {
-    std::lock_guard<decltype(m_blobs_lock)> lk(m_blobs_lock);
-    /*std::ifstream file(blobsFilename.c_str());
-    Common::StdInputStream stream(file);
-    CryptoNote::BinaryInputStreamSerializer s(stream);
+  std::lock_guard<decltype(m_blobs_lock)> lk(m_blobs_lock);
+  std::string filename = Common::CombinePath(Tools::getDefaultDataDirectory(), blobsFilename);
 
-    serialize(s);*/
-
-    std::string filename = Common::CombinePath(Tools::getDefaultDataDirectory(), blobsFilename);
-
-    try {
-        std::ifstream stdStream(filename, std::ios::binary);
-        if (!stdStream) {
-            logger(Logging::WARNING) << "loading failed: !stdStream";
-            return;
-        }
-
-        StdInputStream stream(stdStream);
-        BinaryInputStreamSerializer s(stream);
-        CryptoNote::serialize(*this, s);
+  try {
+    std::ifstream stdStream(filename, std::ios::binary);
+    if (!stdStream) {
+      logger(Logging::WARNING) << "Loading blobs cache failed: !stdStream";
+      return;
     }
-    catch (std::exception& e) {
-        logger(Logging::WARNING) << "loading failed: " << e.what();
-        rebuildBlobsCache();
-    }
+
+    StdInputStream stream(stdStream);
+    BinaryInputStreamSerializer s(stream);
+    CryptoNote::serialize(*this, s);
+  }
+  catch (std::exception& e) {
+    logger(Logging::WARNING) << "loading failed: " << e.what();
+      rebuildBlobsCache();
+  }
 }
 
 void Core::pushBlob(const CachedBlock& cachedBlock) {
-    BinaryArray ba = cachedBlock.getBlockHashingBinaryArray();
-    std::lock_guard<decltype(m_blobs_lock)> lk(m_blobs_lock);
-    blobsCache.push_back(ba);
+  BinaryArray ba = cachedBlock.getBlockHashingBinaryArray();
+  std::lock_guard<decltype(m_blobs_lock)> lk(m_blobs_lock);
+  blobsCache.push_back(ba);
 }
 
 void Core::popBlob() {
-    std::lock_guard<decltype(m_blobs_lock)> lk(m_blobs_lock);
-    blobsCache.pop_back();
+  std::lock_guard<decltype(m_blobs_lock)> lk(m_blobs_lock);
+  blobsCache.pop_back();
 }
 
 void Core::rebuildBlobsCache() {
-    std::chrono::steady_clock::time_point timePoint = std::chrono::steady_clock::now();
-    std::lock_guard<decltype(m_blobs_lock)> lk(m_blobs_lock);
-    blobsCache.clear();
-    uint32_t top = getTopBlockIndex() + 1;
-    for (uint32_t i = 0; i < top; ++i) {
-        if (i % 1000 == 0) {
-            logger(Logging::INFO) << "Height " << i << " of " << top;
-        }
-        BlockTemplate block = getBlockByIndex(i);
-        CachedBlock cachedBlock(block);
-        BinaryArray ba = cachedBlock.getBlockHashingBinaryArray();
-        blobsCache.push_back(ba);
+  std::chrono::steady_clock::time_point timePoint = std::chrono::steady_clock::now();
+  std::lock_guard<decltype(m_blobs_lock)> lk(m_blobs_lock);
+  blobsCache.clear();
+  uint32_t top = getTopBlockIndex() + 1;
+  for (uint32_t i = 0; i < top; ++i) {
+    if (i % 1000 == 0) {
+      logger(Logging::INFO) << "Height " << i << " of " << top;
     }
-    std::chrono::duration<double> duration = std::chrono::steady_clock::now() - timePoint;
-    logger(Logging::INFO) << "Rebuilding hashing blobs took: " << duration.count();
+    BlockTemplate block = getBlockByIndex(i);
+    CachedBlock cachedBlock(block);
+    BinaryArray ba = cachedBlock.getBlockHashingBinaryArray();
+    blobsCache.push_back(ba);
+  }
+  std::chrono::duration<double> duration = std::chrono::steady_clock::now() - timePoint;
+  logger(Logging::INFO) << "Rebuilding hashing blobs took: " << duration.count();
 }
 
-bool Core::getBlob(const uint32_t height, BinaryArray& blob) const {
-    if (blobsCache.size() >= height) {
-        blob = blobsCache.at(height);
-        return true;
-    }
+void Core::rebuildBlobsCache(uint32_t splitBlockIndex, IBlockchainCache& newChain) {
+  assert(static_cast<uint32_t>(blobsCache.size()) >= splitBlockIndex);
+  std::lock_guard<decltype(m_blobs_lock)> lk(m_blobs_lock);
 
-    return false;
+  auto blocksToPop = static_cast<uint32_t>(blobsCache.size()) - splitBlockIndex;
+  for (size_t i = 0; i < blocksToPop; ++i) {
+    blobsCache.pop_back();
+  }
+
+  for (uint32_t index = splitBlockIndex; index <= newChain.getTopBlockIndex(); ++index) {
+    auto rawBlock = newChain.getBlockByIndex(index);
+    BlockTemplate block;
+    bool br = fromBinaryArray(block, rawBlock.block);
+    if (br) {}
+    assert(br);
+    CachedBlock cachedBlock(block);
+    BinaryArray ba = cachedBlock.getBlockHashingBinaryArray();
+    blobsCache.push_back(ba);
+  }
 }
 
 bool Core::getBlockLongHash(Crypto::cn_context &context, const CachedBlock& block, Crypto::Hash& res) const {
@@ -1021,22 +1021,7 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
             assert(endpointIndex != chainsStorage.size());
             assert(endpointIndex != 0);
 
-            uint32_t start = cache->getStartBlockIndex();
-
             std::swap(chainsLeaves[0], chainsLeaves[endpointIndex]); // reorg itself
-
-            // rebuild blobs cache
-            while (blobsCache.size() >= start) {
-                popBlob();
-            }
-            std::lock_guard<decltype(m_blobs_lock)> lk(m_blobs_lock);
-            uint32_t top = getTopBlockIndex() + 1;
-            for (uint32_t i = start; i < top; ++i) {
-                BlockTemplate block = getBlockByIndex(i);
-                CachedBlock cachedBlock(block);
-                BinaryArray ba = cachedBlock.getBlockHashingBinaryArray();
-                blobsCache.push_back(ba);
-            }
 
             updateMainChainSet();
             updateBlockMedianSize();
@@ -1044,6 +1029,8 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
             checkAndRemoveInvalidPoolTransactions(validatorState);
 
             copyTransactionsToPool(chainsLeaves[endpointIndex]);
+
+            rebuildBlobsCache(chainsLeaves[0]->getStartBlockIndex(), *chainsLeaves[0]);
 
             ret = error::AddBlockErrorCode::ADDED_TO_ALTERNATIVE_AND_SWITCHED;
 
