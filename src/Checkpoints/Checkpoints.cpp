@@ -57,7 +57,6 @@ bool Checkpoints::addCheckpoint(uint32_t index, const std::string &hash_str) {
     return false;
   }
 
-  points[index] = h;
   return true;
 }
 //---------------------------------------------------------------------------
