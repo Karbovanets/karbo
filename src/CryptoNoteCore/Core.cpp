@@ -203,9 +203,9 @@ const std::chrono::seconds OUTDATED_TRANSACTION_POLLING_INTERVAL = std::chrono::
 }
 
 Core::Core(const Currency& currency, Logging::ILogger& logger, Checkpoints&& checkpoints, System::Dispatcher& dispatcher,
-    std::unique_ptr<IBlockchainCacheFactory>&& blockchainCacheFactory, const uint32_t transactionValidationThreads)
+    std::unique_ptr<IBlockchainCacheFactory>&& blockchainCacheFactory, const uint32_t transactionValidationThreads, bool noBlobs)
     : currency(currency), dispatcher(dispatcher), contextGroup(dispatcher), logger(logger, "Core"), checkpoints(std::move(checkpoints)),
-    upgradeManager(new UpgradeManager()), blockchainCacheFactory(std::move(blockchainCacheFactory)), initialized(false),
+    upgradeManager(new UpgradeManager()), blockchainCacheFactory(std::move(blockchainCacheFactory)), initialized(false), m_noBlobs(noBlobs),
     m_transactionValidationThreadPool(transactionValidationThreads), m_miner(new miner(currency, *this, logger)), blobsCache(new BlobsCache(logger, *this))
 {
   upgradeManager->addMajorBlockVersion(BLOCK_MAJOR_VERSION_2, currency.upgradeHeight(BLOCK_MAJOR_VERSION_2));
@@ -613,7 +613,7 @@ bool Core::getBlockLongHash(Crypto::cn_context &context, const CachedBlock& bloc
       uint32_t height_j = n % maxHeight;
 
       BinaryArray ba;
-      if (alt || !blobsCache->getBlob(height_j, ba)) {
+      if (alt || m_noBlobs || !blobsCache->getBlob(height_j, ba)) {
         try {
           RawBlock rawBlock = getRawBlock(segment, height_j);
           BlockTemplate blockTemplate = extractBlockTemplate(rawBlock);
@@ -2126,8 +2126,7 @@ void Core::fillQueryBlockShortInfo(uint32_t fullOffset, uint32_t currentIndex, s
     blockShortInfo.txPrefixes.reserve(rawBlock.transactions.size());
     for (auto& rawTransaction : rawBlock.transactions) {
       TransactionPrefixInfo prefixInfo;
-      prefixInfo.txHash =
-          getBinaryArrayHash(rawTransaction); // TODO: is there faster way to get hash without calculation?
+      prefixInfo.txHash = getBinaryArrayHash(rawTransaction); // TODO: is there faster way to get hash without calculation?
 
       Transaction transaction;
       if (!fromBinaryArray(transaction, rawTransaction)) {

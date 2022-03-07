@@ -78,6 +78,7 @@ namespace
     "network id is changed. Use it with --data-dir flag. The wallet must be launched with --testnet flag.", false};
   const command_line::arg_descriptor<std::string>              arg_load_checkpoints    = { "load-checkpoints", "<filename> Load checkpoints from csv file.", "" };
   const command_line::arg_descriptor<bool>                     arg_disable_checkpoints = { "without-checkpoints", "Synchronize without checkpoints" };
+  const command_line::arg_descriptor<bool>                     arg_no_blobs            = { "without-blobs", "Don't use hashing blobs cache in PoW validation", false, false };
   const command_line::arg_descriptor<bool>                     arg_allow_deep_reorg    = { "allow-reorg", "Allow deep reorganization", false, false };
   const command_line::arg_descriptor<std::string>              arg_rollback            = { "rollback", "Rollback blockchain to <height>", "", true };
   const command_line::arg_descriptor<bool>                     arg_level_db            = { "level-db", "Use LevelDB instead of RocksDB" };
@@ -139,6 +140,7 @@ int main(int argc, char* argv[])
     command_line::add_arg(desc_cmd_sett, arg_print_genesis_tx);
     command_line::add_arg(desc_cmd_sett, arg_load_checkpoints);
     command_line::add_arg(desc_cmd_sett, arg_disable_checkpoints);
+    command_line::add_arg(desc_cmd_sett, arg_no_blobs);
     command_line::add_arg(desc_cmd_sett, arg_allow_deep_reorg);
     command_line::add_arg(desc_cmd_sett, arg_rollback);
     command_line::add_arg(desc_cmd_sett, arg_level_db);
@@ -333,6 +335,11 @@ int main(int argc, char* argv[])
       dbShutdownOnExit.resume();
     }
 
+    bool no_blobs = command_line::get_arg(vm, arg_no_blobs);
+    if (no_blobs) {
+      logger(INFO) << "Enabled full Proof of Work validation without hashing blobs cache";
+    }
+
     System::Dispatcher dispatcher;
 
     uint32_t transactionValidationThreads = std::thread::hardware_concurrency();
@@ -344,7 +351,8 @@ int main(int argc, char* argv[])
       std::move(checkpoints),
       dispatcher,
       std::unique_ptr<IBlockchainCacheFactory>(new DatabaseBlockchainCacheFactory(*database, logger.getLogger())),
-      transactionValidationThreads);
+      transactionValidationThreads,
+      no_blobs);
     ccore.load(minerConfig);
     logger(INFO) << "Core initialized OK";
 

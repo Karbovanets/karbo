@@ -54,7 +54,7 @@ class miner;
 class Core : public ICore, public IMinerHandler, public ICoreInformation {
 public:
   Core(const Currency& currency, Logging::ILogger& logger, Checkpoints&& checkpoints, System::Dispatcher& dispatcher,
-       std::unique_ptr<IBlockchainCacheFactory>&& blockchainCacheFactory, uint32_t transactionValidationThreads);
+       std::unique_ptr<IBlockchainCacheFactory>&& blockchainCacheFactory, uint32_t transactionValidationThreads, bool noBlobs = false);
   virtual ~Core() override;
 
   virtual bool addMessageQueue(MessageQueue<BlockchainMessage>&  messageQueue) override;
@@ -193,6 +193,7 @@ private:
   std::unique_ptr<IBlockchainCacheFactory> blockchainCacheFactory;
   Utilities::ThreadPool<bool> m_transactionValidationThreadPool;
   bool initialized;
+  bool m_noBlobs;
 
   time_t start_time;
 
