@@ -25,10 +25,19 @@
 #include <set>
 #include <thread>
 #include <unordered_set>
+#include <ctime>
+#include <cstdlib>
+#include <exception>
+#include <fstream>
 
 #include "Core.h"
+#include "CryptoNote.h"
 #include "Common/ShuffleGenerator.h"
+#include "Common/StdOutputStream.h"
+#include "Common/StdInputStream.h"
+#include "Common/PathTools.h"
 #include "Common/Math.h"
+#include "Common/Util.h"
 #include "Common/MemoryInputStream.h"
 #include "CryptoNoteTools.h"
 #include "CryptoNoteFormatUtils.h"
@@ -37,8 +46,8 @@
 #include "BlockchainUtils.h"
 #include "CryptoNoteCore/ITimeProvider.h"
 #include "CryptoNoteCore/CoreErrors.h"
-#include "CryptoNoteCore/MemoryBlockchainStorage.h"
 #include "CryptoNoteCore/Miner.h"
+#include "CryptoNoteCore/CryptoNoteSerialization.h"
 #include "CryptoNoteCore/TransactionExtra.h"
 #include "CryptoNoteCore/TransactionPool.h"
 #include "CryptoNoteCore/TransactionPoolCleaner.h"
@@ -194,10 +203,10 @@ const std::chrono::seconds OUTDATED_TRANSACTION_POLLING_INTERVAL = std::chrono::
 }
 
 Core::Core(const Currency& currency, Logging::ILogger& logger, Checkpoints&& checkpoints, System::Dispatcher& dispatcher,
-           std::unique_ptr<IBlockchainCacheFactory>&& blockchainCacheFactory, const uint32_t transactionValidationThreads)
-         : currency(currency), dispatcher(dispatcher), contextGroup(dispatcher), logger(logger, "Core"), checkpoints(std::move(checkpoints)),
-           upgradeManager(new UpgradeManager()), blockchainCacheFactory(std::move(blockchainCacheFactory)), initialized(false), 
-           m_transactionValidationThreadPool(transactionValidationThreads), m_miner(new miner(currency, *this, logger))
+    std::unique_ptr<IBlockchainCacheFactory>&& blockchainCacheFactory, const uint32_t transactionValidationThreads)
+    : currency(currency), dispatcher(dispatcher), contextGroup(dispatcher), logger(logger, "Core"), checkpoints(std::move(checkpoints)),
+    upgradeManager(new UpgradeManager()), blockchainCacheFactory(std::move(blockchainCacheFactory)), initialized(false),
+    m_transactionValidationThreadPool(transactionValidationThreads), m_miner(new miner(currency, *this, logger)), blobsCache(new BlobsCache(logger, *this))
 {
   upgradeManager->addMajorBlockVersion(BLOCK_MAJOR_VERSION_2, currency.upgradeHeight(BLOCK_MAJOR_VERSION_2));
   upgradeManager->addMajorBlockVersion(BLOCK_MAJOR_VERSION_3, currency.upgradeHeight(BLOCK_MAJOR_VERSION_3));
@@ -572,13 +581,17 @@ bool Core::getBlockLongHash(Crypto::cn_context &context, const CachedBlock& bloc
   }
 
   BinaryArray pot = block.getSignedBlockHashingBinaryArray();
-
-  // Phase 1
-
   Crypto::Hash hash_1, hash_2;
-
-  auto cache = findSegmentContainingBlock(block.getBlock().previousBlockHash);
   uint32_t maxHeight = std::min<uint32_t>(getTopBlockIndex(), block.getBlockIndex() - 1 - currency.minedMoneyUnlockWindow());
+  bool alt = false;
+  IBlockchainCache* segment = findMainChainSegmentContainingBlock(block.getBlock().previousBlockHash);
+  if (segment == nullptr) {
+    alt = true;
+    segment = findAlternativeSegmentContainingBlock(block.getBlock().previousBlockHash);
+    if (segment == nullptr) {
+      logger(Logging::ERROR, Logging::BRIGHT_RED) << "Requested hash wasn't found";
+    }
+  }
 
 #define ITER 128
   for (uint32_t i = 0; i < ITER; i++) {
@@ -593,21 +606,26 @@ bool Core::getBlockLongHash(Crypto::cn_context &context, const CachedBlock& bloc
       };
 
       uint32_t n = (chunk[0] << 24) |
-        (chunk[1] << 16) |
-        (chunk[2] << 8) |
-        (chunk[3]);
+                   (chunk[1] << 16) |
+                   (chunk[2] << 8)  |
+                   (chunk[3]);
 
       uint32_t height_j = n % maxHeight;
-      try {
-        RawBlock rawBlock = cache->getBlockByIndex(height_j);
-        BlockTemplate blockTemplate = extractBlockTemplate(rawBlock);
-        BinaryArray ba = CachedBlock(blockTemplate).getBlockHashingBinaryArray();
-        pot.insert(std::end(pot), std::begin(ba), std::end(ba));
+
+      BinaryArray ba;
+      if (alt || !blobsCache->getBlob(height_j, ba)) {
+        try {
+          RawBlock rawBlock = getRawBlock(segment, height_j);
+          BlockTemplate blockTemplate = extractBlockTemplate(rawBlock);
+          ba = CachedBlock(blockTemplate).getBlockHashingBinaryArray();
+        }
+        catch (const std::runtime_error& e) {
+          logger(Logging::ERROR, Logging::BRIGHT_RED) << "Error getting block " << height_j << ": " << *e.what();
+          return false;
+        }
       }
-      catch (const std::runtime_error& e) {
-        logger(Logging::ERROR, Logging::BRIGHT_RED) << "Error getting block " << height_j << ": " << *e.what();
-        return false;
-      }
+
+      pot.insert(std::end(pot), std::begin(ba), std::end(ba));
     }
   }
 
@@ -799,6 +817,8 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
       // TODO: exception safety
       if (cache == mainChainCache) {
 
+        blobsCache->pushBlob(cachedBlock);
+
         cache->pushBlock(cachedBlock, transactions, validatorState, cumulativeBlockSize, emissionChange, currentDifficulty, std::move(rawBlock));
 		
         //actualizePoolTransactions();
@@ -909,13 +929,15 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
             assert(endpointIndex != 0);
 
             std::swap(chainsLeaves[0], chainsLeaves[endpointIndex]); // reorg itself
-            updateMainChainSet();
 
+            updateMainChainSet();
             updateBlockMedianSize();
             //actualizePoolTransactions();
             checkAndRemoveInvalidPoolTransactions(validatorState);
 
             copyTransactionsToPool(chainsLeaves[endpointIndex]);
+
+            blobsCache->rebuildBlobsCache(chainsLeaves[0]->getStartBlockIndex(), *chainsLeaves[0]);
 
             ret = error::AddBlockErrorCode::ADDED_TO_ALTERNATIVE_AND_SWITCHED;
 
@@ -1862,6 +1884,8 @@ void Core::save() {
   deleteAlternativeChains();
   mergeMainChainSegments();
   chainsLeaves[0]->save();
+
+  blobsCache->save();
 }
 
 void Core::load(const MinerConfig& minerConfig) {
@@ -1873,6 +1897,8 @@ void Core::load(const MinerConfig& minerConfig) {
   start_time = std::time(nullptr);
 
   initialized = true;
+
+  blobsCache->init();
 }
 
 void Core::initRootSegment() {
@@ -1900,6 +1926,14 @@ void Core::rewind(const uint32_t blockIndex) {
   }
 
   mainChain->rewind(blockIndex);
+
+  try {
+      blobsCache->erase(blockIndex);
+  }
+  catch (std::exception& e) {
+      logger(Logging::WARNING) << "rewind failed: " << e.what();
+      blobsCache->rebuildBlobsCache();
+  }
 
   logger(Logging::INFO) << "Blockchain rewound to: " << blockIndex << std::endl;
 }

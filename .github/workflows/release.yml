@@ -8,7 +8,7 @@ on:
 jobs:
   build-windows:
     name: Windows
-    runs-on: windows-latest
+    runs-on: windows-2019
     env:
       MSBUILD_PATH: "C:/Program Files (x86)/Microsoft Visual Studio/2019/Enterprise/MSBuild/Current/Bin"
       BOOST_ROOT: C:\thirdparties\boost-1.72.0
@@ -62,7 +62,7 @@ jobs:
 
   build-macos:
     name: macOS
-    runs-on: macos-latest
+    runs-on: macos-11
     steps:
       - uses: actions/checkout@master
         with:

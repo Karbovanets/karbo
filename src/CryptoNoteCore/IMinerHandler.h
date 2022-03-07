@@ -26,6 +26,8 @@ namespace CryptoNote {
     virtual bool handleBlockFound(BlockTemplate& b) = 0;
     virtual bool getBlockTemplate(BlockTemplate& b, const AccountKeys& acc, const BinaryArray& extraNonce, Difficulty& difficulty, uint32_t& height) const = 0;
     virtual bool getBlockLongHash(Crypto::cn_context &context, const CachedBlock& block, Crypto::Hash& res) const = 0;
+    virtual BlockTemplate getBlockByIndex(uint32_t index) const = 0;
+    virtual uint32_t getTopBlockIndex() const = 0;
 
   protected:
     ~IMinerHandler() {}

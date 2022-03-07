@@ -23,6 +23,7 @@
 #include <vector>
 #include <unordered_map>
 #include "BlockchainCache.h"
+#include "BlobsCacheStorage.h"
 #include "BlockchainMessages.h"
 #include "CachedBlock.h"
 #include "CachedTransaction.h"
@@ -168,6 +169,9 @@ public:
   virtual bool checkProofOfWork(Crypto::cn_context& context, const CachedBlock& block, Difficulty currentDifficulty) override;
   virtual bool getBlockLongHash(Crypto::cn_context &context, const CachedBlock& block, Crypto::Hash& res) const override;
 
+  const uint32_t CURRENT_SERIALIZATION_VERSION = 1;
+  void serialize(ISerializer& s);
+
 private:
   const Currency& currency;
   System::Dispatcher& dispatcher;
@@ -175,6 +179,7 @@ private:
   Logging::LoggerRef logger;
   Crypto::cn_context cryptoContext;
   Checkpoints checkpoints;
+  std::unique_ptr<BlobsCache> blobsCache;
   std::unique_ptr<IUpgradeManager> upgradeManager;
   std::vector<std::unique_ptr<IBlockchainCache>> chainsStorage;
   std::vector<IBlockchainCache*> chainsLeaves;
