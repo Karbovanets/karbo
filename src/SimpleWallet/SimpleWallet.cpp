@@ -319,7 +319,7 @@ struct TransferCommand {
         else {
           WalletLegacyTransfer destination;
           CryptoNote::TransactionDestinationEntry de;
-#ifndef __ANDROID__		  
+#ifndef __ANDROID__
           std::string aliasUrl;
 #endif
           if (!m_currency.parseAccountAddressString(arg, de.addr)) {
@@ -1231,14 +1231,14 @@ bool simple_wallet::init(const boost::program_options::variables_map& vm)
     return true;
   }
   else if (!m_generate_new.empty())
-	{
-		std::string walletAddressFile = prepareWalletAddressFilename(m_generate_new);
-		boost::system::error_code ignore;
-		if (boost::filesystem::exists(walletAddressFile, ignore))
-		{
-			logger(ERROR, BRIGHT_RED) << "Address file already exists: " + walletAddressFile;
-			return false;
-		}
+  {
+    std::string walletAddressFile = prepareWalletAddressFilename(m_generate_new);
+    boost::system::error_code ignore;
+    if (boost::filesystem::exists(walletAddressFile, ignore))
+    {
+      logger(ERROR, BRIGHT_RED) << "Address file already exists: " + walletAddressFile;
+      return false;
+    }
 
     if (!new_wallet(walletFileName, pwd_container.password(), m_non_deterministic))
     {
@@ -1246,211 +1246,211 @@ bool simple_wallet::init(const boost::program_options::variables_map& vm)
       return false;
     }
 
-		if (!writeToFile(walletAddressFile, m_wallet->getAddress()))
-		{
-			logger(WARNING, BRIGHT_RED) << "Couldn't write wallet address file: " + walletAddressFile;
-		}
-	}
+    if (!writeToFile(walletAddressFile, m_wallet->getAddress()))
+    {
+      logger(WARNING, BRIGHT_RED) << "Couldn't write wallet address file: " + walletAddressFile;
+    }
+  }
   else if (!m_import_new.empty())
   {
-  std::string walletAddressFile = prepareWalletAddressFilename(m_import_new);
-  boost::system::error_code ignore;
-  if (boost::filesystem::exists(walletAddressFile, ignore))
-  {
-    logger(ERROR, BRIGHT_RED) << "Address file already exists: " + walletAddressFile;
-    return false;
-  }
+    std::string walletAddressFile = prepareWalletAddressFilename(m_import_new);
+    boost::system::error_code ignore;
+    if (boost::filesystem::exists(walletAddressFile, ignore))
+    {
+      logger(ERROR, BRIGHT_RED) << "Address file already exists: " + walletAddressFile;
+      return false;
+    }
 
-  std::string private_spend_key_string;
-  std::string private_view_key_string;
-  do
-  {
-    std::cout << "Private Spend Key: ";
-    std::getline(std::cin, private_spend_key_string);
-    boost::algorithm::trim(private_spend_key_string);
-  } while (private_spend_key_string.empty());
-  do
-  {
-    std::cout << "Private View Key: ";
-    std::getline(std::cin, private_view_key_string);
-    boost::algorithm::trim(private_view_key_string);
-  } while (private_view_key_string.empty());
+    std::string private_spend_key_string;
+    std::string private_view_key_string;
+    do
+    {
+      std::cout << "Private Spend Key: ";
+      std::getline(std::cin, private_spend_key_string);
+      boost::algorithm::trim(private_spend_key_string);
+    } while (private_spend_key_string.empty());
+    do
+    {
+      std::cout << "Private View Key: ";
+      std::getline(std::cin, private_view_key_string);
+      boost::algorithm::trim(private_view_key_string);
+    } while (private_view_key_string.empty());
 
-  Crypto::Hash private_spend_key_hash;
-  Crypto::Hash private_view_key_hash;
-  size_t size;
-  if (!Common::fromHex(private_spend_key_string, &private_spend_key_hash, sizeof(private_spend_key_hash), size)
-    || size != sizeof(private_spend_key_hash))
-    return false;
+    Crypto::Hash private_spend_key_hash;
+    Crypto::Hash private_view_key_hash;
+    size_t size;
+    if (!Common::fromHex(private_spend_key_string, &private_spend_key_hash, sizeof(private_spend_key_hash), size)
+      || size != sizeof(private_spend_key_hash))
+      return false;
 
-  if (!Common::fromHex(private_view_key_string, &private_view_key_hash, sizeof(private_view_key_hash), size)
-    || size != sizeof(private_view_key_hash))
-    return false;
+    if (!Common::fromHex(private_view_key_string, &private_view_key_hash, sizeof(private_view_key_hash), size)
+      || size != sizeof(private_view_key_hash))
+      return false;
 
-  Crypto::SecretKey private_spend_key = *(struct Crypto::SecretKey *) &private_spend_key_hash;
-  Crypto::SecretKey private_view_key = *(struct Crypto::SecretKey *) &private_view_key_hash;
+    Crypto::SecretKey private_spend_key = *(struct Crypto::SecretKey *) &private_spend_key_hash;
+    Crypto::SecretKey private_view_key = *(struct Crypto::SecretKey *) &private_view_key_hash;
 
-  if (!new_wallet(walletFileName, pwd_container.password(), private_spend_key, private_view_key))
-  {
-    logger(ERROR, BRIGHT_RED) << "account creation failed";
-    return false;
-  }
+    if (!new_wallet(walletFileName, pwd_container.password(), private_spend_key, private_view_key))
+    {
+      logger(ERROR, BRIGHT_RED) << "account creation failed";
+      return false;
+    }
 
-  if (!writeToFile(walletAddressFile, m_wallet->getAddress()))
-  {
-    logger(WARNING, BRIGHT_RED) << "Couldn't write wallet address file: " + walletAddressFile;
-  }
+    if (!writeToFile(walletAddressFile, m_wallet->getAddress()))
+    {
+      logger(WARNING, BRIGHT_RED) << "Couldn't write wallet address file: " + walletAddressFile;
+    }
   }
   else if (!m_restore_new.empty())
   {
-  std::string walletAddressFile = prepareWalletAddressFilename(m_restore_new);
-  boost::system::error_code ignore;
-  if (boost::filesystem::exists(walletAddressFile, ignore))
-  {
-    logger(ERROR, BRIGHT_RED) << "Address file already exists: " + walletAddressFile;
-    return false;
-  }
+    std::string walletAddressFile = prepareWalletAddressFilename(m_restore_new);
+    boost::system::error_code ignore;
+    if (boost::filesystem::exists(walletAddressFile, ignore))
+    {
+      logger(ERROR, BRIGHT_RED) << "Address file already exists: " + walletAddressFile;
+      return false;
+    }
 
-  std::string private_key_string;
+    std::string private_key_string;
 
-  do
-  {
-    std::cout << "Private Key: ";
-    std::getline(std::cin, private_key_string);
-    boost::algorithm::trim(private_key_string);
-  } while (private_key_string.empty());
+    do
+    {
+      std::cout << "Private Key: ";
+      std::getline(std::cin, private_key_string);
+      boost::algorithm::trim(private_key_string);
+    } while (private_key_string.empty());
 
-  AccountKeys keys;
-  uint64_t addressPrefix;
-  std::string data;
+    AccountKeys keys;
+    uint64_t addressPrefix;
+    std::string data;
 
-  if (private_key_string.length() != 183)
-  {
-    logger(ERROR, BRIGHT_RED) << "Wrong Private key.";
-    return false;
-  }
+    if (private_key_string.length() != 183)
+    {
+      logger(ERROR, BRIGHT_RED) << "Wrong Private key.";
+      return false;
+    }
 
-  if (Tools::Base58::decode_addr(private_key_string, addressPrefix, data)
-    && addressPrefix == parameters::CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX
-    && data.size() == sizeof(keys))
-  {
-    std::memcpy(&keys, data.data(), sizeof(keys));
-  }
+    if (Tools::Base58::decode_addr(private_key_string, addressPrefix, data)
+      && addressPrefix == parameters::CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX
+      && data.size() == sizeof(keys))
+    {
+      std::memcpy(&keys, data.data(), sizeof(keys));
+    }
 
-  if (!new_wallet(walletFileName, pwd_container.password(), keys))
-  {
-    logger(ERROR, BRIGHT_RED) << "account creation failed";
-    return false;
-  }
+    if (!new_wallet(walletFileName, pwd_container.password(), keys))
+    {
+      logger(ERROR, BRIGHT_RED) << "account creation failed";
+      return false;
+    }
 
-  if (!writeToFile(walletAddressFile, m_wallet->getAddress()))
-  {
-    logger(WARNING, BRIGHT_RED) << "Couldn't write wallet address file: " + walletAddressFile;
-  }
+    if (!writeToFile(walletAddressFile, m_wallet->getAddress()))
+    {
+      logger(WARNING, BRIGHT_RED) << "Couldn't write wallet address file: " + walletAddressFile;
+    }
   }
   else if (!m_track_new.empty())
   {
-  std::string walletAddressFile = prepareWalletAddressFilename(m_track_new);
-  boost::system::error_code ignore;
-  if (boost::filesystem::exists(walletAddressFile, ignore))
-  {
-    logger(ERROR, BRIGHT_RED) << "Address file already exists: " + walletAddressFile;
-    return false;
-  }
+    std::string walletAddressFile = prepareWalletAddressFilename(m_track_new);
+    boost::system::error_code ignore;
+    if (boost::filesystem::exists(walletAddressFile, ignore))
+    {
+      logger(ERROR, BRIGHT_RED) << "Address file already exists: " + walletAddressFile;
+      return false;
+    }
 
-  std::string tracking_key_string;
+    std::string tracking_key_string;
 
-  do
-  {
-    std::cout << "Tracking Key: ";
-    std::getline(std::cin, tracking_key_string);
-    boost::algorithm::trim(tracking_key_string);
-  } while (tracking_key_string.empty());
+    do
+    {
+      std::cout << "Tracking Key: ";
+      std::getline(std::cin, tracking_key_string);
+      boost::algorithm::trim(tracking_key_string);
+    } while (tracking_key_string.empty());
 
-  if (tracking_key_string.length() != 256)
-  {
-    logger(ERROR, BRIGHT_RED) << "Wrong Tracking key.";
-    return false;
-  }
+    if (tracking_key_string.length() != 256)
+    {
+      logger(ERROR, BRIGHT_RED) << "Wrong Tracking key.";
+      return false;
+    }
 
-  AccountKeys keys;
+    AccountKeys keys;
 
-  std::string public_spend_key_string = tracking_key_string.substr(0, 64);
-  std::string public_view_key_string = tracking_key_string.substr(64, 64);
-  std::string private_spend_key_string = tracking_key_string.substr(128, 64);
-  std::string private_view_key_string = tracking_key_string.substr(192, 64);
+    std::string public_spend_key_string = tracking_key_string.substr(0, 64);
+    std::string public_view_key_string = tracking_key_string.substr(64, 64);
+    std::string private_spend_key_string = tracking_key_string.substr(128, 64);
+    std::string private_view_key_string = tracking_key_string.substr(192, 64);
 
-  Crypto::Hash public_spend_key_hash;
-  Crypto::Hash public_view_key_hash;
-  Crypto::Hash private_spend_key_hash;
-  Crypto::Hash private_view_key_hash;
+    Crypto::Hash public_spend_key_hash;
+    Crypto::Hash public_view_key_hash;
+    Crypto::Hash private_spend_key_hash;
+    Crypto::Hash private_view_key_hash;
 
-  size_t size;
-  if (!Common::fromHex(public_spend_key_string, &public_spend_key_hash, sizeof(public_spend_key_hash), size)
-    || size != sizeof(public_spend_key_hash))
-    return false;
-  if (!Common::fromHex(public_view_key_string, &public_view_key_hash, sizeof(public_view_key_hash), size)
-    || size != sizeof(public_view_key_hash))
-    return false;
-  if (!Common::fromHex(private_spend_key_string, &private_spend_key_hash, sizeof(private_spend_key_hash), size)
-    || size != sizeof(private_spend_key_hash))
-    return false;
-  if (!Common::fromHex(private_view_key_string, &private_view_key_hash, sizeof(private_view_key_hash), size)
-    || size != sizeof(private_view_key_hash))
-    return false;
+    size_t size;
+    if (!Common::fromHex(public_spend_key_string, &public_spend_key_hash, sizeof(public_spend_key_hash), size)
+      || size != sizeof(public_spend_key_hash))
+      return false;
+    if (!Common::fromHex(public_view_key_string, &public_view_key_hash, sizeof(public_view_key_hash), size)
+      || size != sizeof(public_view_key_hash))
+      return false;
+    if (!Common::fromHex(private_spend_key_string, &private_spend_key_hash, sizeof(private_spend_key_hash), size)
+      || size != sizeof(private_spend_key_hash))
+      return false;
+    if (!Common::fromHex(private_view_key_string, &private_view_key_hash, sizeof(private_view_key_hash), size)
+      || size != sizeof(private_view_key_hash))
+      return false;
 
-  Crypto::PublicKey public_spend_key = *(struct Crypto::PublicKey*) &public_spend_key_hash;
-  Crypto::PublicKey public_view_key = *(struct Crypto::PublicKey*) &public_view_key_hash;
-  Crypto::SecretKey private_spend_key = *(struct Crypto::SecretKey*) &private_spend_key_hash;
-  Crypto::SecretKey private_view_key = *(struct Crypto::SecretKey*) &private_view_key_hash;
+    Crypto::PublicKey public_spend_key = *(struct Crypto::PublicKey*) &public_spend_key_hash;
+    Crypto::PublicKey public_view_key = *(struct Crypto::PublicKey*) &public_view_key_hash;
+    Crypto::SecretKey private_spend_key = *(struct Crypto::SecretKey*) &private_spend_key_hash;
+    Crypto::SecretKey private_view_key = *(struct Crypto::SecretKey*) &private_view_key_hash;
 
-  keys.address.spendPublicKey = public_spend_key;
-  keys.address.viewPublicKey = public_view_key;
-  keys.spendSecretKey = private_spend_key;
-  keys.viewSecretKey = private_view_key;
+    keys.address.spendPublicKey = public_spend_key;
+    keys.address.viewPublicKey = public_view_key;
+    keys.spendSecretKey = private_spend_key;
+    keys.viewSecretKey = private_view_key;
 
-  if (!new_tracking_wallet(keys, walletFileName, pwd_container.password()))
-  {
-    logger(ERROR, BRIGHT_RED) << "account creation failed";
-    return false;
-  }
+    if (!new_tracking_wallet(keys, walletFileName, pwd_container.password()))
+    {
+      logger(ERROR, BRIGHT_RED) << "account creation failed";
+      return false;
+    }
 
-  if (!writeToFile(walletAddressFile, m_wallet->getAddress()))
-  {
-    logger(WARNING, BRIGHT_RED) << "Couldn't write wallet address file: " + walletAddressFile;
-  }
+    if (!writeToFile(walletAddressFile, m_wallet->getAddress()))
+    {
+      logger(WARNING, BRIGHT_RED) << "Couldn't write wallet address file: " + walletAddressFile;
+    }
   }
   else
   {
-  m_wallet.reset(new WalletLegacy(m_currency, *m_node, m_logManager));
+    m_wallet.reset(new WalletLegacy(m_currency, *m_node, m_logManager));
 
-  try
-  {
-    m_wallet_file = tryToOpenWalletOrLoadKeysOrThrow(logger, m_wallet, m_wallet_file_arg, pwd_container.password());
-  }
-  catch (const std::exception& e)
-  {
-    fail_msg_writer() << "failed to load wallet: " << e.what();
-    return false;
-  }
+    try
+    {
+      m_wallet_file = tryToOpenWalletOrLoadKeysOrThrow(logger, m_wallet, m_wallet_file_arg, pwd_container.password());
+    }
+    catch (const std::exception& e)
+    {
+      fail_msg_writer() << "failed to load wallet: " << e.what();
+      return false;
+    }
 
-  m_wallet->addObserver(this);
-  m_node->addObserver(static_cast<INodeObserver*>(this));
+    m_wallet->addObserver(this);
+    m_node->addObserver(static_cast<INodeObserver*>(this));
 
-  logger(INFO, BRIGHT_WHITE) << "Opened wallet: " << m_wallet->getAddress();
+    logger(INFO, BRIGHT_WHITE) << "Opened wallet: " << m_wallet->getAddress();
 
-  AccountKeys keys;
-  m_wallet->getAccountKeys(keys);
-  if (keys.spendSecretKey == boost::value_initialized<Crypto::SecretKey>())
-  {
-    m_trackingWallet = true;
-    success_msg_writer() << "This is tracking wallet. Spending unavailable.\n";
-  }
+    AccountKeys keys;
+    m_wallet->getAccountKeys(keys);
+    if (keys.spendSecretKey == boost::value_initialized<Crypto::SecretKey>())
+    {
+      m_trackingWallet = true;
+      success_msg_writer() << "This is tracking wallet. Spending unavailable.\n";
+    }
 
-  success_msg_writer() <<
-    "**********************************************************************\n" <<
-    "Use \"help\" command to see the list of available commands.\n" <<
-    "**********************************************************************";
+    success_msg_writer() <<
+      "**********************************************************************\n" <<
+      "Use \"help\" command to see the list of available commands.\n" <<
+      "**********************************************************************";
   }
 
   if (command_line::has_arg(vm, arg_reset))
@@ -2496,20 +2496,19 @@ bool simple_wallet::print_address(const std::vector<std::string> &args/* = std::
   return true;
 }
 //----------------------------------------------------------------------------------------------------
-bool simple_wallet::save_address_to_file(const std::vector<std::string>& args/* = std::vector<std::string>()*/) {
-    std::string walletAddressFile = prepareWalletAddressFilename(m_wallet_file_arg.empty() ? m_generate_new : m_wallet_file_arg);
-    boost::system::error_code ignore;
-    if (boost::filesystem::exists(walletAddressFile, ignore)) {
-        fail_msg_writer() << "Address file already exists: " + walletAddressFile;
-        return true;
-    }
-    if (writeToFile(walletAddressFile, m_wallet->getAddress())) {
-        success_msg_writer() << "Success write wallet address file: " + walletAddressFile;
-    }
-    else {
-        fail_msg_writer() << "Couldn't write wallet address file: " + walletAddressFile;
-    }
+bool simple_wallet::save_address_to_file(const std::vector<std::string> &args/* = std::vector<std::string>()*/) {
+  std::string walletAddressFile = prepareWalletAddressFilename(m_wallet_file_arg.empty() ? m_generate_new : m_wallet_file_arg);
+  boost::system::error_code ignore;
+  if (boost::filesystem::exists(walletAddressFile, ignore)) {
+    fail_msg_writer() << "Address file already exists: " + walletAddressFile;
     return true;
+  }
+  if (writeToFile(walletAddressFile, m_wallet->getAddress())) {
+    success_msg_writer() << "Wallet address saved to file: " + walletAddressFile;
+  } else {
+    fail_msg_writer() << "Couldn't write wallet address to file: " + walletAddressFile;
+  }
+  return true;
 }
 //----------------------------------------------------------------------------------------------------
 bool simple_wallet::sign_message(const std::vector<std::string> &args) {
