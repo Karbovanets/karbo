@@ -2,7 +2,7 @@
 // Copyright (c) 2014-2016, XDN developers
 // Copyright (c) 2014-2017, The Monero Project
 // Copyright (c) 2014-2017, The Forknote developers
-// Copyright (c) 2016-2020, The Karbo developers
+// Copyright (c) 2016-2022, The Karbo developers
 //
 // All rights reserved.
 // 
@@ -118,6 +118,8 @@ const command_line::arg_descriptor<bool> arg_daemon_no_verify = { "daemon-no-ver
 const command_line::arg_descriptor<std::string> arg_password = { "password", "Wallet password", "", true };
 const command_line::arg_descriptor<std::string> arg_change_password = { "change-password", "Change wallet password and exit", "", true };
 const command_line::arg_descriptor<std::string> arg_mnemonic_seed = { "mnemonic-seed", "Specify mnemonic seed for wallet recovery", "" };
+const command_line::arg_descriptor<std::string> arg_mnemonic_seed_file = { "mnemonic-file", "Specify path to mnemonic seed file", "" };
+const command_line::arg_descriptor<bool> arg_dump_keys_file = { "export-keys", "Dump keys of newly created wallet to file", false };
 const command_line::arg_descriptor<std::string> arg_view_secret_key = { "view-key", "Specify view secret key for wallet recovery", "" };
 const command_line::arg_descriptor<std::string> arg_spend_secret_key = { "spend-key", "Specify spend secret key for wallet recovery", "" };
 const command_line::arg_descriptor<bool> arg_restore_wallet = { "restore", "Recover wallet using electrum-style mnemonic or raw keys", false };
@@ -561,13 +563,13 @@ std::string prepareWalletAddressFilename(const std::string& walletBaseName) {
   return walletBaseName + ".address";
 }
 
-bool writeAddressFile(const std::string& addressFilename, const std::string& address) {
-  std::ofstream addressFile(addressFilename, std::ios::out | std::ios::trunc | std::ios::binary);
-  if (!addressFile.good()) {
+bool writeToFile(const std::string& filename, const std::string& seed) {
+  std::ofstream file(filename, std::ios::out | std::ios::trunc | std::ios::binary);
+  if (!file.good()) {
     return false;
   }
 
-  addressFile << address;
+  file << seed;
 
   return true;
 }
@@ -589,6 +591,7 @@ bool comfirmPrompt() {
   return answer == "y" || answer == "Y";
 }
 
+#ifndef __ANDROID__
 bool askAliasesTransfersConfirmation(const std::map<std::string, std::vector<WalletLegacyTransfer>>& aliases, const Currency& currency) {
   std::cout << "Would you like to send money to the following addresses?" << std::endl;
 
@@ -600,6 +603,7 @@ bool askAliasesTransfersConfirmation(const std::map<std::string, std::vector<Wal
 
   return comfirmPrompt();
 }
+#endif
 
 }
 
@@ -618,23 +622,6 @@ bool simple_wallet::help(const std::vector<std::string> &args/* = std::vector<st
   return true;
 }
 
-bool simple_wallet::seed(const std::vector<std::string> &args/* = std::vector<std::string>()*/) {
-  std::string electrum_words;
-  bool success = m_wallet->getSeed(electrum_words);
-
-  if (success)
-  {
-    seedFormater(electrum_words);
-    std::cout << "\nPLEASE NOTE: the following 25 words can be used to recover access to your wallet. Please write them down and store them somewhere safe and secure. Please do not store them in your email or on file storage services outside of your immediate control.\n";
-    std::cout << electrum_words << std::endl;
-  }
-  else
-  {
-    fail_msg_writer() << "The wallet is non-deterministic and doesn't have mnemonic seed.";
-  }
-  return true;
-}
-
 bool simple_wallet::exit(const std::vector<std::string> &args) {
   m_consoleHandler.requestStop();
   return true;
@@ -647,6 +634,7 @@ simple_wallet::simple_wallet(System::Dispatcher& dispatcher, const CryptoNote::C
   m_daemon_ssl(false),
   m_daemon_cert(""),
   m_daemon_no_verify(false),
+  m_dump_keys_file(false),
   m_scan_height(0),
   m_currency(currency),
   m_logManager(log),
@@ -659,9 +647,9 @@ simple_wallet::simple_wallet(System::Dispatcher& dispatcher, const CryptoNote::C
 {
   m_consoleHandler.setHandler("start_mining", boost::bind(&simple_wallet::start_mining, this, _1), "start_mining [<number_of_threads>] - Start mining in daemon");
   m_consoleHandler.setHandler("stop_mining", boost::bind(&simple_wallet::stop_mining, this, _1), "Stop mining in daemon");
-  //m_consoleHandler.setHandler("refresh", boost::bind(&simple_wallet::refresh, this, _1), "Resynchronize transactions and balance");
-  m_consoleHandler.setHandler("export_keys", boost::bind(&simple_wallet::export_keys, this, _1), "Show the secret keys of the opened wallet");
-  m_consoleHandler.setHandler("tracking_key", boost::bind(&simple_wallet::export_tracking_key, this, _1), "Show the tracking key of the opened wallet");
+  m_consoleHandler.setHandler("show_keys", boost::bind(&simple_wallet::show_keys, this, _1), "Show the secret keys of the opened wallet");
+  m_consoleHandler.setHandler("export_keys", boost::bind(&simple_wallet::export_keys_to_file, this, boost::arg<1>()), "Save current wallet private keys to file");
+  m_consoleHandler.setHandler("tracking_key", boost::bind(&simple_wallet::show_tracking_key, this, _1), "Show the tracking key of the opened wallet");
   m_consoleHandler.setHandler("balance", boost::bind(&simple_wallet::show_balance, this, _1), "Show current wallet balance");
   m_consoleHandler.setHandler("incoming_transfers", boost::bind(&simple_wallet::show_incoming_transfers, this, _1), "Show incoming transfers");
   m_consoleHandler.setHandler("outgoing_transfers", boost::bind(&simple_wallet::show_outgoing_transfers, this, _1), "Show outgoing transfers");
@@ -678,11 +666,9 @@ simple_wallet::simple_wallet(System::Dispatcher& dispatcher, const CryptoNote::C
     " - Transfer <amount_1>,... <amount_N> to <address_1>,... <address_N>, respectively. ");
   m_consoleHandler.setHandler("set_log", boost::bind(&simple_wallet::set_log, this, _1), "set_log <level> - Change current log level, <level> is a number 0-4");
   m_consoleHandler.setHandler("address", boost::bind(&simple_wallet::print_address, this, _1), "Show current wallet public address");
-  m_consoleHandler.setHandler("save_address", boost::bind(&simple_wallet::save_address, this, _1), "Save current wallet public address to disk");
-  m_consoleHandler.setHandler("save_keys", boost::bind(&simple_wallet::save_keys, this, boost::arg<1>()), "Save current wallet private keys to file");
+  m_consoleHandler.setHandler("save_address", boost::bind(&simple_wallet::save_address_to_file, this, _1), "Save current wallet public address to file");
   m_consoleHandler.setHandler("save", boost::bind(&simple_wallet::save, this, _1), "Save wallet synchronized data");
   m_consoleHandler.setHandler("reset", boost::bind(&simple_wallet::reset, this, _1), "Discard cache data and start synchronizing from the start");
-  m_consoleHandler.setHandler("show_seed", boost::bind(&simple_wallet::seed, this, _1), "Get wallet recovery phrase (deterministic seed)");
   m_consoleHandler.setHandler("payment_id", boost::bind(&simple_wallet::payment_id, this, _1), "Generate random Payment ID");
   m_consoleHandler.setHandler("password", boost::bind(&simple_wallet::change_password, this, _1), "Change password");
   m_consoleHandler.setHandler("estimate_fusion", boost::bind(&simple_wallet::estimate_fusion, this, _1), "Show the number of outputs available for optimization for a given <threshold>");
@@ -1230,7 +1216,7 @@ bool simple_wallet::init(const boost::program_options::variables_map& vm)
       return false;
     }
 
-		if (!writeAddressFile(walletAddressFile, m_wallet->getAddress()))
+		if (!writeToFile(walletAddressFile, m_wallet->getAddress()))
 		{
 			logger(WARNING, BRIGHT_RED) << "Couldn't write wallet address file: " + walletAddressFile;
 		}
@@ -1280,7 +1266,7 @@ bool simple_wallet::init(const boost::program_options::variables_map& vm)
     return false;
   }
 
-  if (!writeAddressFile(walletAddressFile, m_wallet->getAddress()))
+  if (!writeToFile(walletAddressFile, m_wallet->getAddress()))
   {
     logger(WARNING, BRIGHT_RED) << "Couldn't write wallet address file: " + walletAddressFile;
   }
@@ -1327,7 +1313,7 @@ bool simple_wallet::init(const boost::program_options::variables_map& vm)
     return false;
   }
 
-  if (!writeAddressFile(walletAddressFile, m_wallet->getAddress()))
+  if (!writeToFile(walletAddressFile, m_wallet->getAddress()))
   {
     logger(WARNING, BRIGHT_RED) << "Couldn't write wallet address file: " + walletAddressFile;
   }
@@ -1399,7 +1385,7 @@ bool simple_wallet::init(const boost::program_options::variables_map& vm)
     return false;
   }
 
-  if (!writeAddressFile(walletAddressFile, m_wallet->getAddress()))
+  if (!writeToFile(walletAddressFile, m_wallet->getAddress()))
   {
     logger(WARNING, BRIGHT_RED) << "Couldn't write wallet address file: " + walletAddressFile;
   }
@@ -1468,8 +1454,10 @@ void simple_wallet::handle_command_line(const boost::program_options::variables_
   m_restore_wallet               = command_line::get_arg(vm, arg_restore_wallet);
   m_non_deterministic            = command_line::get_arg(vm, arg_non_deterministic);
   m_mnemonic_seed                = command_line::get_arg(vm, arg_mnemonic_seed);
+  m_dump_keys_file               = command_line::get_arg(vm, arg_dump_keys_file);
+  m_mnemonic_seed_file           = command_line::get_arg(vm, arg_mnemonic_seed_file);
   m_view_key                     = command_line::get_arg(vm, arg_view_secret_key);
-	m_spend_key                    = command_line::get_arg(vm, arg_spend_secret_key);
+  m_spend_key                    = command_line::get_arg(vm, arg_spend_secret_key);
   m_scan_height                  = command_line::get_arg(vm, arg_scan_height);
 }
 
@@ -1528,6 +1516,15 @@ bool simple_wallet::new_wallet(const std::string &wallet_file, const std::string
                              << "view key: "
                              << Common::podToHex(keys.viewSecretKey);
 
+  success_msg_writer() <<
+    "**********************************************************************\n" <<
+    "Your wallet has been generated.\n" <<
+    "Use \"help\" command to see the list of available commands.\n" <<
+    "Always use \"exit\" command when closing simplewallet to save\n" <<
+    "current session's state. Otherwise, you will possibly need to synchronize \n" <<
+    "your wallet again. Your wallet key is NOT under risk anyway.\n" <<
+    "**********************************************************************";
+
   if (!two_random)
   {
     // convert rng value to electrum-style word list
@@ -1536,19 +1533,27 @@ bool simple_wallet::new_wallet(const std::string &wallet_file, const std::string
     seedFormater(electrum_words);
     std::string print_electrum = "";
 
-    success_msg_writer() <<
-      "**********************************************************************\n" <<
-      "Your wallet has been generated.\n" <<
-      "Use \"help\" command to see the list of available commands.\n" <<
-      "Always use \"exit\" command when closing simplewallet to save\n" <<
-      "current session's state. Otherwise, you will possibly need to synchronize \n" <<
-      "your wallet again. Your wallet key is NOT under risk anyway.\n" <<
-      "**********************************************************************";
-
     std::cout << "\nPLEASE NOTE: the following 25 words can be used to recover access to your wallet. " <<
       "Please write them down and store them somewhere safe and secure. Please do not store them in your email or " <<
       "on file storage services outside of your immediate control.\n\n";
     std::cout << electrum_words << std::endl;
+
+    if (!m_mnemonic_seed_file.empty()) {
+      boost::system::error_code ignore;
+      if (boost::filesystem::exists(m_mnemonic_seed_file, ignore)) {
+        fail_msg_writer() << "Seed file already exists: " + m_mnemonic_seed_file;
+        return true;
+      }
+      if (writeToFile(m_mnemonic_seed_file, electrum_words)) {
+        success_msg_writer() << "Wallet mnemonic seed saved to file: " + m_mnemonic_seed_file;
+      } else {
+        fail_msg_writer() << "Couldn't write wallet mnemonic seed to file: " + m_mnemonic_seed_file;
+      }
+    }
+  }
+
+  if (m_dump_keys_file) {
+    export_keys_to_file();
   }
 
   success_msg_writer() << "**********************************************************************";
@@ -1959,18 +1964,54 @@ void simple_wallet::synchronizationProgressUpdated(uint32_t current, uint32_t to
   }
 }
 //----------------------------------------------------------------------------------------------------
-bool simple_wallet::export_keys(const std::vector<std::string>& args/* = std::vector<std::string>()*/) {
+std::string simple_wallet::getFormattedWalletKeys() {
   AccountKeys keys;
   m_wallet->getAccountKeys(keys);
-  std::cout << "Spend secret key: " << Common::podToHex(keys.spendSecretKey) << std::endl;
-  std::cout << "View secret key: " << Common::podToHex(keys.viewSecretKey) << std::endl;
-  std::cout << "Private keys: " << Tools::Base58::encode_addr(parameters::CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX,
-    std::string(reinterpret_cast<char*>(&keys), sizeof(keys))) << std::endl;
+
+  std::string priv_keys = "";
+  priv_keys += "Wallet file name:\t" + m_wallet_file + "\n";
+  priv_keys += "Public address:\t\t" + m_wallet->getAddress() + "\n";
+  priv_keys += "Private spend key:\t" + Common::podToHex(keys.spendSecretKey) + "\n";
+  priv_keys += "Private view key:\t" + Common::podToHex(keys.viewSecretKey) + "\n";
+  priv_keys += "Private keys:\t\t" + Tools::Base58::encode_addr(parameters::CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX,
+    std::string(reinterpret_cast<char*>(&keys), sizeof(keys))) + "\n";
+
+  Crypto::PublicKey unused_dummy_variable;
+  Crypto::SecretKey deterministic_private_view_key;
+
+  AccountBase::generateViewFromSpend(keys.spendSecretKey, deterministic_private_view_key, unused_dummy_variable);
+  bool deterministic_private_keys = deterministic_private_view_key == keys.viewSecretKey;
+
+  std::string electrum_words;
+  bool success = m_wallet->getSeed(electrum_words);
+  if (success) {
+    seedFormater(electrum_words);
+    priv_keys += "Mnemonic seed:\n" + electrum_words + "\n";
+  } else {
+    priv_keys += "The wallet is non-deterministic and does not have a mnemonic seed.\n";
+  }
+
+  return priv_keys;
+}
+//----------------------------------------------------------------------------------------------------
+bool simple_wallet::show_keys(const std::vector<std::string>& args/* = std::vector<std::string>()*/) {
+  std::cout << ColouredMsg(getFormattedWalletKeys(), Common::Console::Color::BrightGreen);
+  
+  return true;
+}
+//----------------------------------------------------------------------------------------------------
+bool simple_wallet::export_keys_to_file(const std::vector<std::string>& args/* = std::vector<std::string>()*/) {
+  std::ofstream backup_file(m_wallet_file + ".txt");
+  backup_file << "\t\tWallet Keys Backup\n\n" << getFormattedWalletKeys();
+
+  logger(INFO, BRIGHT_GREEN) << "Wallet keys have been saved to the \""
+    << m_wallet_file + ".txt\""
+    << " in the same folder where your wallet file is located.";
 
   return true;
 }
 //----------------------------------------------------------------------------------------------------
-bool simple_wallet::export_tracking_key(const std::vector<std::string>& args/* = std::vector<std::string>()*/) {
+bool simple_wallet::show_tracking_key(const std::vector<std::string>& args/* = std::vector<std::string>()*/) {
   AccountKeys keys;
   m_wallet->getAccountKeys(keys);
   std::string spend_public_key = Common::podToHex(keys.address.spendPublicKey);
@@ -2425,54 +2466,19 @@ bool simple_wallet::print_address(const std::vector<std::string> &args/* = std::
   return true;
 }
 //----------------------------------------------------------------------------------------------------
-bool simple_wallet::save_address(const std::vector<std::string>& args/* = std::vector<std::string>()*/) {
+bool simple_wallet::save_address_to_file(const std::vector<std::string>& args/* = std::vector<std::string>()*/) {
     std::string walletAddressFile = prepareWalletAddressFilename(m_wallet_file_arg.empty() ? m_generate_new : m_wallet_file_arg);
     boost::system::error_code ignore;
     if (boost::filesystem::exists(walletAddressFile, ignore)) {
         fail_msg_writer() << "Address file already exists: " + walletAddressFile;
         return true;
     }
-    if (writeAddressFile(walletAddressFile, m_wallet->getAddress())) {
+    if (writeToFile(walletAddressFile, m_wallet->getAddress())) {
         success_msg_writer() << "Success write wallet address file: " + walletAddressFile;
     }
     else {
         fail_msg_writer() << "Couldn't write wallet address file: " + walletAddressFile;
     }
-    return true;
-}
-//----------------------------------------------------------------------------------------------------
-bool simple_wallet::save_keys(const std::vector<std::string>& args/* = std::vector<std::string>()*/) {
-    std::ofstream backup_file(m_wallet_file + ".txt");
-    AccountKeys keys;
-    m_wallet->getAccountKeys(keys);
-
-    std::string priv_key = "\t\tWallet Keys Backup\n\n";
-    priv_key += "Wallet file name: " + m_wallet_file + "\n";
-    priv_key += "Public address: " + m_wallet->getAddress() + "\n";
-    priv_key += "Private spend key: " + Common::podToHex(keys.spendSecretKey) + "\n";
-    priv_key += "Private view key: " + Common::podToHex(keys.viewSecretKey) + "\n";
-
-    Crypto::PublicKey unused_dummy_variable;
-    Crypto::SecretKey deterministic_private_view_key;
-
-    AccountBase::generateViewFromSpend(keys.spendSecretKey, deterministic_private_view_key, unused_dummy_variable);
-    bool deterministic_private_keys = deterministic_private_view_key == keys.viewSecretKey;
-
-    // don't show a mnemonic seed if it is a non-deterministic wallet
-    std::string electrum_words;
-    bool success = m_wallet->getSeed(electrum_words);
-    if (success)
-    {
-        seedFormater(electrum_words);
-        priv_key += "Mnemonic seed:\n" + electrum_words + "\n";
-    }
-
-    backup_file << priv_key;
-
-    logger(INFO, BRIGHT_GREEN) << "Wallet keys have been saved to the \""
-                               << m_wallet_file + ".txt\""
-                               << " in same folder where your wallet file is located.";
-
     return true;
 }
 //----------------------------------------------------------------------------------------------------
@@ -2542,6 +2548,7 @@ int main(int argc, char* argv[]) {
   command_line::add_arg(desc_params, arg_restore_wallet);
   command_line::add_arg(desc_params, arg_non_deterministic);
   command_line::add_arg(desc_params, arg_mnemonic_seed);
+  command_line::add_arg(desc_params, arg_mnemonic_seed_file);
   command_line::add_arg(desc_params, arg_view_secret_key);
   command_line::add_arg(desc_params, arg_spend_secret_key);
   command_line::add_arg(desc_params, arg_password);
