@@ -285,14 +285,24 @@ namespace CryptoNote
   //-----------------------------------------------------------------------------------------------------
   bool miner::stop()
   {
-    send_stop_signal();
     std::lock_guard<std::mutex> lk(m_threads_lock);
+
+    bool mining = !m_threads.empty();
+    if (!mining)
+    {
+      logger(TRACE) << "Not mining - nothing to stop";
+      return true;
+    }
+
+    send_stop_signal();
 
     for (auto& th : m_threads) {
       th.join();
     }
 
     m_threads.clear();
+    m_current_hash_rate = 0;
+    m_last_hash_rates.clear();
     if (is_mining())
       logger(INFO) << "Mining has been stopped, " << m_threads.size() << " finished" ;
     return true;
