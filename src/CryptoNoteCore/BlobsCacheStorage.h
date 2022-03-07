@@ -42,7 +42,6 @@ namespace CryptoNote {
 		BlobsCache(Logging::ILogger& logger, IMinerHandler& handler);
 
 		virtual ~BlobsCache() {
-			save();
 		}
 
 		const uint32_t CURRENT_SERIALIZATION_VERSION = 1;

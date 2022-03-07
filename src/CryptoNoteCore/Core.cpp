@@ -222,7 +222,6 @@ Core::Core(const Currency& currency, Logging::ILogger& logger, Checkpoints&& che
 
 Core::~Core() {
   m_miner->stop();
-  blobsCache->save();
   contextGroup.interrupt();
   contextGroup.wait();
 }
