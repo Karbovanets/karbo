@@ -113,7 +113,7 @@ RpcServer::HandlerFunction jsonMethod(bool (RpcServer::*handler)(typename Comman
     }
 
     bool result = (obj->*handler)(req, res);
-    for (const auto &cors_domain : obj->getCorsDomains()) {
+    for (const auto& cors_domain : obj->getCorsDomains()) {
       if (!cors_domain.empty()) {
         response.addHeader("Access-Control-Allow-Origin", cors_domain);
         response.addHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
@@ -139,7 +139,7 @@ RpcServer::HandlerFunction httpMethod(bool (RpcServer::*handler)(typename Comman
 
     bool result = (obj->*handler)(req, res);
 
-    for (const auto &cors_domain : obj->getCorsDomains()) {
+    for (const auto& cors_domain : obj->getCorsDomains()) {
       if (!cors_domain.empty()) {
         response.addHeader("Access-Control-Allow-Origin", cors_domain);
         response.addHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
@@ -1389,7 +1389,7 @@ bool RpcServer::onGetAltBlocksList(const COMMAND_RPC_GET_ALT_BLOCKS_LIST::reques
 
 bool RpcServer::onGetTransactionsPoolShort(const COMMAND_RPC_GET_TRANSACTIONS_POOL_SHORT::request& req, COMMAND_RPC_GET_TRANSACTIONS_POOL_SHORT::response& res) {
   auto pool = m_core.getPoolTransactionsWithReceiveTime();
-  for (const auto txrt : pool) {
+  for (const auto& txrt : pool) {
 	transaction_pool_response transaction_short;
 	Transaction tx = txrt.first;
     uint64_t amount_in = getInputAmount(tx);
@@ -1409,7 +1409,7 @@ bool RpcServer::onGetTransactionsPoolShort(const COMMAND_RPC_GET_TRANSACTIONS_PO
 
 bool RpcServer::onGetTransactionsPool(const COMMAND_RPC_GET_TRANSACTIONS_POOL::request& req, COMMAND_RPC_GET_TRANSACTIONS_POOL::response& res) {
   auto pool = m_core.getPoolTransactionsWithReceiveTime();
-  for (const auto txrt : pool) {
+  for (const auto& txrt : pool) {
     try {
       TransactionDetails transactionDetails = m_core.getTransactionDetails(txrt.first, txrt.second, true);
       res.transactions.push_back(transactionDetails);
@@ -1426,7 +1426,7 @@ bool RpcServer::onGetTransactionsPool(const COMMAND_RPC_GET_TRANSACTIONS_POOL::r
 
 bool RpcServer::onGetTransactionsPoolRaw(const COMMAND_RPC_GET_RAW_TRANSACTIONS_POOL::request& req, COMMAND_RPC_GET_RAW_TRANSACTIONS_POOL::response& res) {
   auto pool = m_core.getPoolTransactionsWithReceiveTime();
-  for (const auto txrt : pool) {
+  for (const auto& txrt : pool) {
     try {
       res.transactions.push_back(tx_with_output_global_indexes());
       tx_with_output_global_indexes &e = res.transactions.back();
