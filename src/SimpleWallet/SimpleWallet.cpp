@@ -1023,6 +1023,12 @@ bool simple_wallet::init(const boost::program_options::variables_map& vm)
     return false;
   }
 
+  if (!m_mnemonic_seed_file.empty() && m_non_deterministic)
+  {
+    fail_msg_writer() << "Cannot specify both --mnemonic-file and --non-deterministic";
+    return false;
+  }
+
   std::string walletFileName;
   if (!m_generate_new.empty() || !m_import_new.empty() || !m_restore_new.empty() || !m_track_new.empty())
   {
