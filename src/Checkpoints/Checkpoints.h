@@ -1,6 +1,6 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2018, The TurtleCoin developers
-// Copyright (c) 2016-2021, The Karbo developers
+// Copyright (c) 2016-2022, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -27,7 +27,7 @@ namespace CryptoNote
   class Checkpoints
   {
   public:
-    Checkpoints(Logging::ILogger& log);
+    Checkpoints(Logging::ILogger& log, bool allowDeepReorg = false);
 
     bool addCheckpoint(uint32_t index, const std::string& hash_str);
     bool isInCheckpointZone(uint32_t index) const;
@@ -42,5 +42,6 @@ namespace CryptoNote
   private:
     std::map<uint32_t, Crypto::Hash> points;
     Logging::LoggerRef logger;
+    bool isDeepReorgAllowed;
   };
 }

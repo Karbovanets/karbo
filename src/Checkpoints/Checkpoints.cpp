@@ -1,6 +1,6 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2018, The TurtleCoin developers
-// Copyright (c) 2016-2021, The Karbo developers
+// Copyright (c) 2016-2022, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -41,7 +41,7 @@ using namespace Logging;
 
 namespace CryptoNote {
 //---------------------------------------------------------------------------
-Checkpoints::Checkpoints(Logging::ILogger &log) : logger(log, "checkpoints") {
+Checkpoints::Checkpoints(Logging::ILogger &log, bool allowDeepReorg) : logger(log, "checkpoints"), isDeepReorgAllowed(allowDeepReorg) {
 }
 //---------------------------------------------------------------------------
 bool Checkpoints::addCheckpoint(uint32_t index, const std::string &hash_str) {
@@ -95,7 +95,7 @@ bool Checkpoints::isAlternativeBlockAllowed(uint32_t  blockchainSize,
     return false;
   }
 
-  if (blockIndex < blockchainSize - CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW
+  if (isDeepReorgAllowed && blockIndex < blockchainSize - CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW
     && blockchainSize > CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW
     && !isInCheckpointZone(blockIndex)) {
     logger(Logging::DEBUGGING, Logging::BRIGHT_WHITE)
