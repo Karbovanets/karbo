@@ -581,14 +581,17 @@ bool Core::getBlockLongHash(Crypto::cn_context &context, const CachedBlock& bloc
   }
 
   BinaryArray pot = block.getSignedBlockHashingBinaryArray();
-
-  // Phase 1
-
   Crypto::Hash hash_1, hash_2;
-
-  auto cache = findSegmentContainingBlock(block.getBlock().previousBlockHash);
-
   uint32_t maxHeight = std::min<uint32_t>(getTopBlockIndex(), block.getBlockIndex() - 1 - currency.minedMoneyUnlockWindow());
+  bool alt = false;
+  IBlockchainCache* segment = findMainChainSegmentContainingBlock(block.getBlock().previousBlockHash);
+  if (segment == nullptr) {
+    alt = true;
+    segment = findAlternativeSegmentContainingBlock(block.getBlock().previousBlockHash);
+    if (segment == nullptr) {
+      logger(Logging::ERROR, Logging::BRIGHT_RED) << "Requested hash wasn't found";
+    }
+  }
 
 #define ITER 128
   for (uint32_t i = 0; i < ITER; i++) {
@@ -603,16 +606,16 @@ bool Core::getBlockLongHash(Crypto::cn_context &context, const CachedBlock& bloc
       };
 
       uint32_t n = (chunk[0] << 24) |
-        (chunk[1] << 16) |
-        (chunk[2] << 8) |
-        (chunk[3]);
+                   (chunk[1] << 16) |
+                   (chunk[2] << 8)  |
+                   (chunk[3]);
 
       uint32_t height_j = n % maxHeight;
 
       BinaryArray ba;
-      if (!blobsCache->getBlob(height_j, ba)) {
+      if (alt || !blobsCache->getBlob(height_j, ba)) {
         try {
-          RawBlock rawBlock = cache->getBlockByIndex(height_j);
+          RawBlock rawBlock = getRawBlock(segment, height_j);
           BlockTemplate blockTemplate = extractBlockTemplate(rawBlock);
           ba = CachedBlock(blockTemplate).getBlockHashingBinaryArray();
         }
@@ -621,7 +624,7 @@ bool Core::getBlockLongHash(Crypto::cn_context &context, const CachedBlock& bloc
           return false;
         }
       }
-      
+
       pot.insert(std::end(pot), std::begin(ba), std::end(ba));
     }
   }
