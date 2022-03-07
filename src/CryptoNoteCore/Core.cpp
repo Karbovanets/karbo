@@ -694,7 +694,7 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
   uint64_t minerReward = 0;
   auto blockValidationResult = validateBlock(cachedBlock, cache, minerReward);
   if (blockValidationResult) {
-    logger(Logging::WARNING) << "Failed to validate block " << blockStr << ": " << blockValidationResult.message();
+    logger(Logging::DEBUGGING) << "Failed to validate block " << blockStr << ": " << blockValidationResult.message();
     return blockValidationResult;
   }
 
@@ -781,7 +781,7 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
 
   if (checkpoints.isInCheckpointZone(blockIndex)) {
     if (!checkpoints.checkBlock(blockIndex, blockHash)) {
-      logger(Logging::WARNING) << "Checkpoint block hash mismatch for block " << blockStr;
+      logger(Logging::DEBUGGING) << "Checkpoint block hash mismatch for block " << blockStr;
       return error::BlockValidationError::CHECKPOINT_BLOCK_HASH_MISMATCH;
     }
   } else if (!checkProofOfWork(cryptoContext, cachedBlock, currentDifficulty)) {

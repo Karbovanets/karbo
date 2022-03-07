@@ -77,9 +77,9 @@ bool Checkpoints::checkBlock(uint32_t index, const Crypto::Hash &h,
       << "CHECKPOINT PASSED FOR INDEX " << index << " " << h;
     return true;
   } else {
-    logger(Logging::WARNING, BRIGHT_YELLOW) << "CHECKPOINT FAILED FOR HEIGHT " << index
-                                            << ". EXPECTED HASH: " << it->second
-                                            << ", FETCHED HASH: " << h;
+    logger(Logging::DEBUGGING, BRIGHT_YELLOW) << "CHECKPOINT FAILED FOR HEIGHT " << index
+                                              << ". EXPECTED HASH: " << it->second
+                                              << ", FETCHED HASH: " << h;
     return false;
   }
 }
