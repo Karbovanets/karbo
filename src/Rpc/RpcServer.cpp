@@ -938,7 +938,7 @@ bool RpcServer::onGetTransactionDetailsByHeights(const COMMAND_RPC_GET_TRANSACTI
 
       uint32_t upperBound = std::min<uint32_t>(req.heights[1], m_core.getTopBlockIndex());
       
-      for (size_t i = 0; i < (upperBound - req.heights[0]); i++) {
+      for (uint32_t i = 0; i < (upperBound - req.heights[0]); i++) {
         heights.push_back(req.heights[0] + i);
       }
     }
