@@ -137,6 +137,8 @@ namespace CryptoNote
     bool fluffStemPool();
     void printDandelions() const override;
 
+    std::atomic<bool> m_init_select_dandelion_called;
+
   private:
     //----------------- commands handlers ----------------------------------------------
     int handle_notify_new_block(int command, NOTIFY_NEW_BLOCK::request& arg, CryptoNoteConnectionContext& context);

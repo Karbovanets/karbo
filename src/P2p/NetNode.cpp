@@ -596,12 +596,6 @@ std::string print_banlist_to_string(std::map<uint32_t, time_t> list) {
     m_workingContextGroup.spawn(std::bind(&NodeServer::timedSyncLoop, this));
     m_workingContextGroup.spawn(std::bind(&NodeServer::timeoutLoop, this));
 
-    // Get initial stems after 10 s. delay (should suffice to establish connections)
-    auto tr = std::async(std::launch::async, [&] {
-      std::this_thread::sleep_for(std::chrono::seconds(10));
-      return m_payload_handler.select_dandelion_stem();
-    });
-
     m_stopEvent.wait();
 
     logger(INFO) << "Stopping NodeServer and its " << m_connections.size() << " connections...";
@@ -1053,6 +1047,11 @@ std::string print_banlist_to_string(std::map<uint32_t, time_t> list) {
         if (!make_expected_connections_count(white, m_config.m_net_config.connections_count))
           return false;
       }
+    }
+
+    // Now we have peers to select dandelion stems
+    if (!m_payload_handler.m_init_select_dandelion_called) {
+      m_payload_handler.select_dandelion_stem();
     }
 
     return true;
