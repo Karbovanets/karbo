@@ -25,7 +25,6 @@
 #include <algorithm>
 #include <chrono>
 #include <fstream>
-#include <future>
 #include <thread>
 
 #include <boost/bind/placeholders.hpp>
@@ -237,6 +236,7 @@ std::string print_banlist_to_string(std::map<uint32_t, time_t> list) {
     logger(log, "node_server"),
     m_stopEvent(m_dispatcher),
     m_idleTimer(m_dispatcher),
+    m_connTimer(m_dispatcher),
     m_timedSyncTimer(m_dispatcher),
     m_timeoutTimer(m_dispatcher),
     m_stop(false),
@@ -591,6 +591,7 @@ std::string print_banlist_to_string(std::map<uint32_t, time_t> list) {
     logger(INFO) << "Starting NodeServer...";
 
     m_workingContextGroup.spawn(std::bind(&NodeServer::acceptLoop, this));
+    m_workingContextGroup.spawn(std::bind(&NodeServer::connectionWorker, this));
     m_workingContextGroup.spawn(std::bind(&NodeServer::onIdle, this));
     m_workingContextGroup.spawn(std::bind(&NodeServer::timedSyncLoop, this));
     m_workingContextGroup.spawn(std::bind(&NodeServer::timeoutLoop, this));
@@ -1101,18 +1102,6 @@ std::string print_banlist_to_string(std::map<uint32_t, time_t> list) {
   }
 
   //-----------------------------------------------------------------------------------
-  bool NodeServer::idle_worker() {
-    try {
-      m_connections_maker_interval.call(std::bind(&NodeServer::connections_maker, this));
-      m_peerlist_store_interval.call(std::bind(&NodeServer::store_config, this));
-      m_gray_peerlist_housekeeping_interval.call(std::bind(&NodeServer::gray_peerlist_housekeeping, this));
-    } catch (std::exception& e) {
-      logger(DEBUGGING) << "exception in idle_worker: " << e.what();
-    }
-    return true;
-  }
-
-  //-----------------------------------------------------------------------------------
   bool NodeServer::fix_time_delta(std::vector<PeerlistEntry>& local_peerlist, time_t local_time, int64_t& delta)
   {
     //fix time delta
@@ -1501,8 +1490,9 @@ std::string print_banlist_to_string(std::map<uint32_t, time_t> list) {
 
     while (!m_stop) {
       try {
-        idle_worker();
         m_payload_handler.on_idle();
+        m_peerlist_store_interval.call(std::bind(&NodeServer::store_config, this));
+        m_gray_peerlist_housekeeping_interval.call(std::bind(&NodeServer::gray_peerlist_housekeeping, this));
         m_idleTimer.sleep(std::chrono::seconds(1));
       } catch (System::InterruptedException&) {
         logger(DEBUGGING) << "onIdle() is interrupted";
@@ -1513,6 +1503,23 @@ std::string print_banlist_to_string(std::map<uint32_t, time_t> list) {
     }
 
     logger(DEBUGGING) << "onIdle finished";
+  }
+
+  void NodeServer::connectionWorker() {
+    logger(DEBUGGING) << "connectionWorker started";
+
+    try {
+      while (!m_stop) {
+        m_connections_maker_interval.call(std::bind(&NodeServer::connections_maker, this));
+        m_connTimer.sleep(std::chrono::seconds(1));
+      }
+    } catch (System::InterruptedException&) {
+      logger(DEBUGGING) << "connectionWorker() is interrupted";
+    } catch (std::exception& e) {
+      logger(DEBUGGING) << "Exception in connectionWorker: " << e.what();
+    }
+
+    logger(DEBUGGING) << "connectionWorker finished";
   }
 
   void NodeServer::timeoutLoop() {
