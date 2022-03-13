@@ -727,10 +727,16 @@ bool CryptoNoteProtocolHandler::fluffStemPool() {
 }
 
 bool CryptoNoteProtocolHandler::on_idle() {
-  m_dandelionStemSelectInterval.call([&]() { return select_dandelion_stem(); });
-  m_dandelionStemFluffInterval.call([&]() { return fluffStemPool(); });
+  try {
+    m_core.on_idle();
+    m_dandelionStemSelectInterval.call(std::bind(&CryptoNoteProtocolHandler::select_dandelion_stem, this));
+    m_dandelionStemFluffInterval.call(std::bind(&CryptoNoteProtocolHandler::fluffStemPool, this));
+  }
+  catch (std::exception& e) {
+    logger(DEBUGGING) << "exception in on_idle: " << e.what();
+  }
 
-  return m_core.on_idle();
+  return true;
 }
 
 int CryptoNoteProtocolHandler::doPushLiteBlock(NOTIFY_NEW_LITE_BLOCK::request arg, CryptoNoteConnectionContext &context, std::vector<BinaryArray> missingTxs)
