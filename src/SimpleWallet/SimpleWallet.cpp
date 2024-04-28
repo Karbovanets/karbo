@@ -1107,10 +1107,8 @@ bool simple_wallet::init(const boost::program_options::variables_map& vm)
       << "The node's fee for sending transactions is " <<
       (m_remote_node_fee_amount == 0 ? "0.25% of transaction amount, but no more than " +
         m_currency.formatAmount(CryptoNote::parameters::COIN) : m_currency.formatAmount(m_remote_node_fee_amount)) <<
-      " KRB" << std::endl << std::endl <<
-      "If you don't want to pay the node fee, please run your own node." <<
-      std::endl;
-
+        " " << CryptoNote::CRYPTONOTE_TICKER << "." << std::endl;
+   
     std::cout << WarningMsg(feemsg.str()) << std::endl;
   }
 
