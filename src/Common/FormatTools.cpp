@@ -163,8 +163,8 @@ std::string formatAmount(uint64_t amount)
 {
     std::string s = std::to_string(amount);
     if (s.size() < numberOfDecimalPlaces + 1)
-	{
-		s.insert(0, numberOfDecimalPlaces + 1 - s.size(), '0');
+    {
+      s.insert(0, numberOfDecimalPlaces + 1 - s.size(), '0');
     }
     s.insert(s.size() - numberOfDecimalPlaces, ".");
     return s;
@@ -174,9 +174,8 @@ std::string formatAmount(int64_t amount)
 {
     std::string s = formatAmount(static_cast<uint64_t>(std::abs(amount)));
 
-    if (amount < 0)
-	{
-		s.insert(0, "-");
+    if (amount < 0) {
+      s.insert(0, "-");
     }
 
     return s;
@@ -224,39 +223,39 @@ std::string unixTimeToDate(const uint64_t timestamp)
 }
 
 bool parseAmount(const std::string& str, uint64_t& amount) {
-	std::string strAmount = str;
-	boost::algorithm::trim(strAmount);
+  std::string strAmount = str;
+  boost::algorithm::trim(strAmount);
 
-	size_t pointIndex = strAmount.find_first_of('.');
-	size_t fractionSize;
-	if (std::string::npos != pointIndex) {
-		fractionSize = strAmount.size() - pointIndex - 1;
-		while (numberOfDecimalPlaces < fractionSize && '0' == strAmount.back()) {
-			strAmount.erase(strAmount.size() - 1, 1);
-			--fractionSize;
-		}
-		if (numberOfDecimalPlaces < fractionSize) {
-			return false;
-		}
-		strAmount.erase(pointIndex, 1);
-	}
-	else {
-		fractionSize = 0;
-	}
+  size_t pointIndex = strAmount.find_first_of('.');
+  size_t fractionSize;
+  if (std::string::npos != pointIndex) {
+    fractionSize = strAmount.size() - pointIndex - 1;
+    while (numberOfDecimalPlaces < fractionSize && '0' == strAmount.back()) {
+      strAmount.erase(strAmount.size() - 1, 1);
+      --fractionSize;
+    }
+    if (numberOfDecimalPlaces < fractionSize) {
+      return false;
+    }
+    strAmount.erase(pointIndex, 1);
+  }
+  else {
+    fractionSize = 0;
+  }
 
-	if (strAmount.empty()) {
-		return false;
-	}
+  if (strAmount.empty()) {
+    return false;
+  }
 
-	if (!std::all_of(strAmount.begin(), strAmount.end(), ::isdigit)) {
-		return false;
-	}
+  if (!std::all_of(strAmount.begin(), strAmount.end(), ::isdigit)) {
+    return false;
+  }
 
-	if (fractionSize < numberOfDecimalPlaces) {
-		strAmount.append(numberOfDecimalPlaces - fractionSize, '0');
-	}
+  if (fractionSize < numberOfDecimalPlaces) {
+    strAmount.append(numberOfDecimalPlaces - fractionSize, '0');
+  }
 
-	return Common::fromString(strAmount, amount);
+  return Common::fromString(strAmount, amount);
 }
 
 } // namespace Common

@@ -19,10 +19,10 @@ namespace Common
         const uint64_t target_height);
 
     std::string formatAmountWithTicker(const uint64_t amount);
-	
-	std::string formatAmount(uint64_t amount);
 
-	std::string formatAmount(int64_t amount);
+    std::string formatAmount(uint64_t amount);
+
+    std::string formatAmount(int64_t amount);
 
     std::string formatAmountBasic(const uint64_t amount);
 
