@@ -24,10 +24,12 @@
 #include <functional>
 #include <unordered_map>
 
-#include <Logging/LoggerRef.h>
-
+#include "Logging/LoggerRef.h"
+#include "ITransaction.h"
 #include "Common/Math.h"
 #include "CoreRpcServerCommandsDefinitions.h"
+#include "Rpc/RpcServerConfig.h"
+#include "Rpc/JsonRpc.h"
 
 namespace CryptoNote {
 
@@ -37,17 +39,11 @@ struct ICryptoNoteProtocolHandler;
 
 class RpcServer : public HttpServer {
 public:
-  RpcServer(System::Dispatcher& dispatcher, Logging::ILogger& log, Core& c, NodeServer& p2p, ICryptoNoteProtocolHandler& protocol);
+  RpcServer(RpcServerConfig& config, System::Dispatcher& dispatcher, Logging::ILogger& log, Core& c, NodeServer& p2p, ICryptoNoteProtocolHandler& protocol);
 
   typedef std::function<bool(RpcServer*, const HttpRequest& request, HttpResponse& response)> HandlerFunction;
-  bool restrictRPC(const bool is_resctricted);
-  bool enableCors(const std::vector<std::string> domains);
-  bool setFeeAddress(const std::string& fee_address, const AccountPublicAddress& fee_acc);
-  bool setFeeAmount(const uint64_t fee_amount);
-  bool setViewKey(const std::string& view_key);
-  bool setContactInfo(const std::string& contact);
-  bool checkIncomingTransactionForFee(const BinaryArray& tx_blob);
   std::vector<std::string> getCorsDomains();
+  void run();
 
 private:
 
@@ -62,7 +58,6 @@ private:
 
   virtual void processRequest(const HttpRequest& request, HttpResponse& response) override;
   bool processJsonRpcRequest(const HttpRequest& request, HttpResponse& response);
-  bool isCoreReady();
 
   // binary handlers
   bool onGetBlocks(const COMMAND_RPC_GET_BLOCKS_FAST::request& req, COMMAND_RPC_GET_BLOCKS_FAST::response& res);
@@ -131,7 +126,10 @@ private:
   void fillTransactionsWithOutputGlobalIndexesByHeights(uint32_t start_height, uint32_t count, bool include_miner_txs, std::vector<tx_with_output_global_indexes>& transactions);
 
   RawBlockLegacy prepareRawBlockLegacy(BinaryArray&& blockBlob);
+  bool isCoreReady();
+  bool checkIncomingTransactionForFee(const BinaryArray& tx_blob);
 
+  RpcServerConfig m_config;
   Logging::LoggerRef logger;
   Core& m_core;
   NodeServer& m_p2p;

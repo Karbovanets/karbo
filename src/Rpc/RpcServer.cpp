@@ -213,8 +213,42 @@ std::unordered_map<std::string, RpcServer::RpcHandler<RpcServer::HandlerFunction
   { "/json_rpc", { std::bind(&RpcServer::processJsonRpcRequest, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), true } }
 };
 
-RpcServer::RpcServer(System::Dispatcher& dispatcher, Logging::ILogger& log, Core& c, NodeServer& p2p, ICryptoNoteProtocolHandler& protocol) :
-  HttpServer(dispatcher, log), logger(log, "RpcServer"), m_core(c), m_p2p(p2p), m_protocol(protocol) {
+RpcServer::RpcServer(RpcServerConfig& config, System::Dispatcher& dispatcher, Logging::ILogger& log, Core& c, NodeServer& p2p, ICryptoNoteProtocolHandler& protocol) :
+  HttpServer(dispatcher, log),
+  m_config(config),
+  logger(log, "RpcServer"),
+  m_core(c), m_p2p(p2p),
+  m_protocol(protocol),
+  m_view_key(NULL_SECRET_KEY),
+  m_fee_acc(boost::value_initialized<AccountPublicAddress>()),
+  m_restricted_rpc(m_config.isRestricted()),
+  m_cors_domains(m_config.getCors()),
+  m_fee_address(""),
+  m_fee_amount(0)
+{
+  if (!m_config.getNodeFeeAddress().empty() && m_config.getNodeFeeAmount() != 0) {
+    m_fee_address = m_config.getNodeFeeAddress();
+    m_fee_amount = m_config.getNodeFeeAmount();
+  }
+
+  if (!m_config.getNodeFeeViewKey().empty()) {
+    Crypto::Hash private_view_key_hash;
+    size_t size;
+    if (!Common::fromHex(m_config.getNodeFeeViewKey(), &private_view_key_hash, sizeof(private_view_key_hash), size) || size != sizeof(private_view_key_hash)) {
+      throw std::runtime_error("Could not parse private view key");
+    }
+    m_view_key = *(struct Crypto::SecretKey*)&private_view_key_hash;
+  }
+
+  if (!m_config.getContactInfo().empty()) {
+    m_contact_info = m_config.getContactInfo();
+  }
+}
+
+void RpcServer::run() {
+  std::string address = m_config.getBindIP();
+  uint16_t port = m_config.getBindPort();
+  start(address, port);
 }
 
 void RpcServer::processRequest(const HttpRequest& request, HttpResponse& response) {
@@ -474,45 +508,8 @@ bool RpcServer::processJsonRpcRequest(const HttpRequest& request, HttpResponse& 
   return true;
 }
 
-bool RpcServer::restrictRPC(const bool is_restricted) {
-  m_restricted_rpc = is_restricted;
-  return true;
-}
-
-bool RpcServer::enableCors(const std::vector<std::string> domains) {
-  m_cors_domains = domains;
-  return true;
-}
-
 std::vector<std::string> RpcServer::getCorsDomains() {
   return m_cors_domains;
-}
-
-bool RpcServer::setFeeAddress(const std::string& fee_address, const AccountPublicAddress& fee_acc) {
-  m_fee_address = fee_address;
-  m_fee_acc = fee_acc;
-  return true;
-}
-
-bool RpcServer::setFeeAmount(const uint64_t fee_amount) {
-  m_fee_amount = fee_amount;
-  return true;
-}
-
-bool RpcServer::setViewKey(const std::string& view_key) {
-  Crypto::Hash private_view_key_hash;
-  size_t size;
-  if (!Common::fromHex(view_key, &private_view_key_hash, sizeof(private_view_key_hash), size) || size != sizeof(private_view_key_hash)) {
-    logger(INFO) << "Could not parse private view key";
-    return false;
-  }
-  m_view_key = *(struct Crypto::SecretKey *) &private_view_key_hash;
-  return true;
-}
-
-bool RpcServer::setContactInfo(const std::string& contact) {
-  m_contact_info = contact;
-  return true;
 }
 
 bool RpcServer::isCoreReady() {
