@@ -42,6 +42,7 @@
 #include "CryptoNoteProtocol/CryptoNoteProtocolHandler.h"
 #include "P2p/NetNode.h"
 #include "Rpc/RpcServer.h"
+#include "Rpc/RpcServerConfig.h"
 #include <System/Context.h>
 #include "Wallet/WalletGreen.h"
 
@@ -272,7 +273,7 @@ void PaymentGateService::runInProcess(Logging::LoggerRef& log) {
 
   CryptoNote::CryptoNoteProtocolHandler protocol(currency, *dispatcher, core, nullptr, logger);
   CryptoNote::NodeServer p2pNode(*dispatcher, protocol, logger);
-  CryptoNote::RpcServer rpcServer(*dispatcher, logger, core, p2pNode, protocol);
+  CryptoNote::RpcServer rpcServer(config.localRpcNodeConfig, *dispatcher, logger, core, p2pNode, protocol);
   protocol.set_p2p_endpoint(&p2pNode);
 
   log(Logging::INFO) << "initializing p2pNode";
@@ -294,32 +295,8 @@ void PaymentGateService::runInProcess(Logging::LoggerRef& log) {
     log(Logging::INFO) << "node initialized successfully";
   }
 
-  bool rpc_run_ssl = false;
-  std::string rpc_chain_file = "";
-  std::string rpc_key_file = "";
-  std::string rpc_dh_file = "";
-
-  if (config.remoteNodeConfig.m_enable_ssl) {
-    if (validateSertPath(config.dataDir,
-        config.remoteNodeConfig.m_chain_file,
-        config.remoteNodeConfig.m_key_file,
-        config.remoteNodeConfig.m_dh_file,
-        rpc_chain_file,
-        rpc_key_file,
-        rpc_dh_file)) {
-      rpcServer.setCerts(rpc_chain_file, rpc_key_file, rpc_dh_file);
-      rpc_run_ssl = true;
-    } else {
-      log((Logging::Level) Logging::ERROR, Logging::BRIGHT_RED) << "Start RPC SSL server was canceled because certificate file(s) could not be found" << std::endl;
-    }
-  }
-
-  log(Logging::INFO) << "Starting core rpc server on "
-	  << config.remoteNodeConfig.m_daemon_host << ":" << config.remoteNodeConfig.m_daemon_port;
-  rpcServer.start(config.remoteNodeConfig.m_daemon_host,
-                  config.remoteNodeConfig.m_daemon_port,
-                  config.remoteNodeConfig.m_daemon_port_ssl,
-                  rpc_run_ssl);
+  log(Logging::INFO) << "Starting core rpc server on " << config.localRpcNodeConfig.getBindAddress();
+  rpcServer.run();
   log(Logging::INFO) << "Core rpc server started ok";
 
   log(Logging::INFO) << "Spawning p2p server";
