@@ -9,13 +9,17 @@
 
 #include "CryptoNoteConfig.h"
 
+#include <chrono>
 #include <iostream>
+#include <thread>
 
 #include <Wallet/WalletGreen.h>
 
 #include <Common/ColouredMsg.h>
 #include <GreenWallet/Tools.h>
 #include <GreenWallet/WalletConfig.h>
+
+#define _GLIBCXX_USE_NANOSLEEP 1
 
 using namespace Tools;
 

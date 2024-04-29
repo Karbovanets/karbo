@@ -10,6 +10,9 @@
 #include <boost/algorithm/string.hpp>
 
 #include <cmath>
+#include <chrono>
+#include <iostream>
+#include <thread>
 
 #include <Common/Base58.h>
 #include <Common/StringTools.h>
@@ -18,11 +21,11 @@
 #include <CryptoNoteCore/CryptoNoteTools.h>
 #include <CryptoNoteCore/TransactionExtra.h>
 
-#include <iostream>
-
 #include <Common/ColouredMsg.h>
 #include <Common/PasswordContainer.h>
 #include <GreenWallet/WalletConfig.h>
+
+#define _GLIBCXX_USE_NANOSLEEP 1
 
 namespace Tools {
 
