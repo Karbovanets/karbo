@@ -1205,8 +1205,7 @@ bool RpcServer::onSendRawTx(const COMMAND_RPC_SEND_RAW_TX::request& req, COMMAND
   std::vector<BinaryArray> transactions(1);
   if (!fromHex(req.tx_as_hex, transactions.back())) {
     logger(INFO) << "[on_send_raw_tx]: Failed to parse tx from hexbuff: " << req.tx_as_hex;
-    res.status = "Failed";
-    return true;
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Failed to parse transaction from hexbuff" };
   }
 
   Crypto::Hash transactionHash = Crypto::cn_fast_hash(transactions.back().data(), transactions.back().size());
@@ -1220,9 +1219,8 @@ bool RpcServer::onSendRawTx(const COMMAND_RPC_SEND_RAW_TX::request& req, COMMAND
   }
 
   if (!m_core.addTransactionToPool(transactions.back())) {
-    logger(INFO) << "[on_send_raw_tx]: tx verification failed";
-    res.status = "Failed";
-    return true;
+    logger(Logging::INFO) << "[on_send_raw_tx]: Transaction verification failed";
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Transaction verification failed" };
   }
 
   m_protocol.relayTransactions(transactions);
