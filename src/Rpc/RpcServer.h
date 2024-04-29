@@ -73,6 +73,13 @@ private:
   bool onGetSupply(const COMMAND_HTTP::request& req, COMMAND_HTTP::response& res);
   bool onGeneratePaymentId(const COMMAND_HTTP::request& req, COMMAND_HTTP::response& res);
 
+  // explorer
+  bool onGetExplorer(const COMMAND_EXPLORER::request& req, COMMAND_EXPLORER::response& res);
+  bool onGetExplorerBlockByHash(const COMMAND_EXPLORER_GET_BLOCK_DETAILS_BY_HASH::request& req, COMMAND_EXPLORER_GET_BLOCK_DETAILS_BY_HASH::response& res);
+  bool onGetExplorerTxByHash(const COMMAND_EXPLORER_GET_TRANSACTION_DETAILS_BY_HASH::request& req, COMMAND_EXPLORER_GET_TRANSACTION_DETAILS_BY_HASH::response& res);
+  bool onGetExplorerTxsByPaymentId(const COMMAND_EXPLORER_GET_TRANSACTIONS_BY_PAYMENT_ID::request& req, COMMAND_EXPLORER_GET_TRANSACTIONS_BY_PAYMENT_ID::response& res);
+  bool onExplorerSearch(const COMMAND_RPC_EXPLORER_SEARCH::request& req, COMMAND_RPC_EXPLORER_SEARCH::response& res);
+
   // json get handlers
   bool onGetInfo(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RPC_GET_INFO::response& res);
   bool onGetHeight(const COMMAND_RPC_GET_HEIGHT::request& req, COMMAND_RPC_GET_HEIGHT::response& res);

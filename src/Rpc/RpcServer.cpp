@@ -22,9 +22,11 @@
 #include "version.h"
 
 #include <future>
+#include <time.h>
 #include <unordered_map>
 #include <boost/lexical_cast.hpp>
 #include <boost/uuid/uuid.hpp>
+#include <boost/dll.hpp>
 
 // CryptoNote
 #include "crypto/random.h"
@@ -55,6 +57,15 @@ using namespace Crypto;
 using namespace Common;
 
 const uint64_t BLOCK_LIST_MAX_COUNT = 1000;
+
+const std::string program_name = boost::dll::program_location().filename().string();
+
+const std::string index_start =
+R"(<!DOCTYPE html><html><head><meta http-equiv='refresh' content='60'/><style>* { font-family: monospace; } .wrap { word-break: break-all; word-wrap: break-word; } table.counter tbody tr td:first-child { text-align: right; }</style></head><body><svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" version="1.1" style="vertical-align:middle; padding-right: 10px; shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd" viewBox="0 0 2500000 2500000" xmlns:xlink="http://www.w3.org/1999/xlink" width="64px" height="64px">
+<g><circle fill="#0AACFC" cx="1250000" cy="1250000" r="1214062" /><path fill="#FFED00" d="M1251219 1162750c18009,-3203 34019,-10006 48025,-20412 14009,-10407 27215,-28016 39622,-52029l275750 -538290c10803,-18010 24012,-32419 39218,-43625 15210,-10806 33219,-16410 53232,-16410l174893 0 -343384 633144c-15209,26016 -32419,47228 -51628,63635 -19613,16409 -41225,28815 -64838,37221 36822,9604 67638,25213 92854,47225 24812,21610 48425,52025 70437,91247l330578 668363 -192503 0c-38822,0 -70041,-21213 -93653,-63235l-270947 -566303c-14006,-25215 -29216,-43225 -45622,-54034 -16409,-10803 -37222,-17206 -62034,-18809l0 287359 -151281 0 0 -288559 -111263 0 0 703581 -213716 0 0 -1540835 213716 0 0 673166 111263 0 0 -332981 151281 0 0 330581z"/></g></svg>
+)" + program_name + R"( core v. )" PROJECT_VERSION_LONG R"( &bull; )";
+
+const std::string index_finish = " </body></html>";
 
 namespace CryptoNote {
 
@@ -401,10 +412,109 @@ void RpcServer::processRequest(const HttpRequest& request, HttpResponse& respons
       response.setStatus(HttpResponse::STATUS_404);
       return;
     }
-    else {
-      response.setStatus(HttpResponse::STATUS_404);
+
+    if (Common::starts_with(url, "/explorer/")) {
+
+      std::string page_method = "/explorer/height/";
+      std::string block_method = "/explorer/block/";
+      std::string tx_method = "/explorer/tx/";
+      std::string payment_id_method = "/explorer/payment_id/";
+
+      if (Common::starts_with(url, block_method)) {
+        std::string hash_str = url.substr(block_method.size());
+        if (hash_str.size() < 64) {
+          // assume it's height
+          uint32_t height = static_cast<uint32_t>(std::stoul(hash_str));
+          if (m_core.getCurrentBlockchainHeight() <= height) {
+            throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_TOO_BIG_HEIGHT,
+              std::string("To big height: ") + std::to_string(height) +
+              ", current blockchain height = " + std::to_string(m_core.getCurrentBlockchainHeight() - 1) };
+          }
+          Crypto::Hash block_hash = m_core.getBlockHashByIndex(height);
+          hash_str = Common::podToHex(block_hash);
+        }
+
+        COMMAND_EXPLORER_GET_BLOCK_DETAILS_BY_HASH::request req;
+        req.hash = hash_str;
+        COMMAND_EXPLORER_GET_BLOCK_DETAILS_BY_HASH::response rsp;
+        bool r = onGetExplorerBlockByHash(req, rsp);
+        if (r) {
+          response.setStatus(HttpResponse::HTTP_STATUS::STATUS_200);
+          response.setBody(rsp);
+        }
+        else {
+          response.setStatus(HttpResponse::STATUS_500);
+          response.setBody("Internal error");
+        }
+
+        return;
+      }
+
+      if (Common::starts_with(url, tx_method)) {
+        std::string hash_str = url.substr(tx_method.size());
+
+        COMMAND_EXPLORER_GET_TRANSACTION_DETAILS_BY_HASH::request req;
+        req.hash = hash_str;
+        COMMAND_EXPLORER_GET_TRANSACTION_DETAILS_BY_HASH::response rsp;
+
+        bool r = onGetExplorerTxByHash(req, rsp);
+        if (r) {
+          response.setStatus(HttpResponse::HTTP_STATUS::STATUS_200);
+          response.setBody(rsp);
+        }
+        else {
+          response.setStatus(HttpResponse::STATUS_500);
+          response.setBody("Internal error");
+        }
+
+        return;
+      }
+
+      if (Common::starts_with(url, payment_id_method)) {
+        std::string payment_id_str = url.substr(payment_id_method.size());
+
+        COMMAND_EXPLORER_GET_TRANSACTIONS_BY_PAYMENT_ID::request req;
+        req.payment_id = payment_id_str;
+        COMMAND_EXPLORER_GET_TRANSACTIONS_BY_PAYMENT_ID::response rsp;
+
+        bool r = onGetExplorerTxsByPaymentId(req, rsp);
+        if (r) {
+          response.setStatus(HttpResponse::HTTP_STATUS::STATUS_200);
+          response.setBody(rsp);
+        }
+        else {
+          response.setStatus(HttpResponse::STATUS_404);
+          response.setBody("Not found");
+        }
+
+        return;
+      }
+
+      // default is explorer home
+      uint32_t height = 0;
+      if (Common::starts_with(url, page_method)) {
+        std::string height_str = url.substr(page_method.size());
+        height = Common::integer_cast<uint32_t>(height_str);
+      }
+
+      COMMAND_EXPLORER::request req;
+      req.height = height;
+      COMMAND_EXPLORER::response rsp;
+      bool r = onGetExplorer(req, rsp);
+      if (r) {
+        response.setStatus(HttpResponse::HTTP_STATUS::STATUS_200);
+        response.setBody(rsp);
+      }
+      else {
+        response.setStatus(HttpResponse::STATUS_500);
+        response.setBody("Internal error");
+      }
       return;
+
     }
+
+    response.setStatus(HttpResponse::STATUS_404);
+    return;
   }
 
   if (!it->second.allowBusyCore && !isCoreReady()) {
@@ -482,7 +592,8 @@ bool RpcServer::processJsonRpcRequest(const HttpRequest& request, HttpResponse& 
       { "validateaddress", { makeMemberMethod(&RpcServer::onValidateAddress), false } },
       { "verifymessage", { makeMemberMethod(&RpcServer::onVerifyMessage), false } },
       { "submitblock", { makeMemberMethod(&RpcServer::onSubmitBlock), false } },
-      { "resolveopenalias", { makeMemberMethod(&RpcServer::onResolveOpenAlias), true } }
+      { "resolveopenalias", { makeMemberMethod(&RpcServer::onResolveOpenAlias), true } },
+      { "search", { makeMemberMethod(&RpcServer::onExplorerSearch), true } }
 
     };
 
@@ -2303,6 +2414,549 @@ bool RpcServer::onResolveOpenAlias(const COMMAND_RPC_RESOLVE_OPEN_ALIAS::request
   }
 
   res.status = CORE_RPC_STATUS_OK;
+  return true;
+}
+
+//
+// Explorer
+//
+
+bool RpcServer::onGetExplorer(const COMMAND_EXPLORER::request& req, COMMAND_EXPLORER::response& res) {
+  uint32_t top_block_index = m_core.getCurrentBlockchainHeight() - 1;
+  auto& currency = m_core.getCurrency();
+  std::string body = index_start + (currency.isTestnet() ? "testnet" : "mainnet") +
+    "\n<p>" + "Height: <b>" + std::to_string(top_block_index) + "</b>" +
+    " &bull; " + "Difficulty: <b>" + std::to_string(m_core.getDifficultyForNextBlock()) + "</b>" +
+    " &bull; " + "Alt. blocks: <b>" + std::to_string(m_core.getAlternativeBlocksCount()) + "</b>" +
+    " &bull; " + "Transactions: <b>" + std::to_string(m_core.getBlockchainTransactionsCount() - top_block_index + 1) + "</b>" +
+    " &bull; " + "Next reward: <b>" + currency.formatAmount(currency.calculateReward(m_core.getTotalGeneratedAmount())) + "</b>" +
+    "</p>\n";
+
+  const uint32_t print_blocks_count = 10;
+  uint32_t req_height = std::max<uint32_t>(req.height == 0 ? top_block_index : req.height, print_blocks_count);
+  uint32_t last_height = req_height - print_blocks_count;
+  if (last_height < print_blocks_count)
+    last_height = 0;
+
+  // Search
+  body += R"(
+  <form style='padding: 10px;' name='searchform' action='javascript:handleSearch()'>
+    <input type='text' name='search' id='txt_search' size='80' placeholder='Search by block height/hash, transaction hash, payment id...'>
+    <input type='submit' value='Search'>
+  </form>
+  <script>
+  function handleSearch() {
+    var search_str = document.getElementById('txt_search').value;
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/json_rpc', true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.send(JSON.stringify({
+      method: 'search',
+      params: {
+        query: search_str
+      }
+    }));
+    xhr.onload = function() {
+      var data = JSON.parse(this.responseText);
+      if (data.result) {
+        window.location.href = data.result.result;
+      } else if (data.error) {
+        alert(data.error.message);
+      }
+    }
+  }
+  </script>)";
+
+  // show mempool only on home page
+  if (req_height == top_block_index) {
+    auto pool = m_core.getPoolTransactionsWithReceiveTime();
+    if (!pool.empty()) {
+      body += "<h2>Transaction pool</h2>";
+      body += "<table cellpadding=\"10px\">\n";
+      body += "  <thead>\n";
+      body += "  <tr>\n";
+      body += "    <th>Date</th><th>Hash</th><th>Amount</th><th>Fee</th><th>Size</th>\n";
+      body += "  </tr>\n";
+      body += "</thead>\n";
+      body += "<tbody>\n";
+      for (const auto& txrt : pool) {
+        time_t rawtime = (const time_t)txrt.second;
+        struct tm* timeinfo;
+        timeinfo = gmtime(&rawtime);
+        Transaction tx = txrt.first;
+        std::string txHashStr = Common::podToHex(getObjectHash(tx));
+        uint64_t amount_in = getInputAmount(tx);
+        uint64_t amount_out = getOutputAmount(tx);
+        body += "  <tr>\n";
+        body += "    <td>";
+        body += asctime(timeinfo);
+        body.pop_back(); // remove newline after asctime
+        body += "</td>\n    <td>";
+        body += "<a class=\"wrap\" href=\"/explorer/tx/" + txHashStr + "\">";
+        body += txHashStr;
+        body += "</a>";
+        body += "</td>\n    <td>";
+        body += m_core.getCurrency().formatAmount(amount_out);
+        body += "</td>\n    <td>";
+        body += m_core.getCurrency().formatAmount(amount_in - amount_out);
+        body += "</td>\n    <td>";
+        body += std::to_string(getObjectBinarySize(tx));
+        body += "</td>\n    <td>";
+        body += "  </tr>\n";
+      }
+      body += "</tbody>\n";
+      body += "</table>\n";
+    }
+  }
+
+  // list last 10 blocks with txs
+  body += "<h2>Blocks</h2>";
+  body += "<table cellpadding=\"10px\">\n";
+  body += "  <thead>\n";
+  body += "  <tr>\n";
+  body += "    <th>Height</th><th>Date</th><th>Hash</th><th>Size</th><th>Difficulty</th><th>Txs</th>\n";
+  body += "  </tr>\n";
+  body += "</thead>\n";
+  body += "<tbody>\n";
+
+  for (uint32_t i = req_height; i > last_height; i--) {
+    auto blk = m_core.getBlockByIndex(i);
+    CachedBlock cachedBlock(blk);
+    time_t rawtime = (const time_t)blk.timestamp;
+    struct tm* timeinfo;
+    timeinfo = gmtime(&rawtime);
+    auto blockHash = cachedBlock.getBlockHash();
+    auto blockDetails = m_core.getBlockDetails(blockHash);
+    body += "  <tr>\n";
+    body += "    <td>";
+    body += std::to_string(i);
+    body += "</td>\n    <td>";
+    body += asctime(timeinfo);
+    body.pop_back(); // remove newline after asctime
+    body += "</td>\n    <td>";
+    body += "<a class=\"wrap\" href=\"/explorer/block/" + Common::podToHex(blockHash) + "\">";
+    body += Common::podToHex(blockHash);
+    body += "</a>";
+    body += "</td>\n    <td>";
+    body += std::to_string(blockDetails.blockSize);
+    body += "</td>\n    <td>";
+    body += std::to_string(blockDetails.difficulty);
+    body += "</td>\n    <td>";
+    body += std::to_string(blk.transactionHashes.size() + 1);
+    body += "</td>\n";
+    body += "  </tr>\n";
+
+    if (i == 0)
+      break;
+  }
+
+  body += "</tbody>\n";
+  body += "</table>\n";
+
+  uint32_t curr_page = req_height == 0 ? 0 : (top_block_index - req_height) / print_blocks_count;
+  uint32_t total_pages = top_block_index / print_blocks_count;
+  uint32_t next_page = req_height - print_blocks_count;
+  uint32_t prev_page = std::min<uint32_t>(req_height + print_blocks_count, top_block_index);
+
+  body += "<p>";
+  if (curr_page != 0) {
+    if (prev_page <= top_block_index - print_blocks_count) {
+      body += "<a href=\"/explorer/height/";
+      body += std::to_string(prev_page);
+      body += "\">previous page</a> | ";
+    }
+    body += "<a href=\"/explorer/\">first page</a> | ";
+  }
+  body += "current page: ";
+  body += std::to_string(curr_page);
+  body += " / ";
+  body += std::to_string(total_pages);
+  if (req_height != 0 && req_height > print_blocks_count) {
+    body += " | <a href=\"/explorer/height/";
+    body += std::to_string(next_page);
+    body += "\">next page</a></p>";
+  }
+
+  body += index_finish;
+
+  res = body;
+
+  return true;
+}
+
+bool RpcServer::onExplorerSearch(const COMMAND_RPC_EXPLORER_SEARCH::request& req, COMMAND_RPC_EXPLORER_SEARCH::response& res) {
+  Crypto::Hash hash;
+
+  if (req.query.size() < 64) {
+    // assume it's height
+    uint32_t height = static_cast<uint32_t>(std::stoul(req.query));
+    hash = m_core.getBlockHashByIndex(height);
+  }
+  else if (!parse_hash256(req.query, hash)) {
+    throw JsonRpc::JsonRpcError{
+      CORE_RPC_ERROR_CODE_WRONG_PARAM, "Failed to parse query: " + req.query };
+  }
+
+  // check if it's block
+  if (m_core.hasBlock(hash)) {
+    res.result = "/explorer/block/" + Common::podToHex(hash);
+    res.status = CORE_RPC_STATUS_OK;
+    return true;
+  }
+
+  // check if it's tx
+  if (m_core.hasTransaction(hash)) {
+    res.result = "/explorer/tx/" + Common::podToHex(hash);
+    res.status = CORE_RPC_STATUS_OK;
+    return true;
+  }
+
+  // check if it's payment id
+  std::vector<Crypto::Hash> txHashes = m_core.getTransactionHashesByPaymentId(hash);
+  if (!txHashes.empty()) {
+    res.result = "/explorer/payment_id/" + Common::podToHex(hash);
+    res.status = CORE_RPC_STATUS_OK;
+    return true;
+  }
+
+  throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Not found" };
+
+  return true;
+}
+
+bool RpcServer::onGetExplorerBlockByHash(const COMMAND_EXPLORER_GET_BLOCK_DETAILS_BY_HASH::request& req, COMMAND_EXPLORER_GET_BLOCK_DETAILS_BY_HASH::response& res) {
+  try {
+    Crypto::Hash blockHash;
+    if (!parse_hash256(req.hash, blockHash)) {
+      throw JsonRpc::JsonRpcError{
+        CORE_RPC_ERROR_CODE_WRONG_PARAM,
+          "Failed to parse hex representation of block hash. Hex = " + req.hash + '.' };
+    }
+
+    if (!m_core.hasBlock(blockHash)) {
+      throw JsonRpc::JsonRpcError{
+        CORE_RPC_ERROR_CODE_INTERNAL_ERROR,
+          "Internal error: can't get block by hash. Hash = " + req.hash + '.' };
+    }
+
+    auto blk = m_core.getBlockByHash(blockHash);
+    CachedBlock cachedBlock(blk);
+
+    auto blockDetails = m_core.getBlockDetails(blockHash);
+
+    std::string body = index_start + (m_core.getCurrency().isTestnet() ? "testnet" : "mainnet") + "\n<p>";
+
+    body += "<a href=\"/explorer/\">Home</a>";
+    body += "<hr />";
+
+    body += "<h2>Block <span class=\"wrap\">" + Common::podToHex(blockHash) + "</span></h2>\n";
+
+    body += "<ul>\n";
+    body += "  <li>\n";
+    body += "    Index: " + std::to_string(blockDetails.index) + "\n";
+    body += "  </li>\n";
+    body += "  <li>\n";
+    body += "    Depth: " + std::to_string(blockDetails.depth) + "\n";
+    body += "  </li>\n";
+    body += "  <li>\n";
+    time_t rawtime = (const time_t)blockDetails.timestamp;
+    struct tm* timeinfo;
+    timeinfo = gmtime(&rawtime);
+    body += "    Time: " + std::to_string(blockDetails.timestamp) + " &bull; ";
+    body += asctime(timeinfo);
+    body += "  </li>\n";
+    body += "  <li>\n";
+    body += "    	Version: " + std::to_string(blockDetails.majorVersion) + "." + std::to_string(blockDetails.minorVersion) + "\n";
+    body += "  </li>\n";
+    body += "  <li>\n";
+    body += "    	Orphan: ";
+    if (blockDetails.isAlternative)
+      body += "YES\n";
+    else
+      body += "NO\n";
+    body += "  </li>\n";
+    body += "  <li>\n";
+    body += "    	Size: " + std::to_string(blockDetails.blockSize) + "\n";
+    body += "  </li>\n";
+    body += "  <li>\n";
+    body += "    Difficulty: " + std::to_string(blockDetails.difficulty) + "\n";
+    body += "  </li>\n";
+    body += "  <li>\n";
+    body += "    Previous block: ";
+    body += "<a class=\"wrap\" href=\"/explorer/block/" + Common::podToHex(blk.previousBlockHash) + "\">";
+    body += Common::podToHex(blk.previousBlockHash);
+    body += "</a>\n";
+    body += "  </li>\n";
+    if (blk.majorVersion >= BLOCK_MAJOR_VERSION_5) {
+      body += "  <li>\n";
+      body += "    Miner signature: <span class=\"wrap\">" + Common::podToHex(blk.signature) + "</span>";
+      body += "  </li>\n";
+    }
+    body += "</ul>";
+
+    body += "<h3>Transactions</h3>\n";
+
+    // simple list of tx hashes without details, add coinbase first
+    body += "<ol>\n";
+    body += "  <li>\n";
+    Crypto::Hash coinbaseHash = getObjectHash(blk.baseTransaction);
+    std::string txHashStr = Common::podToHex(coinbaseHash);
+    body += "    <a class=\"wrap\" href=\"/explorer/tx/" + txHashStr + "\">";
+    body += txHashStr;
+    body += "</a>";
+    body += "  </li>\n";
+
+    for (const auto& t : blk.transactionHashes) {
+      body += "  <li>\n";
+      body += "    <a class=\"wrap\" href=\"/explorer/tx/" + Common::podToHex(t) + "\">";
+      body += Common::podToHex(t);
+      body += "    </a>";
+      body += "  </li>\n";
+    }
+
+    body += "</ol>\n";
+
+    body += index_finish;
+
+    res = body;
+  }
+  catch (std::system_error& e) {
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, e.what() };
+    return false;
+  }
+  catch (std::exception& e) {
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Error: " + std::string(e.what()) };
+    return false;
+  }
+
+  return true;
+}
+
+bool RpcServer::onGetExplorerTxByHash(const COMMAND_EXPLORER_GET_TRANSACTION_DETAILS_BY_HASH::request& req, COMMAND_EXPLORER_GET_TRANSACTION_DETAILS_BY_HASH::response& res) {
+  try {
+    Crypto::Hash tx_hash;
+    if (!parse_hash256(req.hash, tx_hash)) {
+      throw JsonRpc::JsonRpcError{
+        CORE_RPC_ERROR_CODE_WRONG_PARAM,
+          "Failed to parse hex representation of transaction hash. Hex = " + req.hash + '.' };
+    }
+   
+    auto transactionsDetails = m_core.getTransactionDetails(tx_hash);
+
+    std::string body = index_start + (m_core.getCurrency().isTestnet() ? "testnet" : "mainnet") + "\n<p>";
+
+    body += "<a href=\"/explorer/\">Home</a>";
+    body += "<hr />";
+
+    body += "<h2>Transaction <span class=\"wrap\">" + Common::podToHex(transactionsDetails.hash) + "</span></h2>\n";
+
+    body += "<ul>\n";
+    if (transactionsDetails.inBlockchain) {
+      body += "  <li>\n";
+      body += "    In block: ";
+      body += "<a class=\"wrap\" href=\"/explorer/block/" + Common::podToHex(transactionsDetails.blockHash) + "\">";
+      body += std::to_string(transactionsDetails.blockIndex) + " (" + Common::podToHex(transactionsDetails.blockHash) + ")";
+      body += "    </a>\n";
+      body += "  </li>\n";
+      body += "  <li>\n";
+      time_t rawtime = (const time_t)transactionsDetails.timestamp;
+      struct tm* timeinfo;
+      timeinfo = gmtime(&rawtime);
+      body += "    First confirmation time: ";
+      body += asctime(timeinfo);
+      body += "  </li>\n";
+    }
+    else {
+      body += "  <li>\n";
+      body += "    Unconfirmed\n";
+      body += "  </li>\n";
+    }
+    body += "  <li>\n";
+    body += "    Sum of outputs: " + m_core.getCurrency().formatAmount(transactionsDetails.totalOutputsAmount) + "\n";
+    body += "  </li>\n";
+    body += "  <li>\n";
+    body += "    Size: " + std::to_string(transactionsDetails.size) + "\n";
+    body += "  </li>\n";
+    body += "  <li>\n";
+    body += "    Unlock time: " + std::to_string(transactionsDetails.unlockTime) + "\n";
+    body += "  </li>\n";
+    body += "  <li>\n";
+    body += "    Version: " + std::to_string(transactionsDetails.version) + "\n";
+    body += "  </li>\n";
+    body += "  <li>\n";
+    body += "    Mixin count: " + std::to_string(transactionsDetails.mixin) + "\n";
+    body += "  </li>\n";
+    body += "  <li>\n";
+    body += "    Public key: <span class=\"wrap\">" + Common::podToHex(transactionsDetails.extra.publicKey) + "</span>\n";
+    body += "  </li>\n";
+    if (transactionsDetails.hasPaymentId) {
+      body += "  <li>\n";
+      body += "    Payment ID: <span class=\"wrap\">" + Common::podToHex(transactionsDetails.paymentId) + "</span>\n";
+      body += "  </li>\n";
+    }
+    body += "</ul>\n";
+
+    body += "<h3>Inputs</h3>\n";
+
+    body += "<table class=\"counter\" cellpadding=\"10px\">\n";
+    body += "  <thead>\n";
+    body += "  <tr>\n";
+    body += "    <th>No</th><th>Amount</th><th>Key image</th><th>Output indexes (references)</th>\n";
+    body += "  </tr>\n";
+    body += "</thead>\n";
+    body += "<tbody>\n";
+    for (size_t i = 0; i < transactionsDetails.inputs.size(); ++i) {
+      const auto& in = transactionsDetails.inputs[i];
+      body += "  <tr>\n";
+      body += "    <td>" + std::to_string(i) + ")</td>";
+      body += "    <td>";
+      if (in.type() == typeid(BaseInputDetails)) {
+        BaseInputDetails c = boost::get<BaseInputDetails>(in);
+        body += m_core.getCurrency().formatAmount(c.amount);
+        body += "</td>\n    <td colspan=\"2\">coinbase</td>\n";
+      }
+      else if (in.type() == typeid(KeyInputDetails)) {
+        KeyInputDetails k = boost::get<KeyInputDetails>(in);
+        body += m_core.getCurrency().formatAmount(k.input.amount);
+        body += "</td>\n    <td class=\"wrap\">";
+        body += Common::podToHex(k.input.keyImage);
+        body += "</td>\n    <td>";
+        for (size_t i = 0; i < k.input.outputIndexes.size(); ++i) {
+          body += "    <a href=\"/explorer/tx/" + Common::podToHex(k.outputs[i].transactionHash) + "\">";
+          body += std::to_string(k.input.outputIndexes[i]); // key_offset
+          body += " (output No " + std::to_string(k.outputs[i].number) + ")</a>"; // tx output reference
+          body += ", ";
+        }
+        body.pop_back();
+        body.pop_back();
+        body += "    </td>\n";
+      }
+      else if (in.type() == typeid(MultisignatureInputDetails)) {
+        MultisignatureInputDetails m = boost::get<MultisignatureInputDetails>(in);
+        body += m_core.getCurrency().formatAmount(m.input.amount);
+        body += "</td>\n    <td>multisig</td>\n    ";
+        body += "output index: " + std::to_string(m.input.outputIndex) + ", ";
+        body += "signature count: " + std::to_string(m.input.signatureCount) + ", ";
+        body += "output number: " + std::to_string(m.output.number) + ", ";
+        body += "output tx hash: <span class=\"wrap\">" + Common::podToHex(m.output.transactionHash) + "</span>";
+        body += "    </td>\n";
+      }
+      body += "  </tr>\n";
+    }
+    body += "</tbody>\n";
+    body += "</table>\n";
+
+    body += "<h3>Outputs</h3>\n";
+
+    body += "<table class=\"counter\" cellpadding=\"10px\">\n";
+    body += "  <thead>\n";
+    body += "  <tr>\n";
+    body += "    <th>No</th><th>Amount</th><th>Public key (stealth address)</th><th>Global index</th>\n";
+    body += "  </tr>\n";
+    body += "</thead>\n";
+    body += "<tbody>\n";
+    for (size_t i = 0; i < transactionsDetails.outputs.size(); ++i) {
+      const auto& o = transactionsDetails.outputs[i];
+      body += "  <tr>\n";
+      body += "    <td>" + std::to_string(i) + ")</td>";
+      body += "    <td>";
+      body += m_core.getCurrency().formatAmount(o.output.amount);
+      body += "</td>\n    <td class=\"wrap\">";
+      if (o.output.target.type() == typeid(KeyOutput)) {
+        KeyOutput ko = boost::get<KeyOutput>(o.output.target);
+        body += Common::podToHex(ko);
+      }
+      else if (o.output.target.type() == typeid(MultisignatureOutput)) {
+        body += "multisig\n";
+        MultisignatureOutput mo = boost::get<MultisignatureOutput>(o.output.target);
+        body += "keys: \n";
+        for (const auto& k : mo.keys) {
+          body += Common::podToHex(k) + "\n";
+        }
+        body += "required signature count: ";
+        body += std::to_string(mo.requiredSignatureCount);
+      }
+      body += "</td>\n    <td>";
+      body += std::to_string(o.globalIndex);
+      body += "    </td>\n";
+      body += "  </tr>\n";
+    }
+    body += "</tbody>\n";
+    body += "</table>\n";
+
+    // no signatures e.g. in coinbase
+    if (!transactionsDetails.signatures.empty()) {
+      body += "<h3>Signatures</h3>\n";
+
+      body += "<ol>\n";
+      for (const auto& s0 : transactionsDetails.signatures) {
+        body += "  <li>\n";
+        body += "    <ol>\n";
+        for (const auto& s1 : s0) {
+          body += "      <li class=\"wrap\">\n";
+          body += "    " + Common::podToHex(s1) + "\n";
+          body += "      </li>\n";
+        }
+        body += "    </ol>\n";
+        body += "  </li>\n";
+      }
+      body += "</ol>\n";
+    }
+
+    body += index_finish;
+
+    res = body;
+  }
+  catch (std::system_error& e) {
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, e.what() };
+    return false;
+  }
+  catch (std::exception& e) {
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Error: " + std::string(e.what()) };
+    return false;
+  }
+
+  return true;
+}
+
+bool RpcServer::onGetExplorerTxsByPaymentId(const COMMAND_EXPLORER_GET_TRANSACTIONS_BY_PAYMENT_ID::request& req, COMMAND_EXPLORER_GET_TRANSACTIONS_BY_PAYMENT_ID::response& res) {
+  Crypto::Hash paymentId;
+  if (!parse_hash256(req.payment_id, paymentId)) {
+    throw JsonRpc::JsonRpcError{
+      CORE_RPC_ERROR_CODE_WRONG_PARAM,
+        "Failed to parse Payment ID: " + req.payment_id + '.' };
+  }
+
+  std::vector<Crypto::Hash> txHashes = m_core.getTransactionHashesByPaymentId(paymentId);
+
+  if (txHashes.empty())
+    return false;
+
+  std::string body = index_start + (m_core.getCurrency().isTestnet() ? "testnet" : "mainnet") + "\n<p>";
+
+  body += "<a href=\"/explorer/\">Home</a>";
+  body += "<hr />";
+
+  body += "<h2>Payment ID <span class=\"wrap\">" + Common::podToHex(paymentId) + "</span></h2>\n";
+
+  body += "<h3>Transactions with this Payment ID:</h3>\n";
+
+  // simple list of tx hashes without details
+  body += "<ol>\n";
+  for (const auto& tx : txHashes) {
+    std::string txHashStr = Common::podToHex(tx);
+    body += "  <li>\n";
+    body += "    <a class=\"wrap\" href=\"/explorer/tx/" + txHashStr + "\">";
+    body += txHashStr;
+    body += "    </a>";
+    body += "  </li>\n";
+  }
+  body += "</ol>\n";
+
+  body += index_finish;
+
+  res = body;
+
   return true;
 }
 
