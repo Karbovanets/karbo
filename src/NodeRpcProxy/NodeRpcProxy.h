@@ -131,7 +131,6 @@ private:
   bool updatePoolStatus();
   void updatePeerCount(size_t peerCount);
   void updatePoolState(const std::vector<std::unique_ptr<ITransactionReader>>& addedTxs, const std::vector<Crypto::Hash>& deletedTxsIds);
-  void getFeeAddress();
 
   std::error_code doGetBlockHashesByTimestamps(uint64_t timestampBegin, size_t secondsCount, std::vector<Crypto::Hash>& blockHashes);
   std::error_code doRelayTransaction(const CryptoNote::Transaction& transaction);
