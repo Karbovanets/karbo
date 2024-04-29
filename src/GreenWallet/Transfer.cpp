@@ -332,7 +332,7 @@ void transfer(std::shared_ptr<WalletInfo> walletInfo, uint32_t height, bool send
 	   the fee from full balance */
 	uint64_t amount = 0;
 	
-	uint64_t mixin = WalletConfig::defaultMixin;
+	uint16_t mixin = WalletConfig::defaultMixin;
 
 	/* If we're sending everything, obviously we don't need to ask them how
 	much to send */
@@ -521,7 +521,7 @@ BalanceInfo doWeHaveEnoughBalance(uint64_t amount, uint64_t fee,
 
 void doTransfer(std::string address, uint64_t amount, uint64_t fee,
                 std::string extra, std::shared_ptr<WalletInfo> walletInfo,
-                uint32_t height, uint64_t mixin,
+                uint32_t height, uint16_t mixin,
                 std::string nodeAddress, uint64_t nodeFee)
 {
 	Crypto::SecretKey txSecretKey;

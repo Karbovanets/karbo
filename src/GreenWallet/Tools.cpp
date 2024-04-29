@@ -151,7 +151,7 @@ namespace Tools {
     );
   }
 
-  uint64_t getScanHeight()
+  uint32_t getScanHeight()
   {
     while (true)
     {
