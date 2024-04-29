@@ -177,7 +177,7 @@ void PaymentGateService::run() {
 
   //check the container exists before starting service
   const std::string walletFileName = config.gateConfiguration.containerFile;
-  if (!boost::filesystem::exists(walletFileName)) {
+  if (!config.gateConfiguration.generateNewContainer && !boost::filesystem::exists(walletFileName)) {
     log(Logging::ERROR) << "A wallet with the filename "
       << walletFileName << " doesn't exist! "
       << "Ensure you entered your wallet name correctly.";
@@ -202,6 +202,18 @@ void PaymentGateService::stop() {
         stopEvent->set();
       }
     });
+  }
+}
+
+void PaymentGateService::startUpSelector(const CryptoNote::Currency& currency, CryptoNote::INode& node) {
+  if (config.gateConfiguration.generateNewContainer) {
+    generateNewWallet(currency, getWalletConfig(), logger, *dispatcher, node);
+  }
+  else if (config.gateConfiguration.changePassword) {
+    changePassword(currency, getWalletConfig(), logger, *dispatcher, node, config.gateConfiguration.newContainerPassword);
+  }
+  else {
+    runWalletService(currency, node);
   }
 }
 
@@ -310,15 +322,7 @@ void PaymentGateService::runInProcess(Logging::LoggerRef& log) {
 
   p2pStarted.wait();
 
-  if (config.gateConfiguration.generateNewContainer) {
-    generateNewWallet(currency, getWalletConfig(), logger, *dispatcher, *node);
-  }
-  else if (config.gateConfiguration.changePassword) {
-    changePassword(currency, getWalletConfig(), logger, *dispatcher, *node, config.gateConfiguration.newContainerPassword);
-  }
-  else {
-    runWalletService(currency, *node);
-  }
+  startUpSelector(currency, *node);
 
   p2pNode.sendStopSignal();
   context.get();
@@ -339,15 +343,7 @@ void PaymentGateService::runRpcProxy(Logging::LoggerRef& log) {
       false, // TODO: add to config, i.e. make configurable or determine by URL protocol and port
       log.getLogger()));
 
-  if (config.gateConfiguration.generateNewContainer) {
-    generateNewWallet(currency, getWalletConfig(), logger, *dispatcher, *node);
-  }
-  else if (config.gateConfiguration.changePassword) {
-    changePassword(currency, getWalletConfig(), logger, *dispatcher, *node, config.gateConfiguration.newContainerPassword);
-  }
-  else {
-    runWalletService(currency, *node);
-  }
+  startUpSelector(currency, *node);
 }
 
 void PaymentGateService::runWalletService(const CryptoNote::Currency& currency, CryptoNote::INode& node) {
