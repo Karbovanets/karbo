@@ -485,6 +485,9 @@ void Core::getTransactions(const std::vector<Crypto::Hash>& transactionHashes, s
   assert(segment != nullptr);
 
   std::vector<Crypto::Hash> leftTransactions = transactionHashes;
+  if (leftTransactions.empty()) {
+    return;
+  }
 
   // find in main chain
   do {
