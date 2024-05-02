@@ -217,13 +217,17 @@ int main(int argc, char* argv[])
     }
 
     std::cout << ColouredMsg("\n"
-    "  _|    _|    _|_|    _|_|_|    _|_|_|      _|_|    \n"
-    "  _|  _|    _|    _|  _|    _|  _|    _|  _|    _|  \n"
-    "  _|_|      _|_|_|_|  _|_|_|    _|_|_|    _|    _|  \n",Common::Console::Color::BrightCyan);
+      ":'##:::'##::::'###::::'########::'########:::'#######::\n"
+      ": ##::'##::::'## ##::: ##.... ##: ##.... ##:'##.... ##:\n"
+      ": ##:'##::::'##:. ##:: ##:::: ##: ##:::: ##: ##:::: ##:\n"
+      ": #####::::'##:::. ##: ########:: ########:: ##:::: ##:\n",
+      Common::Console::Color::BrightCyan);
     std::cout << ColouredMsg(
-    "  _|  _|    _|    _|  _|    _|  _|    _|  _|    _|  \n"
-    "  _|    _|  _|    _|  _|    _|  _|    _|  _|    _|  \n"
-    "  _|    _|  _|    _|  _|    _|  _|_|_|      _|_|    \n\n", Common::Console::Color::BrightYellow);
+      ": ##. ##::: #########: ##.. ##::: ##.... ##: ##:::: ##:\n"
+      ": ##:. ##:: ##.... ##: ##::. ##:: ##:::: ##: ##:::: ##:\n"
+      ": ##::. ##: ##:::: ##: ##:::. ##: ########::. #######::\n"
+      ":..::::..::..:::::..::..:::::..::........::::.......:::\n\n",
+      Common::Console::Color::BrightYellow);
 
     logger(INFO) << "Module folder: " << argv[0];
 
@@ -282,20 +286,8 @@ int main(int argc, char* argv[])
     minerConfig.init(vm);
 
     RpcServerConfig rpcConfig;
+    rpcConfig.setDataDir(data_dir_path.string());
     rpcConfig.init(vm);
-
-    std::string contact_str = rpcConfig.contactInfo;
-    if (!contact_str.empty() && contact_str.size() > 128) {
-      logger(ERROR, BRIGHT_RED) << "Too long contact info";
-      return 1;
-    }
-
-    // check this early
-    if ((rpcConfig.nodeFeeAddress.empty() && !rpcConfig.nodeFeeAmountStr.empty()) ||
-      (!rpcConfig.nodeFeeAddress.empty() && rpcConfig.nodeFeeAmountStr.empty())) {
-      logger(ERROR, BRIGHT_RED) << "Need to set both, fee-address and fee-amount";
-      return 1;
-    }
 
     // db
     bool enableLevelDB = command_line::get_arg(vm, arg_level_db);
@@ -374,7 +366,7 @@ int main(int argc, char* argv[])
 
     CryptoNote::CryptoNoteProtocolHandler cprotocol(currency, dispatcher, ccore, nullptr, logManager);
     CryptoNote::NodeServer p2psrv(dispatcher, cprotocol, logManager);
-    CryptoNote::RpcServer rpcServer(dispatcher, logManager, ccore, p2psrv, cprotocol);
+    CryptoNote::RpcServer rpcServer(rpcConfig, dispatcher, logManager, ccore, p2psrv, cprotocol);
 
     cprotocol.set_p2p_endpoint(&p2psrv);
     DaemonCommandsHandler dch(ccore, p2psrv, logManager, cprotocol, &rpcServer);
@@ -391,67 +383,8 @@ int main(int argc, char* argv[])
       dch.start_handling();
     }
 
-    boost::filesystem::path chain_file_path(rpcConfig.getChainFile());
-    boost::filesystem::path key_file_path(rpcConfig.getKeyFile());
-    boost::filesystem::path dh_file_path(rpcConfig.getDhFile());
-    if (!chain_file_path.has_parent_path()) {
-      chain_file_path = data_dir_path / chain_file_path;
-    }
-    if (!key_file_path.has_parent_path()) {
-      key_file_path = data_dir_path / key_file_path;
-    }
-    if (!dh_file_path.has_parent_path()) {
-      dh_file_path = data_dir_path / dh_file_path;
-    }
-    bool server_ssl_enable = false;
-    if (rpcConfig.isEnabledSSL()) {
-      if (boost::filesystem::exists(chain_file_path, ec) &&
-          boost::filesystem::exists(key_file_path, ec) &&
-          boost::filesystem::exists(dh_file_path, ec)) {
-        rpcServer.setCerts(boost::filesystem::canonical(chain_file_path).string(),
-                           boost::filesystem::canonical(key_file_path).string(),
-                           boost::filesystem::canonical(dh_file_path).string());
-        server_ssl_enable = true;
-      } else {
-        logger(ERROR, BRIGHT_RED) << "Starting RPC SSL server was canceled because certificate file(s) could not be found" << std::endl;
-      }
-    }
-    std::string ssl_info = "";
-    if (server_ssl_enable) ssl_info += ", SSL on address " + rpcConfig.getBindAddressSSL();
-    logger(INFO) << "Starting core rpc server on address " << rpcConfig.getBindAddress() << ssl_info;
-    rpcServer.start(rpcConfig.getBindIP(), rpcConfig.getBindPort(), rpcConfig.getBindPortSSL(), server_ssl_enable);
-    rpcServer.restrictRPC(rpcConfig.restrictedRPC);
-    rpcServer.enableCors(rpcConfig.enableCors);
-    if (!rpcConfig.nodeFeeAddress.empty() && !rpcConfig.nodeFeeAmountStr.empty()) {
-      AccountPublicAddress acc = boost::value_initialized<AccountPublicAddress>();
-      if (!currency.parseAccountAddressString(rpcConfig.nodeFeeAddress, acc)) {
-        logger(ERROR, BRIGHT_RED) << "Bad fee address: " << rpcConfig.nodeFeeAddress;
-        return 1;
-      }
-      rpcServer.setFeeAddress(rpcConfig.nodeFeeAddress, acc);
-
-      uint64_t fee;
-      if (!Common::parseAmount(rpcConfig.nodeFeeAmountStr, fee)) {
-        logger(ERROR, BRIGHT_RED) << "Couldn't parse fee amount";
-        return 1;
-      }
-      if (fee > CryptoNote::parameters::COIN) {
-        logger(ERROR, BRIGHT_RED) << "Maximum allowed fee is "
-          << Common::formatAmount(CryptoNote::parameters::COIN);
-        return 1;
-      }
-
-      rpcServer.setFeeAmount(fee);
-    }
-
-    if (!rpcConfig.nodeFeeViewKey.empty()) {
-      rpcServer.setViewKey(rpcConfig.nodeFeeViewKey);
-    }
-    if (!rpcConfig.contactInfo.empty()) {
-      rpcServer.setContactInfo(rpcConfig.contactInfo);
-    }
-
-    logger(INFO) << "Core rpc server started ok";
+    logger(INFO) << "Starting core rpc server on address " << rpcConfig.getBindAddress();
+    rpcServer.run();
 
     Tools::SignalHandler::install([&dch, &p2psrv] {
       dch.stop_handling();

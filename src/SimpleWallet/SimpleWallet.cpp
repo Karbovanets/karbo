@@ -73,6 +73,7 @@
 #include "Common/ColouredMsg.h"
 #include "CryptoNoteCore/Account.h"
 #include "CryptoNoteCore/CryptoNoteFormatUtils.h"
+#include "CryptoNoteCore/CryptoNoteTools.h"
 #include "CryptoNoteProtocol/CryptoNoteProtocolHandler.h"
 #include "NodeRpcProxy/NodeRpcProxy.h"
 #include "Rpc/CoreRpcServerCommandsDefinitions.h"
@@ -649,7 +650,7 @@ bool simple_wallet::help(const std::vector<std::string> &args/* = std::vector<st
 }
 
 bool simple_wallet::exit(const std::vector<std::string> &args) {
-  m_consoleHandler.requestStop();
+  stop();
   return true;
 }
 
@@ -671,44 +672,44 @@ simple_wallet::simple_wallet(System::Dispatcher& dispatcher, const CryptoNote::C
   m_trackingWallet(false),
   m_do_not_relay_tx(false)
 {
-  m_consoleHandler.setHandler("start_mining", boost::bind(&simple_wallet::start_mining, this, _1), "start_mining [<number_of_threads>] - Start mining in daemon");
-  m_consoleHandler.setHandler("stop_mining", boost::bind(&simple_wallet::stop_mining, this, _1), "Stop mining in daemon");
-  m_consoleHandler.setHandler("show_keys", boost::bind(&simple_wallet::show_keys, this, _1), "Show the secret keys of the opened wallet");
-  m_consoleHandler.setHandler("export_keys", boost::bind(&simple_wallet::export_keys_to_file, this, boost::arg<1>()), "Save current wallet private keys to file");
-  m_consoleHandler.setHandler("tracking_key", boost::bind(&simple_wallet::show_tracking_key, this, _1), "Show the tracking key of the opened wallet");
-  m_consoleHandler.setHandler("balance", boost::bind(&simple_wallet::show_balance, this, _1), "Show current wallet balance");
-  m_consoleHandler.setHandler("incoming_transfers", boost::bind(&simple_wallet::show_incoming_transfers, this, _1), "Show incoming transfers");
-  m_consoleHandler.setHandler("outgoing_transfers", boost::bind(&simple_wallet::show_outgoing_transfers, this, _1), "Show outgoing transfers");
-  m_consoleHandler.setHandler("list_transfers", boost::bind(&simple_wallet::listTransfers, this, _1), "Show all known transfers");
-  m_consoleHandler.setHandler("payments", boost::bind(&simple_wallet::show_payments, this, _1), "payments <payment_id_1> [<payment_id_2> ... <payment_id_N>] - Show payments <payment_id_1>, ... <payment_id_N>");
-  m_consoleHandler.setHandler("outputs", boost::bind(&simple_wallet::show_unlocked_outputs_count, this, _1), "Show the number of unlocked outputs available for a transaction");
-  m_consoleHandler.setHandler("bc_height", boost::bind(&simple_wallet::show_blockchain_height, this, _1), "Show blockchain height");
-  m_consoleHandler.setHandler("transfer", boost::bind(&simple_wallet::transfer, this, _1),
+  m_consoleHandler.setHandler("start_mining", std::bind(&simple_wallet::start_mining, this, std::placeholders::_1), "start_mining [<number_of_threads>] - Start mining in daemon");
+  m_consoleHandler.setHandler("stop_mining", std::bind(&simple_wallet::stop_mining, this, std::placeholders::_1), "Stop mining in daemon");
+  m_consoleHandler.setHandler("show_keys", std::bind(&simple_wallet::show_keys, this, std::placeholders::_1), "Show the secret keys of the opened wallet");
+  m_consoleHandler.setHandler("export_keys", std::bind(&simple_wallet::export_keys_to_file, this, std::placeholders::_1), "Save current wallet private keys to file");
+  m_consoleHandler.setHandler("tracking_key", std::bind(&simple_wallet::show_tracking_key, this, std::placeholders::_1), "Show the tracking key of the opened wallet");
+  m_consoleHandler.setHandler("balance", std::bind(&simple_wallet::show_balance, this, std::placeholders::_1), "Show current wallet balance");
+  m_consoleHandler.setHandler("incoming_transfers", std::bind(&simple_wallet::show_incoming_transfers, this, std::placeholders::_1), "Show incoming transfers");
+  m_consoleHandler.setHandler("outgoing_transfers", std::bind(&simple_wallet::show_outgoing_transfers, this, std::placeholders::_1), "Show outgoing transfers");
+  m_consoleHandler.setHandler("list_transfers", std::bind(&simple_wallet::listTransfers, this, std::placeholders::_1), "Show all known transfers");
+  m_consoleHandler.setHandler("payments", std::bind(&simple_wallet::show_payments, this, std::placeholders::_1), "payments <payment_id_1> [<payment_id_2> ... <payment_id_N>] - Show payments <payment_id_1>, ... <payment_id_N>");
+  m_consoleHandler.setHandler("outputs", std::bind(&simple_wallet::show_unlocked_outputs_count, this, std::placeholders::_1), "Show the number of unlocked outputs available for a transaction");
+  m_consoleHandler.setHandler("bc_height", std::bind(&simple_wallet::show_blockchain_height, this, std::placeholders::_1), "Show blockchain height");
+  m_consoleHandler.setHandler("transfer", std::bind(&simple_wallet::transfer, this, std::placeholders::_1),
     "transfer <mixin_count> <addr_1> <amount_1> [<addr_2> <amount_2> ... <addr_N> <amount_N>] [-p payment_id] [-f fee]"
     " - Transfer <amount_1>,... <amount_N> to <address_1>,... <address_N>, respectively. "
     "<mixin_count> is the number of transactions yours is indistinguishable from (from 0 to maximum available)");
-  m_consoleHandler.setHandler("prepare", boost::bind(&simple_wallet::prepare_tx, this, _1),
+  m_consoleHandler.setHandler("prepare", std::bind(&simple_wallet::prepare_tx, this, std::placeholders::_1),
     "Prepare raw transaction in hex format but do not relay, e.g. for manual relay <addr_1> <amount_1> ... <addr_N> <amount_N> [-p payment_id] [-f fee]"
     " - Transfer <amount_1>,... <amount_N> to <address_1>,... <address_N>, respectively. ");
-  m_consoleHandler.setHandler("set_log", boost::bind(&simple_wallet::set_log, this, _1), "set_log <level> - Change current log level, <level> is a number 0-4");
-  m_consoleHandler.setHandler("address", boost::bind(&simple_wallet::print_address, this, _1), "Show current wallet public address");
-  m_consoleHandler.setHandler("save_address", boost::bind(&simple_wallet::save_address_to_file, this, _1), "Save current wallet public address to file");
-  m_consoleHandler.setHandler("save", boost::bind(&simple_wallet::save, this, _1), "Save wallet synchronized data");
-  m_consoleHandler.setHandler("reset", boost::bind(&simple_wallet::reset, this, _1), "Discard cache data and start synchronizing from the start");
-  m_consoleHandler.setHandler("payment_id", boost::bind(&simple_wallet::payment_id, this, _1), "Generate random Payment ID");
-  m_consoleHandler.setHandler("password", boost::bind(&simple_wallet::change_password, this, _1), "Change password");
-  m_consoleHandler.setHandler("estimate_fusion", boost::bind(&simple_wallet::estimate_fusion, this, _1), "Show the number of outputs available for optimization for a given <threshold>");
-  m_consoleHandler.setHandler("optimize", boost::bind(&simple_wallet::optimize, this, _1), "Optimize wallet (fuse small outputs into fewer larger ones) - optimize <threshold> <mixin>");
-  m_consoleHandler.setHandler("get_tx_key", boost::bind(&simple_wallet::get_tx_key, this, _1), "Get secret transaction key for a given <txid>");
-  m_consoleHandler.setHandler("get_tx_proof", boost::bind(&simple_wallet::get_tx_proof, this, _1), "Generate a signature to prove payment to <address> in <txid>");
-  m_consoleHandler.setHandler("check_tx_proof", boost::bind(&simple_wallet::check_tx_proof, this, _1), "Check tx proof for payment going to <address> in <txid>");
-  m_consoleHandler.setHandler("get_tx_proof", boost::bind(&simple_wallet::get_tx_proof, this, _1), "Generate a signature to prove payment: <txid> <address> [<txkey>]");
-  m_consoleHandler.setHandler("get_reserve_proof", boost::bind(&simple_wallet::get_reserve_proof, this, _1), "all|<amount> [<message>] - Generate a signature proving that you own at least <amount>, optionally with a challenge string <message>.\n"
+  m_consoleHandler.setHandler("set_log", std::bind(&simple_wallet::set_log, this, std::placeholders::_1), "set_log <level> - Change current log level, <level> is a number 0-4");
+  m_consoleHandler.setHandler("address", std::bind(&simple_wallet::print_address, this, std::placeholders::_1), "Show current wallet public address");
+  m_consoleHandler.setHandler("save_address", std::bind(&simple_wallet::save_address_to_file, this, std::placeholders::_1), "Save current wallet public address to file");
+  m_consoleHandler.setHandler("save", std::bind(&simple_wallet::save, this, std::placeholders::_1), "Save wallet synchronized data");
+  m_consoleHandler.setHandler("reset", std::bind(&simple_wallet::reset, this, std::placeholders::_1), "Discard cache data and start synchronizing from the start");
+  m_consoleHandler.setHandler("payment_id", std::bind(&simple_wallet::payment_id, this, std::placeholders::_1), "Generate random Payment ID");
+  m_consoleHandler.setHandler("password", std::bind(&simple_wallet::change_password, this, std::placeholders::_1), "Change password");
+  m_consoleHandler.setHandler("estimate_fusion", std::bind(&simple_wallet::estimate_fusion, this, std::placeholders::_1), "Show the number of outputs available for optimization for a given <threshold>");
+  m_consoleHandler.setHandler("optimize", std::bind(&simple_wallet::optimize, this, std::placeholders::_1), "Optimize wallet (fuse small outputs into fewer larger ones) - optimize <threshold> <mixin>");
+  m_consoleHandler.setHandler("get_tx_key", std::bind(&simple_wallet::get_tx_key, this, std::placeholders::_1), "Get secret transaction key for a given <txid>");
+  m_consoleHandler.setHandler("get_tx_proof", std::bind(&simple_wallet::get_tx_proof, this, std::placeholders::_1), "Generate a signature to prove payment to <address> in <txid>");
+  m_consoleHandler.setHandler("check_tx_proof", std::bind(&simple_wallet::check_tx_proof, this, std::placeholders::_1), "Check tx proof for payment going to <address> in <txid>");
+  m_consoleHandler.setHandler("get_tx_proof", std::bind(&simple_wallet::get_tx_proof, this, std::placeholders::_1), "Generate a signature to prove payment: <txid> <address> [<txkey>]");
+  m_consoleHandler.setHandler("get_reserve_proof", std::bind(&simple_wallet::get_reserve_proof, this, std::placeholders::_1), "all|<amount> [<message>] - Generate a signature proving that you own at least <amount>, optionally with a challenge string <message>.\n"
     "If 'all' is specified, you prove the entire accounts' balance.\n");
-  m_consoleHandler.setHandler("sign_message", boost::bind(&simple_wallet::sign_message, this, _1), "Sign the message");
-  m_consoleHandler.setHandler("verify_message", boost::bind(&simple_wallet::verify_message, this, _1), "Verify a signature of the message");
-  m_consoleHandler.setHandler("help", boost::bind(&simple_wallet::help, this, _1), "Show this help");
-  m_consoleHandler.setHandler("exit", boost::bind(&simple_wallet::exit, this, _1), "Close wallet");
+  m_consoleHandler.setHandler("sign_message", std::bind(&simple_wallet::sign_message, this, std::placeholders::_1), "Sign the message");
+  m_consoleHandler.setHandler("verify_message", std::bind(&simple_wallet::verify_message, this, std::placeholders::_1), "Verify a signature of the message");
+  m_consoleHandler.setHandler("help", std::bind(&simple_wallet::help, this, std::placeholders::_1), "Show this help");
+  m_consoleHandler.setHandler("exit", std::bind(&simple_wallet::exit, this, std::placeholders::_1), "Close wallet");
 }
 //----------------------------------------------------------------------------------------------------
 
@@ -963,7 +964,6 @@ bool simple_wallet::init(const boost::program_options::variables_map& vm)
     if (c == 'E' || c == 'e')
       return false;
 
-    std::cout << "Specify wallet file name (e.g., wallet.bin).\n";
     std::string userInput;
     bool validInput = true;
     do
@@ -971,6 +971,27 @@ bool simple_wallet::init(const boost::program_options::variables_map& vm)
       std::cout << "Wallet file name: ";
       std::getline(std::cin, userInput);
       boost::algorithm::trim(userInput);
+
+      if (c == 'o' || c == 'O') {
+        std::string walletFileName = userInput;
+        if (walletFileName.size() == 0) {
+          validInput = false;
+          continue;
+        }
+
+        if (Common::GetExtension(walletFileName) != ".wallet") {
+          walletFileName = walletFileName + ".wallet";
+        }
+
+        boost::system::error_code ignore;
+        if (!boost::filesystem::exists(walletFileName, ignore)) {
+          std::cout << userInput << " does not exists. Did you type correct file name?" << std::endl;
+          validInput = false;
+        }
+        else {
+          validInput = true;
+        }
+      }
 
       if (c != 'o' && c != 'O')
       {
@@ -1107,10 +1128,8 @@ bool simple_wallet::init(const boost::program_options::variables_map& vm)
       << "The node's fee for sending transactions is " <<
       (m_remote_node_fee_amount == 0 ? "0.25% of transaction amount, but no more than " +
         m_currency.formatAmount(CryptoNote::parameters::COIN) : m_currency.formatAmount(m_remote_node_fee_amount)) <<
-      " KRB" << std::endl << std::endl <<
-      "If you don't want to pay the node fee, please run your own node." <<
-      std::endl;
-
+        " " << CryptoNote::CRYPTONOTE_TICKER << "." << std::endl;
+   
     std::cout << WarningMsg(feemsg.str()) << std::endl;
   }
 
@@ -1340,12 +1359,14 @@ bool simple_wallet::init(const boost::program_options::variables_map& vm)
       && addressPrefix == parameters::CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX
       && data.size() == sizeof(keys))
     {
-      std::memcpy(&keys, data.data(), sizeof(keys));
+      if (!fromBinaryArray(keys, Common::asBinaryArray(data))) {
+        logger(ERROR, BRIGHT_RED) << "Failed to parse account keys";
+      }
     }
 
     if (!new_wallet(walletFileName, pwd_container.password(), keys))
     {
-      logger(ERROR, BRIGHT_RED) << "account creation failed";
+      logger(ERROR, BRIGHT_RED) << "Account creation failed";
       return false;
     }
 
@@ -2489,11 +2510,12 @@ bool simple_wallet::run() {
   std::cout << std::endl;
 
   std::string addr_start = m_wallet->getAddress().substr(0, 6);
-  m_consoleHandler.start(false, "[wallet " + addr_start + "]: ", Common::Console::Color::BrightYellow);
+  m_consoleHandler.start(false, "[" + addr_start + "...]: ", Common::Console::Color::BrightYellow);
   return true;
 }
 //----------------------------------------------------------------------------------------------------
 void simple_wallet::stop() {
+  success_msg_writer() << "Closing. Please wait...";
   m_consoleHandler.requestStop();
 }
 //----------------------------------------------------------------------------------------------------
@@ -2568,7 +2590,9 @@ int main(int argc, char* argv[]) {
    setlocale(LC_ALL, "Russian");
    SetConsoleCP(1251);
    SetConsoleOutputCP(1251);
+#if defined( _MSC_VER )
   _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+#endif
 #endif
 
   setbuf(stdout, NULL);

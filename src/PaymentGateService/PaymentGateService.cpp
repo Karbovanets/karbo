@@ -42,6 +42,7 @@
 #include "CryptoNoteProtocol/CryptoNoteProtocolHandler.h"
 #include "P2p/NetNode.h"
 #include "Rpc/RpcServer.h"
+#include "Rpc/RpcServerConfig.h"
 #include <System/Context.h>
 #include "Wallet/WalletGreen.h"
 
@@ -176,7 +177,7 @@ void PaymentGateService::run() {
 
   //check the container exists before starting service
   const std::string walletFileName = config.gateConfiguration.containerFile;
-  if (!boost::filesystem::exists(walletFileName)) {
+  if (!config.gateConfiguration.generateNewContainer && !boost::filesystem::exists(walletFileName)) {
     log(Logging::ERROR) << "A wallet with the filename "
       << walletFileName << " doesn't exist! "
       << "Ensure you entered your wallet name correctly.";
@@ -201,6 +202,18 @@ void PaymentGateService::stop() {
         stopEvent->set();
       }
     });
+  }
+}
+
+void PaymentGateService::startUpSelector(const CryptoNote::Currency& currency, CryptoNote::INode& node) {
+  if (config.gateConfiguration.generateNewContainer) {
+    generateNewWallet(currency, getWalletConfig(), logger, *dispatcher, node);
+  }
+  else if (config.gateConfiguration.changePassword) {
+    changePassword(currency, getWalletConfig(), logger, *dispatcher, node, config.gateConfiguration.newContainerPassword);
+  }
+  else {
+    runWalletService(currency, node);
   }
 }
 
@@ -272,7 +285,7 @@ void PaymentGateService::runInProcess(Logging::LoggerRef& log) {
 
   CryptoNote::CryptoNoteProtocolHandler protocol(currency, *dispatcher, core, nullptr, logger);
   CryptoNote::NodeServer p2pNode(*dispatcher, protocol, logger);
-  CryptoNote::RpcServer rpcServer(*dispatcher, logger, core, p2pNode, protocol);
+  CryptoNote::RpcServer rpcServer(config.localRpcNodeConfig, *dispatcher, logger, core, p2pNode, protocol);
   protocol.set_p2p_endpoint(&p2pNode);
 
   log(Logging::INFO) << "initializing p2pNode";
@@ -294,32 +307,8 @@ void PaymentGateService::runInProcess(Logging::LoggerRef& log) {
     log(Logging::INFO) << "node initialized successfully";
   }
 
-  bool rpc_run_ssl = false;
-  std::string rpc_chain_file = "";
-  std::string rpc_key_file = "";
-  std::string rpc_dh_file = "";
-
-  if (config.remoteNodeConfig.m_enable_ssl) {
-    if (validateSertPath(config.dataDir,
-        config.remoteNodeConfig.m_chain_file,
-        config.remoteNodeConfig.m_key_file,
-        config.remoteNodeConfig.m_dh_file,
-        rpc_chain_file,
-        rpc_key_file,
-        rpc_dh_file)) {
-      rpcServer.setCerts(rpc_chain_file, rpc_key_file, rpc_dh_file);
-      rpc_run_ssl = true;
-    } else {
-      log((Logging::Level) Logging::ERROR, Logging::BRIGHT_RED) << "Start RPC SSL server was canceled because certificate file(s) could not be found" << std::endl;
-    }
-  }
-
-  log(Logging::INFO) << "Starting core rpc server on "
-	  << config.remoteNodeConfig.m_daemon_host << ":" << config.remoteNodeConfig.m_daemon_port;
-  rpcServer.start(config.remoteNodeConfig.m_daemon_host,
-                  config.remoteNodeConfig.m_daemon_port,
-                  config.remoteNodeConfig.m_daemon_port_ssl,
-                  rpc_run_ssl);
+  log(Logging::INFO) << "Starting core rpc server on " << config.localRpcNodeConfig.getBindAddress();
+  rpcServer.run();
   log(Logging::INFO) << "Core rpc server started ok";
 
   log(Logging::INFO) << "Spawning p2p server";
@@ -333,15 +322,7 @@ void PaymentGateService::runInProcess(Logging::LoggerRef& log) {
 
   p2pStarted.wait();
 
-  if (config.gateConfiguration.generateNewContainer) {
-    generateNewWallet(currency, getWalletConfig(), logger, *dispatcher, *node);
-  }
-  else if (config.gateConfiguration.changePassword) {
-    changePassword(currency, getWalletConfig(), logger, *dispatcher, *node, config.gateConfiguration.newContainerPassword);
-  }
-  else {
-    runWalletService(currency, *node);
-  }
+  startUpSelector(currency, *node);
 
   p2pNode.sendStopSignal();
   context.get();
@@ -362,15 +343,7 @@ void PaymentGateService::runRpcProxy(Logging::LoggerRef& log) {
       false, // TODO: add to config, i.e. make configurable or determine by URL protocol and port
       log.getLogger()));
 
-  if (config.gateConfiguration.generateNewContainer) {
-    generateNewWallet(currency, getWalletConfig(), logger, *dispatcher, *node);
-  }
-  else if (config.gateConfiguration.changePassword) {
-    changePassword(currency, getWalletConfig(), logger, *dispatcher, *node, config.gateConfiguration.newContainerPassword);
-  }
-  else {
-    runWalletService(currency, *node);
-  }
+  startUpSelector(currency, *node);
 }
 
 void PaymentGateService::runWalletService(const CryptoNote::Currency& currency, CryptoNote::INode& node) {

@@ -7,7 +7,9 @@
 #include <GreenWallet/Sync.h>
 ///////////////////////////
 
+#include <chrono>
 #include <iostream>
+#include <thread>
 
 #include <Common/StringTools.h>
 #include <Common/ColouredMsg.h>
@@ -17,6 +19,8 @@
 #include <GreenWallet/Tools.h>
 #include <GreenWallet/Types.h>
 #include <GreenWallet/WalletConfig.h>
+
+#define _GLIBCXX_USE_NANOSLEEP 1
 
 using namespace Tools;
 

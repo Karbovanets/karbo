@@ -83,7 +83,7 @@ NodeRpcProxy::NodeRpcProxy(const std::string& nodeHost, unsigned short nodePort,
     m_nodeHeight(0),
     m_nextDifficulty(0),
     m_nextReward(0),
-    m_minimalFee(CryptoNote::parameters::MAXIMUM_FEE),
+    m_minimalFee(CryptoNote::parameters::MINIMUM_FEE),
     m_alreadyGeneratedCoins(0),
     m_transactionsCount(0),
     m_transactionsPoolSize(0),
@@ -201,7 +201,6 @@ void NodeRpcProxy::workerThread(const INode::Callback& initialized_callback) {
     contextGroup.spawn([this]() {
       Timer pullTimer(*m_dispatcher);
       while (!m_stop) {
-        getFeeAddress(); // Get public node's fee info
         updateNodeStatus();
         if (!m_stop) {
           pullTimer.sleep(std::chrono::milliseconds(m_pullInterval));
@@ -288,6 +287,15 @@ void NodeRpcProxy::updateBlockchainStatus() {
     }
   }
 
+  CryptoNote::COMMAND_RPC_GET_FEE_ADDRESS::request ireq = AUTO_VAL_INIT(ireq);
+  CryptoNote::COMMAND_RPC_GET_FEE_ADDRESS::response iresp = AUTO_VAL_INIT(iresp);
+
+  ec = jsonCommand("feeaddress", ireq, iresp);
+  if (!ec) {
+    m_fee_address = iresp.fee_address;
+    m_fee_amount = iresp.fee_amount;
+  }
+
   CryptoNote::COMMAND_RPC_GET_INFO::request getInfoReq = AUTO_VAL_INIT(getInfoReq);
   CryptoNote::COMMAND_RPC_GET_INFO::response getInfoResp = AUTO_VAL_INIT(getInfoResp);
 
@@ -346,21 +354,6 @@ void NodeRpcProxy::updatePoolState(const std::vector<std::unique_ptr<ITransactio
     Hash hash = tx->getTransactionHash();
     m_knownTxs.emplace(std::move(hash));
   }
-}
-
-void NodeRpcProxy::getFeeAddress() {
-  CryptoNote::COMMAND_RPC_GET_FEE_ADDRESS::request ireq = AUTO_VAL_INIT(ireq);
-  CryptoNote::COMMAND_RPC_GET_FEE_ADDRESS::response iresp = AUTO_VAL_INIT(iresp);
-
-  std::error_code ec = jsonCommand("feeaddress", ireq, iresp);
-
-  if (ec || iresp.status != CORE_RPC_STATUS_OK) {
-    return;
-  }
-  m_fee_address = iresp.fee_address;
-  m_fee_amount = iresp.fee_amount;
-
-  return;
 }
 
 std::string NodeRpcProxy::feeAddress() const {
@@ -963,7 +956,7 @@ std::error_code NodeRpcProxy::doGetTransaction(const Crypto::Hash& transactionHa
     return ec;
   }
 
-  if (resp.missed_txs.size() > 0) {
+  if (resp.missed_txs.size() > 0 || resp.txs_as_hex.size() == 0) {
     return make_error_code(CryptoNote::error::REQUEST_ERROR);
   }
 

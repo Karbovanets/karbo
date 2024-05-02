@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016-2020, The Karbo developers
+// Copyright (c) 2016-2024, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -29,7 +29,8 @@ public:
 
   static void initOptions(boost::program_options::options_description& desc);
   void init(const boost::program_options::variables_map& options);
-
+  void setDataDir(std::string data_dir);
+  bool isRestricted() const;
   bool isEnabledSSL() const;
   uint16_t getBindPort() const;
   uint16_t getBindPortSSL() const;
@@ -39,12 +40,19 @@ public:
   std::string getDhFile() const;
   std::string getChainFile() const;
   std::string getKeyFile() const;
+  std::string getNodeFeeAddress() const;
+  uint64_t    getNodeFeeAmount() const;
+  std::string getNodeFeeViewKey() const;
+  std::string getContactInfo() const;
+  std::vector<std::string> getCors() const;
 
-//private:
+private:
   bool        restrictedRPC;
   bool        enableSSL;
   uint16_t    bindPort;
   uint16_t    bindPortSSL;
+  uint64_t    nodeFeeAmount = 0;
+  std::string dataDir;
   std::string bindIp;
   std::string dhFile;
   std::string chainFile;

@@ -3,7 +3,8 @@
 // Copyright (c) 2014-2018, The Forknote developers
 // Copyright (c) 2017-2019, The Iridium developers
 // Copyright (c) 2018-2019, The TurtleCoin Developers
-// Copyright (c) 2017-2022, The Karbo Developers
+// Copyright (c) 2020-2022, The Talleo developers
+// Copyright (c) 2017-2024, The Karbo Developers
 //
 // This file is part of Karbo.
 //
@@ -80,11 +81,11 @@ size_t get_random_index_with_fixed_probability(size_t max_index) {
 }
 
 
-void addPortMapping(Logging::LoggerRef& logger, uint32_t port) {
+void addPortMapping(Logging::LoggerRef& logger, uint32_t port, uint32_t externalPort) {
   // Add UPnP port mapping
   logger(INFO) << "Attempting to add IGD port mapping.";
   int result;
-  UPNPDev* deviceList = upnpDiscover(1000, NULL, NULL, 0, 0, 2, &result);
+  UPNPDev* deviceList = upnpDiscover(1000, nullptr, nullptr, 0, 0, 2, &result);
   UPNPUrls urls;
   IGDdatas igdData;
   char lanAddress[64];
@@ -92,11 +93,13 @@ void addPortMapping(Logging::LoggerRef& logger, uint32_t port) {
   freeUPNPDevlist(deviceList);
   if (result != 0) {
     if (result == 1) {
+      std::ostringstream extPortString;
+      extPortString << (externalPort ? externalPort : port);
       std::ostringstream portString;
       portString << port;
-      if (UPNP_AddPortMapping(urls.controlURL, igdData.first.servicetype, portString.str().c_str(),
-        portString.str().c_str(), lanAddress, CryptoNote::CRYPTONOTE_NAME, "TCP", 0, "0") != 0) {
-        logger(ERROR) << "UPNP_AddPortMapping failed.";
+      if (UPNP_AddPortMapping(urls.controlURL, igdData.first.servicetype, extPortString.str().c_str(),
+        portString.str().c_str(), lanAddress, CryptoNote::CRYPTONOTE_NAME, "TCP", nullptr, "0") != 0) {
+        logger(ERROR) << "UPNP port mapping failed.";
       } else {
         logger(INFO) << "Added IGD port mapping.";
       }
@@ -232,7 +235,7 @@ std::string print_banlist_to_string(std::map<uint32_t, time_t> list) {
     m_payload_handler(payload_handler),
     m_allow_local_ip(false),
     m_hide_my_port(false),
-    m_network_id(BYTECOIN_NETWORK),
+    m_network_id(CRYPTONOTE_NETWORK),
     logger(log, "node_server"),
     m_stopEvent(m_dispatcher),
     m_idleTimer(m_dispatcher),
@@ -575,7 +578,7 @@ std::string print_banlist_to_string(std::map<uint32_t, time_t> list) {
     if(m_external_port)
       logger(INFO) << "External port defined as " << m_external_port;
 
-    addPortMapping(logger, m_listeningPort);
+    addPortMapping(logger, m_listeningPort, m_external_port);
 
     return true;
   }

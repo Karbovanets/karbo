@@ -407,7 +407,7 @@ void status(CryptoNote::INode &node, CryptoNote::WalletGreen &wallet)
 
 void reset(CryptoNote::INode &node, std::shared_ptr<WalletInfo> walletInfo)
 {
-	uint64_t scanHeight = Tools::getScanHeight();
+	uint32_t scanHeight = Tools::getScanHeight();
 
 	std::cout << std::endl
 		<< InformationMsg("This process may take some time to complete.")

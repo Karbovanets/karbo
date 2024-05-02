@@ -19,7 +19,6 @@
 #include "ConfigurationManager.h"
 
 #include <fstream>
-#include <boost/program_options.hpp>
 
 #include "Common/CommandLine.h"
 #include "Common/Util.h"
@@ -64,6 +63,9 @@ bool ConfigurationManager::init(int argc, char** argv) {
   po::options_description remoteNodeOptions("Remote Node Options");
   RpcNodeConfiguration::initOptions(remoteNodeOptions);
 
+  po::options_description rpcNodeOptions("Local RPC Node Options");
+  CryptoNote::RpcServerConfig::initOptions(rpcNodeOptions);
+
   po::options_description cmdOptionsDesc;
   cmdOptionsDesc.add(cmdGeneralOptions).add(remoteNodeOptions).add(netNodeOptions);
 
@@ -97,6 +99,7 @@ bool ConfigurationManager::init(int argc, char** argv) {
     gateConfiguration.init(confOptions);
     netNodeConfig.init(confOptions);
     remoteNodeConfig.init(confOptions);
+    localRpcNodeConfig.init(confOptions);
 
     netNodeConfig.setTestnet(confOptions["testnet"].as<bool>());
     startInprocess = confOptions["local"].as<bool>();
@@ -120,6 +123,8 @@ bool ConfigurationManager::init(int argc, char** argv) {
   if (gateConfiguration.containerFile.empty()) {
     throw ConfigurationError("Сontainer file not set");
   }
+
+  localRpcNodeConfig.setDataDir(dataDir);
 
   return true;
 }
