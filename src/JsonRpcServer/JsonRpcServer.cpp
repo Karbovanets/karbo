@@ -67,6 +67,11 @@ void JsonRpcServer::processRequest(const CryptoNote::HttpRequest& req, CryptoNot
       Common::JsonValue jsonRpcRequest;
       Common::JsonValue jsonRpcResponse(Common::JsonValue::OBJECT);
 
+      resp.addHeader("Content-Type", "application/json");
+      resp.addHeader("Access-Control-Allow-Origin", "*");
+      resp.addHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+      resp.addHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
+
       try {
         jsonInputStream >> jsonRpcRequest;
       } catch (std::runtime_error&) {
