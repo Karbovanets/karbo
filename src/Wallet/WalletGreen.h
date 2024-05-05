@@ -61,6 +61,7 @@ public:
 
   virtual size_t getAddressCount() const override;
   virtual std::string getAddress(size_t index) const override;
+  virtual bool isMyAddress(const std::string& address) const override;
   virtual KeyPair getAddressSpendKey(size_t index) const override;
   virtual KeyPair getAddressSpendKey(const std::string& address) const override;
   virtual KeyPair getViewKey() const override;
@@ -366,7 +367,6 @@ protected:
   void filterOutTransactions(WalletTransactions& transactions, WalletTransfers& transfers, std::function<bool (const WalletTransaction&)>&& pred) const;
   void initBlockchain(const Crypto::PublicKey& viewPublicKey);
   CryptoNote::AccountPublicAddress getChangeDestination(const std::string& changeDestinationAddress, const std::vector<std::string>& sourceAddresses) const;
-  bool isMyAddress(const std::string& address) const;
 
   void deleteContainerFromUnlockTransactionJobs(const ITransfersContainer* container);
   std::vector<size_t> deleteTransfersForAddress(const std::string& address, std::vector<size_t>& deletedTransactions);
