@@ -1,7 +1,8 @@
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2014-2018, The Monero Project
 // Copyright (c) 2018-2019, The TurtleCoin Developers
-// Copyright (c) 2018-2020, The Karbo Developers
+// Copyright (c) 2019-2023, The Talleo developers
+// Copyright (c) 2017-2024, The Karbo Developers
 //
 // This file is part of Karbo.
 //
@@ -293,8 +294,9 @@ std::unique_ptr<IBlockchainCache> BlockchainCache::split(uint32_t splitBlockInde
   splitMultiSignatureOutputsGlobalIndexes(*newCache, splitBlockIndex);
 
   fixChildrenParent(newCache.get());
-  newCache->children = children;
-  children = { newCache.get() };
+  newCache->children = std::move(children);
+  children.clear();
+  children.push_back(newCache.get());
 
   logger(Logging::DEBUGGING) << "Split successfully completed";
   return newCache;
